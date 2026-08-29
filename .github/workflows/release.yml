@@ -160,6 +160,17 @@ jobs:
             }
           }
 
+          $publishOutput = gh release edit $env:RELEASE_TAG `
+            --repo $env:RELEASE_REPOSITORY `
+            --draft=false `
+            --prerelease=false `
+            --latest 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $annotation = (($publishOutput | Out-String).Trim()).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=release_publish_failed::$annotation"
+            throw 'release_publish_failed'
+          }
+
           $releaseJson = gh release view $env:RELEASE_TAG `
             --repo $env:RELEASE_REPOSITORY `
             --json tagName,isDraft,isPrerelease,url 2>&1
@@ -170,6 +181,7 @@ jobs:
           }
           $release = $releaseJson | ConvertFrom-Json
           if ($release.tagName -cne $env:RELEASE_TAG -or $release.isDraft -or $release.isPrerelease) {
+            Write-Output "::error title=release_metadata_invalid::tag=$($release.tagName), draft=$($release.isDraft), prerelease=$($release.isPrerelease)"
             throw 'release_metadata_invalid'
           }
           Write-Output "::notice title=Published release::$($release.url)"
