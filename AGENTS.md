@@ -21,8 +21,9 @@ update channel as a release target.
 - Treat Bing and Google as unofficial web providers. Do not document or add
   Google Cloud Translation Basic v2 configuration unless a separate request
   explicitly authorizes it.
-- Preserve the inherited black-and-white icon asset; do not replace it with a
-  generated or downloaded visual asset without explicit approval.
+- Treat `assets/brand-source-icon/icon_source.png` as the approved icon source.
+  Regenerate PNG/ICO derivatives with `windows/packaging/New-AppIcon.ps1`; do
+  not replace it with a downloaded visual asset without explicit approval.
 
 ## Local verification
 

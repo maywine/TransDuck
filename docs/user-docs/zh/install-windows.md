@@ -40,15 +40,13 @@ OCR 效果取决于原图、文字大小、对比度和语言。尽量紧贴清�
 
 在设置中选择并配置服务。
 
-- **Bing** 与 **Google** 是内置的非官方网页服务，仅提供文本翻译；网页协议变更后
-  可能失效。
-- **Google 不是 Google Cloud Translation。** TransDuck 不提供 Google Cloud Translation
-  Basic v2 API Key 配置。
-- **Bing** 可以使用可选 Cookie；保存后由当前 Windows 用户的 DPAPI 保护。
-- **Google** 不需要、也没有凭据配置。
-- OpenAI-compatible、DeepL 和 Ollama 配置可能需要各自的 endpoint、model 或凭据。
+- **Bing** 与 **Google** 使用内置的非官方网页接口，不属于 Azure Translator 或
+  Google Cloud Translation；网页服务或协议变化可能影响可用性。
+- **Google** 网页翻译无需凭据；**Bing** Cookie 为可选项。
+- OpenAI-compatible、DeepL、Ollama 和火山翻译按各自要求配置 endpoint、model 或凭据。
 
-服务凭据不会保存在便携应用目录中。每次翻译会将选定文本发送给你在设置中选择的服务。
+每次翻译会将选定文本发送给当前选择的服务商。API Key、火山引擎 AK/SK 与可选的
+Bing Cookie 由 Windows DPAPI 按当前用户加密，不会写入普通配置文件或便携应用目录。
 
 ## 配置代理
 
@@ -83,6 +81,5 @@ TransDuck 的用户数据与便携目录分开保存：
 目录不会删除这些数据。需要时请在应用内清除历史；如需移除数据目录，请先退出
 TransDuck，再自行删除该目录。
 
-TransDuck 的图标继承既有黑白视觉资产，并嵌入应用；无需另行下载图标文件。
 
-另见：[TransDuck README](../../../README_ZH.md)。
+另见：[TransDuck README](../../../README.md)。

@@ -47,19 +47,17 @@ Use a tight selection around clear text for better results.
 
 Select and configure a provider in Settings.
 
-- **Bing** and **Google** are built-in unofficial web providers. They provide
-  text translation only and can stop working if the corresponding web protocol
-  changes.
-- **Google is not Google Cloud Translation.** TransDuck does not configure a
-  Google Cloud Translation Basic v2 API key.
-- **Bing** may use an optional Cookie. If saved, it is protected with Windows
-  DPAPI for the current Windows user.
-- **Google** has no credential setting.
-- OpenAI-compatible, DeepL, and Ollama profiles can require their respective
-  endpoints, models, or credentials.
+- **Bing** and **Google** use built-in unofficial web interfaces rather than
+  Azure Translator or Google Cloud Translation. Web service or protocol changes
+  can affect availability.
+- **Google** web translation needs no credential; a **Bing** Cookie is optional.
+- OpenAI-compatible, DeepL, Ollama, and Volcengine Translate use their respective
+  endpoint, model, or credential settings.
 
-Provider credentials are never kept in the portable application folder. A
-translation request sends the selected text to the provider you choose.
+A translation request sends selected text to the provider currently chosen in
+Settings. API keys, Volcengine AK/SK, and an optional Bing Cookie are encrypted
+for the current user with Windows DPAPI; they are not written to ordinary
+configuration files or the portable application directory.
 
 ## Configure a proxy
 
@@ -97,7 +95,5 @@ Windows-DPAPI-protected credentials. Replacing or deleting the portable folder
 does not remove that data. Clear history in the application when needed, and
 remove the data folder yourself only after TransDuck is closed.
 
-The icon included with TransDuck is an inherited black-and-white visual asset.
-It is embedded with the application; no separate icon download is needed.
 
-See also: [TransDuck README](../../../README.md).
+See also: [TransDuck README](../../../README_EN.md).
