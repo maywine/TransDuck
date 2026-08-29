@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  release:
+    name: Build and publish Windows release
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.400'
+
+      - name: Verify packaging contract
+        shell: pwsh
+        run: .\windows\packaging\Test-Package-ZipStatic.ps1
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore windows\TransDuck.Windows.sln
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build windows\TransDuck.Windows.sln --configuration Release --no-restore
+
+      - name: Test
+        shell: pwsh
+        run: dotnet test windows\TransDuck.Windows.sln --configuration Release --no-build --no-restore
+
+      - name: Package and audit portable ZIP
+        shell: pwsh
+        run: |
+          $outputDirectory = Join-Path $PWD 'windows\packaging\artifacts'
+          $zipPath = Join-Path $outputDirectory 'TransDuck-Windows-x64.zip'
+          .\windows\packaging\Package-Zip.ps1 -OutputDirectory $outputDirectory
+          .\windows\packaging\Test-Package-Zip.ps1 `
+            -ZipPath $zipPath `
+            -OutputDirectory $outputDirectory
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $asset = Join-Path $PWD 'windows\packaging\artifacts\TransDuck-Windows-x64.zip'
+          gh release view $env:RELEASE_TAG `
+            --repo $env:RELEASE_REPOSITORY `
+            --json tagName *> $null
+          $releaseExists = $LASTEXITCODE -eq 0
+
+          if ($releaseExists) {
+            gh release upload $env:RELEASE_TAG $asset `
+              --repo $env:RELEASE_REPOSITORY `
+              --clobber
+            if ($LASTEXITCODE -ne 0) {
+              throw 'release_asset_upload_failed'
+            }
+          }
+          else {
+            gh release create $env:RELEASE_TAG $asset `
+              --repo $env:RELEASE_REPOSITORY `
+              --verify-tag `
+              --generate-notes `
+              --title $env:RELEASE_TAG
+            if ($LASTEXITCODE -ne 0) {
+              throw 'release_creation_failed'
+            }
+          }

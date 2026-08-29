@@ -44,6 +44,12 @@ API Key 配置；网页协议或服务端行为变更时，它们可能失效。
 TransDuck 使用 [MIT License](LICENSE)。第三方组件的许可证和声明位于 Windows 发布包的
 `licenses/` 目录及 `THIRD-PARTY-NOTICES.md`。
 
+## 发布
+
+向 GitHub 推送任意新 tag 会触发 Release 工作流。工作流在 Windows runner 上完成
+Release 编译、测试、single-file ZIP 打包和审计，全部通过后创建对应 GitHub Release，
+并上传 `TransDuck-Windows-x64.zip`。同一 tag 的工作流重跑会覆盖同名 ZIP 资产。
+
 ## 开发
 
 仓库规则见 [AGENTS.md](AGENTS.md)。仓库默认仅本地使用；除非用户明确要求，不配置
