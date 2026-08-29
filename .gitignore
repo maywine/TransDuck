@@ -1,0 +1,10 @@
+# .NET and Visual Studio output
+[Bb]in/
+[Oo]bj/
+.vs/
+TestResults/
+
+# Local release and temporary output
+artifacts/
+temp/
+*.tmp

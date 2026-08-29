@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-003",
+  "queryKind": "ocr",
+  "text": "synthetic recognized text",
+  "sourceLanguage": "zh-Hans",
+  "targetLanguage": "en-US",
+  "provider": {
+    "providerId": "local-ocr"
+  },
+  "futureOptionalHint": "ignored by v1 consumers"
+}

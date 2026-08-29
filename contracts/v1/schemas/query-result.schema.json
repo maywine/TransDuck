@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:transduck:contracts:v1:schemas:query-result",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "requestId",
+    "queryKind",
+    "provider",
+    "terminalState",
+    "sourceLanguage",
+    "targetLanguage"
+  ],
+  "properties": {
+    "schemaVersion": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/schemaVersion" },
+    "requestId": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/identifier" },
+    "queryKind": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/queryKind" },
+    "provider": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/providerDescriptor" },
+    "terminalState": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/terminalState" },
+    "sourceLanguage": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/nullableLanguageCode" },
+    "targetLanguage": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/languageCode" },
+    "result": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/resultPayload" },
+    "error": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/queryError" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "terminalState": { "const": "completed" } } },
+      "then": {
+        "required": ["result"],
+        "not": { "required": ["error"] }
+      }
+    },
+    {
+      "if": { "properties": { "terminalState": { "const": "cancelled" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["result"] },
+            { "required": ["error"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "terminalState": { "const": "failed" } } },
+      "then": {
+        "required": ["error"],
+        "not": { "required": ["result"] }
+      }
+    }
+  ]
+}

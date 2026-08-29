@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-005",
+  "sequence": 3,
+  "eventType": "failed",
+  "error": {
+    "code": "timeout",
+    "message": "synthetic timeout",
+    "retryable": true
+  }
+}

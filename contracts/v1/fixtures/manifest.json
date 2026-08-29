@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "path": "invalid/query-request-missing-required.json",
+      "documentType": "queryRequest",
+      "expected": "invalid",
+      "errorCategory": "missingRequired"
+    },
+    {
+      "path": "invalid/query-request-unknown-enum.json",
+      "documentType": "queryRequest",
+      "expected": "invalid",
+      "errorCategory": "invalidValue"
+    },
+    {
+      "path": "invalid/query-request-wrong-schema-version.json",
+      "documentType": "queryRequest",
+      "expected": "invalid",
+      "errorCategory": "unsupportedSchemaVersion"
+    },
+    {
+      "path": "invalid/query-result-illegal-terminal-shape.json",
+      "documentType": "queryResult",
+      "expected": "invalid",
+      "errorCategory": "invalidTerminalShape"
+    },
+    {
+      "path": "invalid/stream-event-illegal-terminal-shape.json",
+      "documentType": "streamEvent",
+      "expected": "invalid",
+      "errorCategory": "invalidTerminalShape"
+    },
+    {
+      "path": "valid/configuration-retention.json",
+      "documentType": "configuration",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/history-entry-synthetic.json",
+      "documentType": "historyEntry",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/query-request-null-source-language.json",
+      "documentType": "queryRequest",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/query-request-provider-instance.json",
+      "documentType": "queryRequest",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/query-request-unknown-additive-field.json",
+      "documentType": "queryRequest",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/query-result-cancelled.json",
+      "documentType": "queryResult",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/query-result-completed.json",
+      "documentType": "queryResult",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/query-result-failed.json",
+      "documentType": "queryResult",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/stream-event-cancelled.json",
+      "documentType": "streamEvent",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/stream-event-completed.json",
+      "documentType": "streamEvent",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/stream-event-delta-sequence.json",
+      "documentType": "streamEvent",
+      "expected": "valid"
+    },
+    {
+      "path": "valid/stream-event-failed.json",
+      "documentType": "streamEvent",
+      "expected": "valid"
+    }
+  ]
+}

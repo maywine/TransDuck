@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-invalid-001",
+  "queryKind": "translation",
+  "text": "synthetic invalid text",
+  "sourceLanguage": null,
+  "targetLanguage": "zh-Hans"
+}

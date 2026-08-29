@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-invalid-003",
+  "queryKind": "summarize",
+  "text": "synthetic invalid text",
+  "sourceLanguage": "en-US",
+  "targetLanguage": "zh-Hans",
+  "provider": {
+    "providerId": "openai-compatible"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-004",
+  "queryKind": "ocr",
+  "provider": {
+    "providerId": "local-ocr"
+  },
+  "terminalState": "cancelled",
+  "sourceLanguage": "en-US",
+  "targetLanguage": "zh-Hans"
+}

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "entryId": "history-synthetic-001",
+  "createdAt": "2026-08-27T12:00:00Z",
+  "request": {
+    "schemaVersion": 1,
+    "requestId": "request-synthetic-006",
+    "queryKind": "dictionary",
+    "text": "synthetic history term",
+    "sourceLanguage": "en-US",
+    "targetLanguage": "zh-Hans",
+    "provider": {
+      "providerId": "local-dictionary"
+    }
+  },
+  "result": {
+    "schemaVersion": 1,
+    "requestId": "request-synthetic-006",
+    "queryKind": "dictionary",
+    "provider": {
+      "providerId": "local-dictionary"
+    },
+    "terminalState": "completed",
+    "sourceLanguage": "en-US",
+    "targetLanguage": "zh-Hans",
+    "result": {
+      "text": "synthetic dictionary summary",
+      "dictionaryEntries": [
+        {
+          "term": "synthetic history term",
+          "definitions": ["synthetic definition"]
+        }
+      ]
+    }
+  }
+}

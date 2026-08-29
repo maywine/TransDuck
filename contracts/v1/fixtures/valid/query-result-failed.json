@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-005",
+  "queryKind": "dictionary",
+  "provider": {
+    "providerId": "local-dictionary",
+    "instanceId": "bundle-a"
+  },
+  "terminalState": "failed",
+  "sourceLanguage": "en-US",
+  "targetLanguage": "zh-Hans",
+  "error": {
+    "code": "providerUnavailable",
+    "message": "synthetic provider unavailable",
+    "retryable": true
+  }
+}

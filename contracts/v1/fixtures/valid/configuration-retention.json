@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "version": 3,
+  "defaultProvider": {
+    "providerId": "openai-compatible",
+    "instanceId": "synthetic-profile"
+  },
+  "historyRetention": {
+    "maxEntries": 250,
+    "maxAgeDays": 30
+  }
+}

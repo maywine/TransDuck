@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-invalid-004",
+  "sequence": 4,
+  "eventType": "completed",
+  "text": "terminal events cannot carry text"
+}

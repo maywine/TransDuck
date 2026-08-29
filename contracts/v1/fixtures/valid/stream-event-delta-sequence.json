@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-001",
+  "sequence": 0,
+  "eventType": "delta",
+  "text": "synthetic stream delta"
+}

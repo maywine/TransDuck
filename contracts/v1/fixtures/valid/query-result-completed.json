@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-001",
+  "queryKind": "translation",
+  "provider": {
+    "providerId": "openai-compatible"
+  },
+  "terminalState": "completed",
+  "sourceLanguage": null,
+  "targetLanguage": "zh-Hans",
+  "result": {
+    "text": "synthetic translated text"
+  }
+}

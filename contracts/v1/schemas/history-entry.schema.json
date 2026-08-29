@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:transduck:contracts:v1:schemas:history-entry",
+  "type": "object",
+  "required": ["schemaVersion", "entryId", "createdAt", "request", "result"],
+  "properties": {
+    "schemaVersion": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/schemaVersion" },
+    "entryId": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/identifier" },
+    "createdAt": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/timestamp" },
+    "request": { "$ref": "urn:transduck:contracts:v1:schemas:query-request" },
+    "result": { "$ref": "urn:transduck:contracts:v1:schemas:query-result" }
+  }
+}

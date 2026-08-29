@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-invalid-005",
+  "queryKind": "translation",
+  "provider": {
+    "providerId": "openai-compatible"
+  },
+  "terminalState": "cancelled",
+  "sourceLanguage": "en-US",
+  "targetLanguage": "zh-Hans",
+  "result": {
+    "text": "cancelled results cannot contain a payload"
+  }
+}

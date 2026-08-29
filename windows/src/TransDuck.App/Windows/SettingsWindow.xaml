@@ -1,0 +1,230 @@
+<Window x:Class="TransDuck.App.Windows.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource settings.window.title}"
+        Width="560"
+        Height="650"
+        WindowStartupLocation="CenterScreen">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="20">
+      <TextBlock FontSize="18" FontWeight="SemiBold" Text="{DynamicResource settings.heading.provider}" />
+      <TextBlock Margin="0,6,0,14" TextWrapping="Wrap"
+                 Text="{DynamicResource settings.description.credential}" />
+
+      <TextBlock Text="{DynamicResource settings.label.provider}" />
+      <ComboBox x:Name="ProviderComboBox"
+                Margin="0,4,0,10"
+                SelectionChanged="ProviderSelectionChanged"
+                AutomationProperties.AutomationId="ProviderComboBox"
+                AutomationProperties.Name="{DynamicResource settings.automation.provider.name}"
+                AutomationProperties.HelpText="{DynamicResource settings.automation.provider.help}">
+        <ComboBoxItem Tag="openai-compatible">OpenAI-compatible</ComboBoxItem>
+        <ComboBoxItem Tag="deepl">DeepL</ComboBoxItem>
+        <ComboBoxItem Tag="ollama">Ollama</ComboBoxItem>
+        <ComboBoxItem Tag="bing" Content="{DynamicResource provider.name.bing}" />
+        <ComboBoxItem Tag="google" Content="{DynamicResource provider.name.google}" />
+      </ComboBox>
+
+      <TextBlock Text="{DynamicResource settings.label.instance_id}" />
+      <TextBox x:Name="InstanceIdTextBox" Margin="0,4,0,10"
+               AutomationProperties.AutomationId="InstanceIdTextBox"
+               AutomationProperties.Name="{DynamicResource settings.automation.instance_id.name}" />
+
+      <TextBlock Text="{DynamicResource settings.label.endpoint}" />
+      <TextBox x:Name="EndpointTextBox" Margin="0,4,0,10"
+               AutomationProperties.AutomationId="EndpointTextBox"
+               AutomationProperties.Name="{DynamicResource settings.automation.endpoint.name}"
+               AutomationProperties.HelpText="{DynamicResource settings.automation.endpoint.help}" />
+
+      <TextBlock Text="{DynamicResource settings.label.model}" />
+      <TextBox x:Name="ModelTextBox" Margin="0,4,0,10"
+               AutomationProperties.AutomationId="ModelTextBox"
+               AutomationProperties.Name="{DynamicResource settings.automation.model.name}" />
+
+      <Grid Margin="0,0,0,10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+          <TextBlock Text="{DynamicResource settings.label.source_language}" />
+          <TextBox x:Name="SourceLanguageTextBox" Margin="0,4,0,0"
+                   AutomationProperties.AutomationId="SourceLanguageTextBox"
+                   AutomationProperties.Name="{DynamicResource settings.automation.source_language.name}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1">
+          <TextBlock Text="{DynamicResource settings.label.target_language}" />
+          <TextBox x:Name="TargetLanguageTextBox" Margin="0,4,0,0"
+                   AutomationProperties.AutomationId="TargetLanguageTextBox"
+                   AutomationProperties.Name="{DynamicResource settings.automation.target_language.name}" />
+        </StackPanel>
+      </Grid>
+
+      <Grid Margin="0,0,0,10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+          <TextBlock Text="{DynamicResource settings.label.timeout_seconds}" />
+          <TextBox x:Name="TimeoutSecondsTextBox" Margin="0,4,0,0"
+                   AutomationProperties.AutomationId="TimeoutSecondsTextBox"
+                   AutomationProperties.Name="{DynamicResource settings.automation.timeout_seconds.name}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Margin="0,0,8,0">
+          <TextBlock Text="{DynamicResource settings.label.history_max_entries}" />
+          <TextBox x:Name="HistoryMaxEntriesTextBox" Margin="0,4,0,0"
+                   AutomationProperties.AutomationId="HistoryMaxEntriesTextBox"
+                   AutomationProperties.Name="{DynamicResource settings.automation.history_max_entries.name}" />
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <TextBlock Text="{DynamicResource settings.label.history_max_age_days}" />
+          <TextBox x:Name="HistoryMaxAgeDaysTextBox" Margin="0,4,0,0"
+                   AutomationProperties.AutomationId="HistoryMaxAgeDaysTextBox"
+                   AutomationProperties.Name="{DynamicResource settings.automation.history_max_age_days.name}" />
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Text="{DynamicResource settings.label.credential}" />
+      <PasswordBox x:Name="CredentialPasswordBox" Margin="0,4,0,4"
+                   AutomationProperties.AutomationId="CredentialPasswordBox"
+                   AutomationProperties.Name="{DynamicResource settings.automation.credential.name}"
+                   AutomationProperties.HelpText="{DynamicResource settings.automation.credential.help}" />
+      <TextBlock x:Name="CredentialStatusTextBlock" Margin="0,0,0,12"
+                 Foreground="#4A5568"
+                 AutomationProperties.AutomationId="CredentialStatusTextBlock"
+                 AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}"
+                 AutomationProperties.HelpText="{DynamicResource settings.automation.credential_status.help}" />
+
+      <Separator Margin="0,0,0,14" />
+      <TextBlock FontSize="16" FontWeight="SemiBold" Text="{DynamicResource settings.heading.proxy}" />
+      <TextBlock Margin="0,6,0,10" TextWrapping="Wrap"
+                 Text="{DynamicResource settings.description.proxy}" />
+      <TextBlock Text="{DynamicResource settings.label.proxy_mode}" />
+      <ComboBox x:Name="ProxyModeComboBox"
+                Margin="0,4,0,10"
+                SelectionChanged="ProxyModeSelectionChanged"
+                AutomationProperties.AutomationId="ProxyModeComboBox"
+                AutomationProperties.Name="{DynamicResource settings.automation.proxy_mode.name}"
+                AutomationProperties.HelpText="{DynamicResource settings.automation.proxy_mode.help}">
+        <ComboBoxItem Tag="SystemDefault" Content="{DynamicResource settings.proxy.mode.system_default}" />
+        <ComboBoxItem Tag="CustomHttp" Content="{DynamicResource settings.proxy.mode.custom_http}" />
+        <ComboBoxItem Tag="Disabled" Content="{DynamicResource settings.proxy.mode.disabled}" />
+      </ComboBox>
+      <TextBlock Text="{DynamicResource settings.label.custom_http_proxy_uri}" />
+      <TextBox x:Name="CustomHttpProxyUriTextBox" Margin="0,4,0,4"
+               AutomationProperties.AutomationId="CustomHttpProxyUriTextBox"
+               AutomationProperties.Name="{DynamicResource settings.automation.custom_http_proxy_uri.name}"
+               AutomationProperties.HelpText="{DynamicResource settings.automation.custom_http_proxy_uri.help}" />
+      <TextBlock x:Name="ProxyStatusTextBlock" Margin="0,0,0,10"
+                 Foreground="#4A5568"
+                 TextWrapping="Wrap"
+                 AutomationProperties.AutomationId="ProxyStatusTextBlock"
+                 AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}"
+                 AutomationProperties.HelpText="{DynamicResource settings.automation.proxy_status.help}" />
+      <Button x:Name="SaveProxySettingsButton"
+              Margin="0,0,0,14"
+              Padding="14,5"
+              HorizontalAlignment="Left"
+              Content="{DynamicResource settings.button.save_proxy}"
+              Click="SaveProxySettingsButtonClick"
+              AutomationProperties.AutomationId="SaveProxySettingsButton"
+              AutomationProperties.Name="{DynamicResource settings.button.save_proxy}" />
+
+      <Separator Margin="0,0,0,14" />
+      <TextBlock FontSize="16" FontWeight="SemiBold" Text="{DynamicResource settings.heading.hotkey}" />
+      <TextBlock Margin="0,6,0,10" TextWrapping="Wrap"
+                 Text="{DynamicResource settings.description.hotkey}" />
+      <WrapPanel Margin="0,0,0,8">
+        <CheckBox x:Name="ControlHotkeyModifierCheckBox"
+                  Margin="0,0,12,0"
+                  Content="{DynamicResource settings.hotkey.control}"
+                  IsChecked="True"
+                  AutomationProperties.AutomationId="ControlHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.control}" />
+        <CheckBox x:Name="AltHotkeyModifierCheckBox"
+                  Margin="0,0,12,0"
+                  Content="{DynamicResource settings.hotkey.alt}"
+                  IsChecked="True"
+                  AutomationProperties.AutomationId="AltHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.alt}" />
+        <CheckBox x:Name="ShiftHotkeyModifierCheckBox"
+                  Margin="0,0,12,0"
+                  Content="{DynamicResource settings.hotkey.shift}"
+                  AutomationProperties.AutomationId="ShiftHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.shift}" />
+        <CheckBox x:Name="WindowsHotkeyModifierCheckBox"
+                  Margin="0,0,14,0"
+                  Content="{DynamicResource settings.hotkey.windows}"
+                  AutomationProperties.AutomationId="WindowsHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.windows}" />
+        <TextBlock Margin="0,3,6,0" Text="{DynamicResource settings.hotkey.key}" />
+        <TextBox x:Name="HotkeyKeyTextBox"
+                 Width="52"
+                 MaxLength="3"
+                 Text="D"
+                 AutomationProperties.AutomationId="HotkeyKeyTextBox"
+                 AutomationProperties.Name="{DynamicResource settings.automation.hotkey_key.name}"
+                 AutomationProperties.HelpText="{DynamicResource settings.automation.hotkey_key.help}" />
+      </WrapPanel>
+      <TextBlock x:Name="HotkeyStatusTextBlock" Margin="0,0,0,10"
+                 Foreground="#4A5568"
+                 TextWrapping="Wrap"
+                 AutomationProperties.AutomationId="HotkeyStatusTextBlock"
+                 AutomationProperties.Name="{DynamicResource settings.automation.hotkey_status.name}"
+                 AutomationProperties.HelpText="{DynamicResource settings.automation.hotkey_status.help}" />
+      <Button x:Name="SaveHotkeyButton"
+              Margin="0,0,0,14"
+              Padding="14,5"
+              HorizontalAlignment="Left"
+              Content="{DynamicResource settings.button.save_hotkey}"
+              Click="SaveHotkeyButtonClick"
+              AutomationProperties.AutomationId="SaveHotkeyButton" />
+
+      <Separator Margin="0,0,0,14" />
+      <TextBlock FontSize="16" FontWeight="SemiBold" Text="{DynamicResource settings.heading.startup}" />
+      <TextBlock Margin="0,6,0,8" TextWrapping="Wrap"
+                 Text="{DynamicResource settings.description.startup}" />
+      <CheckBox x:Name="LaunchAtStartupCheckBox"
+                Margin="0,0,0,8"
+                Content="{DynamicResource settings.startup.enabled}"
+                AutomationProperties.AutomationId="LaunchAtStartupCheckBox"
+                AutomationProperties.Name="{DynamicResource settings.automation.startup_enabled.name}"
+                AutomationProperties.HelpText="{DynamicResource settings.automation.startup_enabled.help}" />
+      <TextBlock x:Name="StartupStatusTextBlock" Margin="0,0,0,10"
+                 Foreground="#4A5568"
+                 TextWrapping="Wrap"
+                 AutomationProperties.AutomationId="StartupStatusTextBlock"
+                 AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}"
+                 AutomationProperties.HelpText="{DynamicResource settings.automation.startup_status.help}" />
+      <Button x:Name="SaveStartupButton"
+              Margin="0,0,0,14"
+              Padding="14,5"
+              HorizontalAlignment="Left"
+              Content="{DynamicResource settings.button.save_startup}"
+              Click="SaveStartupButtonClick"
+              AutomationProperties.AutomationId="SaveStartupButton"
+              AutomationProperties.Name="{DynamicResource settings.button.save_startup}" />
+
+      <TextBlock x:Name="SettingsStatusTextBlock" Margin="0,0,0,12" TextWrapping="Wrap"
+                 Foreground="#4A5568"
+                 AutomationProperties.AutomationId="SettingsStatusTextBlock"
+                 AutomationProperties.Name="{DynamicResource settings.automation.status.name}"
+                 AutomationProperties.HelpText="{DynamicResource settings.automation.status.help}" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <Button x:Name="SaveProviderSettingsButton" Padding="14,5" Margin="0,0,8,0"
+                Content="{DynamicResource settings.button.save}"
+                Click="SaveButtonClick"
+                AutomationProperties.AutomationId="SaveProviderSettingsButton" />
+        <Button x:Name="ClearCredentialButton" Padding="14,5" Margin="0,0,8,0"
+                Content="{DynamicResource settings.button.clear_credential}"
+                Click="ClearCredentialButtonClick"
+                AutomationProperties.AutomationId="ClearCredentialButton" />
+        <Button x:Name="CloseSettingsButton" Padding="14,5" Content="{DynamicResource settings.button.close}"
+                Click="CloseButtonClick"
+                AutomationProperties.AutomationId="CloseSettingsButton" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</Window>

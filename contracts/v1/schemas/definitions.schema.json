@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:transduck:contracts:v1:schemas:definitions",
+  "$defs": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "languageCode": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$"
+    },
+    "nullableLanguageCode": {
+      "anyOf": [
+        { "$ref": "#/$defs/languageCode" },
+        { "type": "null" }
+      ]
+    },
+    "providerDescriptor": {
+      "type": "object",
+      "required": ["providerId"],
+      "properties": {
+        "providerId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,63}$"
+        },
+        "instanceId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "queryKind": {
+      "type": "string",
+      "enum": ["translation", "dictionary", "ocr"]
+    },
+    "terminalState": {
+      "type": "string",
+      "enum": ["completed", "cancelled", "failed"]
+    },
+    "queryError": {
+      "type": "object",
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "invalidRequest",
+            "providerUnavailable",
+            "timeout",
+            "network",
+            "authentication",
+            "rateLimited",
+            "unsupportedLanguage",
+            "internal"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dictionaryEntry": {
+      "type": "object",
+      "required": ["term", "definitions"],
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1
+        },
+        "definitions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "resultPayload": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dictionaryEntries": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/dictionaryEntry"
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "historyRetention": {
+      "type": "object",
+      "required": ["maxEntries", "maxAgeDays"],
+      "properties": {
+        "maxEntries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "maxAgeDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3650
+        }
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

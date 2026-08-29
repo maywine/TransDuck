@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "requestId": "request-synthetic-002",
+  "queryKind": "dictionary",
+  "text": "synthetic dictionary term",
+  "sourceLanguage": "en-US",
+  "targetLanguage": "zh-Hans",
+  "provider": {
+    "providerId": "local-dictionary",
+    "instanceId": "bundle-a"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:transduck:contracts:v1:schemas:configuration",
+  "type": "object",
+  "required": ["schemaVersion", "version", "defaultProvider", "historyRetention"],
+  "properties": {
+    "schemaVersion": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/schemaVersion" },
+    "version": { "type": "integer", "minimum": 1 },
+    "defaultProvider": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/providerDescriptor" },
+    "historyRetention": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/historyRetention" }
+  }
+}

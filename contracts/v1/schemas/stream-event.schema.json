@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:transduck:contracts:v1:schemas:stream-event",
+  "type": "object",
+  "required": ["schemaVersion", "requestId", "sequence", "eventType"],
+  "properties": {
+    "schemaVersion": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/schemaVersion" },
+    "requestId": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/identifier" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "eventType": {
+      "type": "string",
+      "enum": ["delta", "completed", "cancelled", "failed"]
+    },
+    "text": { "type": "string" },
+    "error": { "$ref": "urn:transduck:contracts:v1:schemas:definitions#/$defs/queryError" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "eventType": { "const": "delta" } } },
+      "then": {
+        "required": ["text"],
+        "not": { "required": ["error"] }
+      }
+    },
+    {
+      "if": { "properties": { "eventType": { "const": "completed" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["text"] },
+            { "required": ["error"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "eventType": { "const": "cancelled" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["text"] },
+            { "required": ["error"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "eventType": { "const": "failed" } } },
+      "then": {
+        "required": ["error"],
+        "not": { "required": ["text"] }
+      }
+    }
+  ]
+}

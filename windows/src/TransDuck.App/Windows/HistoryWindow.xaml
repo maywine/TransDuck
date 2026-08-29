@@ -1,0 +1,96 @@
+<Window x:Class="TransDuck.App.Windows.HistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource history.window.title}"
+        Width="760"
+        Height="580"
+        MinWidth="600"
+        MinHeight="420"
+        WindowStartupLocation="CenterScreen">
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="2*" />
+      <ColumnDefinition Width="3*" />
+    </Grid.ColumnDefinitions>
+
+    <Grid Grid.Row="0" Grid.Column="0" Margin="0,0,14,0">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <TextBlock Grid.Row="0" Margin="0,0,0,6" FontWeight="SemiBold"
+                 Text="{DynamicResource history.heading.list}" />
+      <ListBox x:Name="HistoryListBox"
+               Grid.Row="1"
+               DisplayMemberPath="Label"
+               SelectionChanged="HistorySelectionChanged"
+               AutomationProperties.AutomationId="HistoryListBox"
+               AutomationProperties.Name="{DynamicResource history.automation.list.name}"
+               AutomationProperties.HelpText="{DynamicResource history.automation.list.help}" />
+    </Grid>
+
+    <Grid Grid.Row="0" Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <TextBlock Grid.Row="0" Margin="0,0,0,6" FontWeight="SemiBold"
+                 Text="{DynamicResource history.heading.source}" />
+      <TextBox x:Name="HistorySourceTextBox"
+               Grid.Row="1"
+               IsReadOnly="True"
+               TextWrapping="Wrap"
+               VerticalScrollBarVisibility="Auto"
+               AutomationProperties.AutomationId="HistorySourceTextBox"
+               AutomationProperties.Name="{DynamicResource history.automation.source.name}"
+               AutomationProperties.HelpText="{DynamicResource history.automation.source.help}" />
+      <TextBlock Grid.Row="2" Margin="0,12,0,6" FontWeight="SemiBold"
+                 Text="{DynamicResource history.heading.result}" />
+      <TextBox x:Name="HistoryResultTextBox"
+               Grid.Row="3"
+               IsReadOnly="True"
+               TextWrapping="Wrap"
+               VerticalScrollBarVisibility="Auto"
+               AutomationProperties.AutomationId="HistoryResultTextBox"
+               AutomationProperties.Name="{DynamicResource history.automation.result.name}"
+               AutomationProperties.HelpText="{DynamicResource history.automation.result.help}" />
+    </Grid>
+
+    <TextBlock x:Name="HistoryStatusTextBlock"
+               Grid.Row="1"
+               Grid.ColumnSpan="2"
+               Margin="0,14,0,12"
+               Foreground="#4A5568"
+               TextWrapping="Wrap"
+               AutomationProperties.AutomationId="HistoryStatusTextBlock"
+               AutomationProperties.Name="{DynamicResource history.automation.status.name}"
+               AutomationProperties.HelpText="{DynamicResource history.automation.status.help}" />
+
+    <StackPanel Grid.Row="2" Grid.ColumnSpan="2" HorizontalAlignment="Right" Orientation="Horizontal">
+      <Button x:Name="RefreshHistoryButton"
+              Margin="0,0,8,0"
+              Padding="14,5"
+              Content="{DynamicResource history.button.refresh}"
+              Click="RefreshHistoryButtonClick"
+              AutomationProperties.AutomationId="RefreshHistoryButton" />
+      <Button x:Name="ClearHistoryButton"
+              Margin="0,0,8,0"
+              Padding="14,5"
+              Content="{DynamicResource history.button.clear}"
+              Click="ClearHistoryButtonClick"
+              AutomationProperties.AutomationId="ClearHistoryButton" />
+      <Button x:Name="CloseHistoryButton"
+              Padding="14,5"
+              Content="{DynamicResource history.button.close}"
+              Click="CloseHistoryButtonClick"
+              AutomationProperties.AutomationId="CloseHistoryButton" />
+    </StackPanel>
+  </Grid>
+</Window>
