@@ -24,12 +24,16 @@ $script:RequiredPayloadFiles = @(
     'tessdata/eng.traineddata', 'tessdata/chi_sim.traineddata',
     'tessdata/model-manifest.json', 'tessdata/LICENSE',
     'licenses/Apache-2.0.txt', 'licenses/Leptonica-BSD-2-Clause.txt',
-    'THIRD-PARTY-NOTICES.md', 'README.txt'
+    'licenses/Microsoft-DotNet-Library-License.txt',
+    'licenses/Microsoft-DotNet-Third-Party-Notices.txt',
+    'LICENSE.txt', 'THIRD-PARTY-NOTICES.md', 'README.txt'
 )
 
 $windowsRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent $windowsRoot
 $projectPath = Join-Path $windowsRoot 'src\TransDuck.App\TransDuck.App.csproj'
 $readmeSource = Join-Path $PSScriptRoot 'zip-readme.txt'
+$licenseSource = Join-Path $repositoryRoot 'LICENSE'
 
 function Resolve-DotnetPath([string]$Candidate) {
     if ([IO.Path]::IsPathRooted($Candidate)) {
@@ -243,7 +247,9 @@ try {
     if (Test-Path -LiteralPath $archivePath) {
         if (-not $Force -or (Get-Item -LiteralPath $archivePath -Force).PSIsContainer) { throw 'archive_exists_use_force' }
     }
-    if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf) -or -not (Test-Path -LiteralPath $readmeSource -PathType Leaf)) {
+    if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $readmeSource -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $licenseSource -PathType Leaf)) {
         throw 'packaging_source_missing'
     }
 
@@ -253,6 +259,13 @@ try {
     $payloadRoot = Join-Path $stagingRoot $script:PayloadDirectoryName
     $temporaryZip = Join-Path $stagingRoot $script:ArchiveFileName
     $dotnet = Resolve-DotnetPath $DotnetPath
+    $dotnetRoot = Split-Path -Parent $dotnet
+    $dotnetLicenseSource = Join-Path $dotnetRoot 'LICENSE.txt'
+    $dotnetNoticesSource = Join-Path $dotnetRoot 'ThirdPartyNotices.txt'
+    if (-not (Test-Path -LiteralPath $dotnetLicenseSource -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $dotnetNoticesSource -PathType Leaf)) {
+        throw 'dotnet_license_source_missing'
+    }
     & $dotnet publish $projectPath --configuration $Configuration --runtime win-x64 --self-contained true --output $publishRoot -p:PublishSingleFile=true -p:DebugSymbols=false -p:DebugType=None
     if ($LASTEXITCODE -ne 0) { throw 'dotnet_publish_failed' }
 
@@ -260,8 +273,14 @@ try {
     foreach ($file in @(Get-SafePublishFiles $publishRoot)) {
         Copy-PayloadFile $file.Source (Join-Path $payloadRoot ($file.Relative.Replace('/', '\')))
     }
-    if (Test-ReparsePoint $readmeSource) { throw 'readme_reparse_point' }
+    if ((Test-ReparsePoint $readmeSource) -or (Test-ReparsePoint $licenseSource) -or
+        (Test-ReparsePoint $dotnetLicenseSource) -or (Test-ReparsePoint $dotnetNoticesSource)) {
+        throw 'license_or_readme_reparse_point'
+    }
     Copy-PayloadFile $readmeSource (Join-Path $payloadRoot 'README.txt')
+    Copy-PayloadFile $licenseSource (Join-Path $payloadRoot 'LICENSE.txt')
+    Copy-PayloadFile $dotnetLicenseSource (Join-Path $payloadRoot 'licenses\Microsoft-DotNet-Library-License.txt')
+    Copy-PayloadFile $dotnetNoticesSource (Join-Path $payloadRoot 'licenses\Microsoft-DotNet-Third-Party-Notices.txt')
     Assert-RequiredPayload $payloadRoot
     New-DeterministicZip $payloadRoot $temporaryZip
     Assert-TemporaryZipAudit $temporaryZip

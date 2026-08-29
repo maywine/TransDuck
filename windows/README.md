@@ -58,6 +58,10 @@ outside the portable directory under `%LocalAppData%\TransDuck`. Secrets use
 CurrentUser Windows DPAPI. Translation text is sent to the provider selected by
 the user.
 
+TransDuck is licensed under the repository-root MIT License. The portable ZIP
+includes that license together with the Microsoft .NET, Tesseract, Leptonica,
+and model notices required by its binary payload.
+
 The application and tray icon inherit an existing black-and-white visual asset
 as a migration asset. No generated or external icon asset is needed.
 

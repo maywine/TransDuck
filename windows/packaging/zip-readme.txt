@@ -19,6 +19,10 @@ English
    Localhost and loopback requests always connect directly.
 7. The application icon is embedded in TransDuck.exe; no external Assets directory
    required.
+8. TransDuck is licensed under the MIT License in LICENSE.txt. Microsoft .NET
+   terms are in licenses/Microsoft-DotNet-Library-License.txt and its notices
+   file; Tesseract and Leptonica terms are also included under licenses/ and
+   THIRD-PARTY-NOTICES.md.
 
 中文
 1. 请完整解压 TransDuck-Windows-x64 目录。不要在 ZIP 内运行，也不要只移动部分文件：
@@ -33,6 +37,9 @@ English
 6. 翻译请求可使用 Windows 系统代理、自定义 HTTP 代理或直连。自定义代理必须是无凭据的
    http://host:port。localhost 和 loopback 请求始终直连。
 7. 应用图标已内嵌在 TransDuck.exe 中，无需外部 Assets 目录。
+8. TransDuck 使用 LICENSE.txt 中的 MIT License。Microsoft .NET 条款位于
+   licenses/Microsoft-DotNet-Library-License.txt 及其 notices 文件；Tesseract 与
+   Leptonica 的许可和声明也位于 licenses/ 与 THIRD-PARTY-NOTICES.md。
 
 Offline OCR / 离线 OCR
 The ZIP includes the x64 Tesseract/Leptonica runtime and eng/chi_sim tessdata

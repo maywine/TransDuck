@@ -26,6 +26,7 @@ $report = [ordered]@{
     ExactArtifactAndRootPinned = $false
     ReleaseWinX64SelfContainedPinned = $false
     SingleFileManagedPayloadPinned = $false
+    ApplicationAndDotNetLicensesPinned = $false
     DefaultNoOverwriteAndAtomicForce = $false
     UniqueStagingAndFinallyCleanup = $false
     PublishExclusionsPinned = $false
@@ -61,6 +62,12 @@ try {
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Core.dll') -and
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Platform.Windows.dll') -and
         $auditSource.Contains('TransDuck-Windows-x64/Tesseract.dll')
+    $report.ApplicationAndDotNetLicensesPinned = $packageSource.Contains("licenseSource = Join-Path `$repositoryRoot 'LICENSE'") -and
+        $packageSource.Contains("dotnetLicenseSource = Join-Path `$dotnetRoot 'LICENSE.txt'") -and
+        $packageSource.Contains("dotnetNoticesSource = Join-Path `$dotnetRoot 'ThirdPartyNotices.txt'") -and
+        $packageSource.Contains('Microsoft-DotNet-Library-License.txt') -and
+        $packageSource.Contains('Microsoft-DotNet-Third-Party-Notices.txt') -and
+        $auditSource.Contains('TransDuck-Windows-x64/LICENSE.txt')
     $report.DefaultNoOverwriteAndAtomicForce = $packageSource.Contains('archive_exists_use_force') -and
         $packageSource.Contains('[IO.File]::Replace') -and $packageSource.Contains('[IO.File]::Move')
     $report.UniqueStagingAndFinallyCleanup = $packageSource.Contains('.transduck-zip-staging-') -and
@@ -111,7 +118,8 @@ try {
     $chineseLabel = [string][char]0x4e2d + [char]0x6587
     $report.BilingualReadmeComplete = $readmeSource.Contains('English') -and $readmeSource.Contains($chineseLabel) -and
         $readmeSource.Contains('TransDuck.exe') -and $readmeSource.Contains('%LocalAppData%\TransDuck') -and
-        $readmeSource.Contains('login-startup') -and $readmeSource.Contains('Tesseract')
+        $readmeSource.Contains('login-startup') -and $readmeSource.Contains('Tesseract') -and
+        $readmeSource.Contains('LICENSE.txt') -and $readmeSource.Contains('Microsoft-DotNet-Library-License.txt')
     $report.FinalArchiveAbsent = -not (Test-Path -LiteralPath $finalArchive)
     $report.NoRecursiveRemoveItem = -not $packageSource.Contains('Remove-Item -Recurse')
     $report.RuntimeZipAssembliesPinned = $packageSource.Contains('Add-Type -AssemblyName System.IO.Compression') -and
@@ -127,6 +135,7 @@ try {
     foreach ($name in @(
         'PackageScriptAstClean', 'AuditScriptAstClean', 'ExactArtifactAndRootPinned',
         'ReleaseWinX64SelfContainedPinned', 'SingleFileManagedPayloadPinned',
+        'ApplicationAndDotNetLicensesPinned',
         'DefaultNoOverwriteAndAtomicForce',
         'UniqueStagingAndFinallyCleanup', 'PublishExclusionsPinned',
         'ProxySettingsPayloadForbiddenPinned',
