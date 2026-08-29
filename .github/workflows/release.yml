@@ -56,8 +56,56 @@ jobs:
         run: dotnet build windows\TransDuck.Windows.sln --configuration Release --no-restore
 
       - name: Test
+        id: release_tests
         shell: pwsh
-        run: dotnet test windows\TransDuck.Windows.sln --configuration Release --no-build --no-restore
+        run: |
+          $resultsDirectory = Join-Path $PWD 'windows\TestResults'
+          $projects = @(
+            @{ Name = 'core'; Path = 'windows\tests\TransDuck.Core.Tests\TransDuck.Core.Tests.csproj' },
+            @{ Name = 'platform-windows'; Path = 'windows\tests\TransDuck.Platform.Windows.Tests\TransDuck.Platform.Windows.Tests.csproj' }
+          )
+          $failed = $false
+
+          foreach ($project in $projects) {
+            dotnet test $project.Path `
+              --configuration Release `
+              --no-build `
+              --no-restore `
+              --logger "trx;LogFileName=$($project.Name).trx" `
+              --results-directory $resultsDirectory
+            if ($LASTEXITCODE -ne 0) {
+              $failed = $true
+            }
+          }
+
+          if ($failed) {
+            throw 'release_tests_failed'
+          }
+
+      - name: Report test failures
+        if: ${{ failure() && steps.release_tests.outcome == 'failure' }}
+        shell: pwsh
+        run: |
+          $results = Get-ChildItem windows\TestResults -Filter *.trx -ErrorAction SilentlyContinue
+          $reported = $false
+
+          foreach ($result in $results) {
+            [xml]$document = Get-Content $result.FullName -Raw
+            $failures = $document.TestRun.Results.UnitTestResult |
+              Where-Object outcome -eq 'Failed'
+
+            foreach ($failure in $failures) {
+              $reported = $true
+              $testName = [string]$failure.testName
+              $message = [string]$failure.Output.ErrorInfo.Message
+              $annotation = ($testName + ': ' + $message).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+              Write-Output "::error title=Failed test::$annotation"
+            }
+          }
+
+          if (-not $reported) {
+            Write-Output '::error title=Test process failure::No failed test result was recorded; the test host may have exited unexpectedly.'
+          }
 
       - name: Package and audit portable ZIP
         shell: pwsh
