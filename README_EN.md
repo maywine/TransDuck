@@ -56,6 +56,14 @@ TransDuck is licensed under the [MIT License](LICENSE). Third-party licenses and
 notices are included in the Windows package under `licenses/` and in
 `THIRD-PARTY-NOTICES.md`.
 
+## Release automation
+
+Pushing any new tag to GitHub triggers the Release workflow. A Windows runner
+builds and tests the solution, packages and audits the self-contained
+single-file ZIP, then creates the matching GitHub Release and uploads
+`TransDuck-Windows-x64.zip`. Re-running the workflow for the same tag replaces
+the ZIP asset with the newly verified package.
+
 ## Development
 
 Repository rules are in [AGENTS.md](AGENTS.md). The project is local by default:
