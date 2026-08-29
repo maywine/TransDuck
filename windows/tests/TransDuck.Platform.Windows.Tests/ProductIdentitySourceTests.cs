@@ -62,6 +62,7 @@ public sealed class ProductIdentitySourceTests
         Assert.Equal("0.0.1.0", properties["AssemblyVersion"]);
         Assert.Equal("0.0.1.0", properties["FileVersion"]);
         Assert.Equal("$(VersionPrefix)", properties["InformationalVersion"]);
+        Assert.Equal("false", properties["IncludeSourceRevisionInInformationalVersion"]);
     }
 
     private static string ReadRepositoryFile(params string[] relativePath)
