@@ -29,7 +29,7 @@
 
   <sys:String x:Key="settings.window.title">TransDuck Settings</sys:String>
   <sys:String x:Key="settings.heading.provider">Translation provider settings</sys:String>
-  <sys:String x:Key="settings.description.credential">When a provider uses a credential, it is stored only in protected storage for the current Windows user and is never shown or refilled after saving. Google Translate web does not use one. A Bing Cookie is optional.</sys:String>
+  <sys:String x:Key="settings.description.credential">When a provider uses a credential, it is stored only in protected storage for the current Windows user and is never shown or refilled after saving. Volcengine requires both an AccessKey ID and Secret Access Key. Google Translate web does not use a credential. A Bing Cookie is optional.</sys:String>
   <sys:String x:Key="settings.label.provider">Provider</sys:String>
   <sys:String x:Key="settings.label.instance_id">Instance ID (optional)</sys:String>
   <sys:String x:Key="settings.label.endpoint">Endpoint (HTTP(S) base/path)</sys:String>
@@ -40,6 +40,8 @@
   <sys:String x:Key="settings.label.history_max_entries">History entries (0 = unlimited)</sys:String>
   <sys:String x:Key="settings.label.history_max_age_days">History days (0 = unlimited)</sys:String>
   <sys:String x:Key="settings.label.credential">Credential (Bing Cookie optional; leave blank to keep it)</sys:String>
+  <sys:String x:Key="settings.label.volcengine_access_key_id">Volcengine AccessKey ID (leave both fields blank to keep it)</sys:String>
+  <sys:String x:Key="settings.label.volcengine_secret_access_key">Volcengine Secret Access Key</sys:String>
   <sys:String x:Key="settings.heading.proxy">Network proxy</sys:String>
   <sys:String x:Key="settings.description.proxy">Applies only to Windows translation requests. Localhost and loopback connections always remain direct.</sys:String>
   <sys:String x:Key="settings.label.proxy_mode">Proxy mode</sys:String>
@@ -69,7 +71,9 @@
   <sys:String x:Key="settings.automation.endpoint.name">Provider endpoint</sys:String>
   <sys:String x:Key="settings.automation.endpoint.help">Enter the provider HTTP or HTTPS endpoint.</sys:String>
   <sys:String x:Key="settings.automation.credential.name">Provider credential</sys:String>
-  <sys:String x:Key="settings.automation.credential.help">Enter a protected API key, token, or Bing Cookie when the selected provider uses one. Google Translate web does not use a credential.</sys:String>
+  <sys:String x:Key="settings.automation.credential.help">Enter a protected API key, token, Bing Cookie, or Volcengine Secret Access Key when the selected provider uses one. Google Translate web does not use a credential.</sys:String>
+  <sys:String x:Key="settings.automation.volcengine_access_key_id.name">Volcengine AccessKey ID</sys:String>
+  <sys:String x:Key="settings.automation.volcengine_access_key_id.help">Enter the AccessKey ID paired with the Volcengine Secret Access Key. Leave both fields blank to keep the saved pair.</sys:String>
   <sys:String x:Key="settings.automation.credential_status.name">Credential status</sys:String>
   <sys:String x:Key="settings.automation.credential_status.help">Shows whether a credential is saved.</sys:String>
   <sys:String x:Key="settings.automation.model.name">Provider model</sys:String>
@@ -95,6 +99,7 @@
   <sys:String x:Key="settings.automation.proxy_status.help">Shows proxy loading, saving, and active-policy state.</sys:String>
   <sys:String x:Key="provider.name.bing">Bing Translator (unofficial web)</sys:String>
   <sys:String x:Key="provider.name.google">Google Translate (unofficial web)</sys:String>
+  <sys:String x:Key="provider.name.volcengine">Volcengine Translate</sys:String>
   <sys:String x:Key="history.window.title">TransDuck History</sys:String>
   <sys:String x:Key="history.heading.list">History (newest first)</sys:String>
   <sys:String x:Key="history.heading.source">Source text</sys:String>

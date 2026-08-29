@@ -133,6 +133,7 @@ public sealed class LocalizationResourceTests
             "HistoryMaxEntriesTextBox",
             "HistoryMaxAgeDaysTextBox",
             "CredentialPasswordBox",
+            "VolcengineAccessKeyIdPasswordBox",
             "ProxyModeComboBox",
             "CustomHttpProxyUriTextBox",
             "ControlHotkeyModifierCheckBox",
@@ -184,7 +185,7 @@ public sealed class LocalizationResourceTests
     }
 
     [Fact]
-    public void WebProviderResources_AreDeclaredInBothLocalesWithoutLockingNaturalLanguage()
+    public void ProviderResources_AreDeclaredInBothLocalesWithoutLockingNaturalLanguage()
     {
         var english = ReadResourceDictionary("Strings.en-US.xaml");
         var chinese = ReadResourceDictionary("Strings.zh-CN.xaml");
@@ -192,6 +193,7 @@ public sealed class LocalizationResourceTests
         {
             "provider.name.bing",
             "provider.name.google",
+            "provider.name.volcengine",
             "provider.status.credential_not_required",
         };
 

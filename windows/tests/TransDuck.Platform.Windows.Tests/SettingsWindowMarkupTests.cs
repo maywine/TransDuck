@@ -32,6 +32,7 @@ public sealed class SettingsWindowMarkupTests
             ["HistoryMaxEntriesTextBox"] = "TextBox",
             ["HistoryMaxAgeDaysTextBox"] = "TextBox",
             ["CredentialPasswordBox"] = "PasswordBox",
+            ["VolcengineAccessKeyIdPasswordBox"] = "PasswordBox",
             ["ProxyModeComboBox"] = "ComboBox",
             ["CustomHttpProxyUriTextBox"] = "TextBox",
             ["ProxyStatusTextBlock"] = "TextBlock",
@@ -105,7 +106,7 @@ public sealed class SettingsWindowMarkupTests
         var providerComboBox = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "ProviderComboBox", StringComparison.Ordinal)).Element;
         Assert.Equal(
-            new[] { "openai-compatible", "deepl", "ollama", "bing", "google" },
+            new[] { "openai-compatible", "deepl", "ollama", "bing", "google", "volcengine" },
             providerComboBox.Elements()
                 .Where(element => element.Name.LocalName == "ComboBoxItem")
                 .Select(element => element.Attribute("Tag")?.Value));
@@ -113,8 +114,11 @@ public sealed class SettingsWindowMarkupTests
             string.Equals(element.Attribute("Tag")?.Value, "bing", StringComparison.Ordinal));
         var googleProvider = Assert.Single(providerComboBox.Elements(), element =>
             string.Equals(element.Attribute("Tag")?.Value, "google", StringComparison.Ordinal));
+        var volcengineProvider = Assert.Single(providerComboBox.Elements(), element =>
+            string.Equals(element.Attribute("Tag")?.Value, "volcengine", StringComparison.Ordinal));
         Assert.Equal("{DynamicResource provider.name.bing}", bingProvider.Attribute("Content")?.Value);
         Assert.Equal("{DynamicResource provider.name.google}", googleProvider.Attribute("Content")?.Value);
+        Assert.Equal("{DynamicResource provider.name.volcengine}", volcengineProvider.Attribute("Content")?.Value);
     }
 
     private static string FindSettingsWindowPath()

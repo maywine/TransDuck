@@ -23,6 +23,7 @@
         <ComboBoxItem Tag="ollama">Ollama</ComboBoxItem>
         <ComboBoxItem Tag="bing" Content="{DynamicResource provider.name.bing}" />
         <ComboBoxItem Tag="google" Content="{DynamicResource provider.name.google}" />
+        <ComboBoxItem Tag="volcengine" Content="{DynamicResource provider.name.volcengine}" />
       </ComboBox>
 
       <TextBlock Text="{DynamicResource settings.label.instance_id}" />
@@ -86,7 +87,14 @@
         </StackPanel>
       </Grid>
 
-      <TextBlock Text="{DynamicResource settings.label.credential}" />
+      <StackPanel x:Name="VolcengineAccessKeyPanel" Visibility="Collapsed">
+        <TextBlock Text="{DynamicResource settings.label.volcengine_access_key_id}" />
+        <PasswordBox x:Name="VolcengineAccessKeyIdPasswordBox" Margin="0,4,0,10"
+                     AutomationProperties.AutomationId="VolcengineAccessKeyIdPasswordBox"
+                     AutomationProperties.Name="{DynamicResource settings.automation.volcengine_access_key_id.name}"
+                     AutomationProperties.HelpText="{DynamicResource settings.automation.volcengine_access_key_id.help}" />
+      </StackPanel>
+      <TextBlock x:Name="CredentialLabelTextBlock" Text="{DynamicResource settings.label.credential}" />
       <PasswordBox x:Name="CredentialPasswordBox" Margin="0,4,0,4"
                    AutomationProperties.AutomationId="CredentialPasswordBox"
                    AutomationProperties.Name="{DynamicResource settings.automation.credential.name}"

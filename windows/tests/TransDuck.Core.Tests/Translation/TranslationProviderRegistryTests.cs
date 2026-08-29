@@ -15,11 +15,13 @@ public sealed class TranslationProviderRegistryTests
         var deepL = Provider(TranslationProviderIds.DeepL, ProviderCapability.Translation);
         var bing = Provider(TranslationProviderIds.Bing, ProviderCapability.Translation);
         var google = Provider(TranslationProviderIds.Google, ProviderCapability.Translation);
+        var volcengine = Provider(TranslationProviderIds.Volcengine, ProviderCapability.Translation);
 
         registry.Register(ollama);
         registry.Register(deepL);
         registry.Register(bing);
         registry.Register(google);
+        registry.Register(volcengine);
 
         Assert.True(registry.TryResolve(TranslationProviderIds.DeepL, out var byId));
         Assert.Same(deepL, byId);
@@ -31,22 +33,28 @@ public sealed class TranslationProviderRegistryTests
         Assert.Same(bing, byBingId);
         Assert.True(registry.TryResolve(TranslationProviderIds.Google, out var byGoogleId));
         Assert.Same(google, byGoogleId);
-        Assert.Equal(new[] { "bing", "deepl", "google", "ollama" }, registry.List()
+        Assert.True(registry.TryResolve(TranslationProviderIds.Volcengine, out var byVolcengineId));
+        Assert.Same(volcengine, byVolcengineId);
+        Assert.Equal(new[] { "bing", "deepl", "google", "ollama", "volcengine" }, registry.List()
             .Select(provider => provider.Registration.Provider.ProviderId));
     }
 
     [Fact]
-    public void WebProviderIds_AreStableAndHaveNoImplicitStreamingCapability()
+    public void NonStreamingProviderIds_AreStableAndHaveNoImplicitStreamingCapability()
     {
         var bing = Provider(TranslationProviderIds.Bing, ProviderCapability.Translation);
         var google = Provider(TranslationProviderIds.Google, ProviderCapability.Translation);
+        var volcengine = Provider(TranslationProviderIds.Volcengine, ProviderCapability.Translation);
 
         Assert.Equal("bing", TranslationProviderIds.Bing);
         Assert.Equal("google", TranslationProviderIds.Google);
+        Assert.Equal("volcengine", TranslationProviderIds.Volcengine);
         Assert.Equal(ProviderCapability.Translation, bing.Registration.Capabilities);
         Assert.Equal(ProviderCapability.Translation, google.Registration.Capabilities);
+        Assert.Equal(ProviderCapability.Translation, volcengine.Registration.Capabilities);
         Assert.False((bing.Registration.Capabilities & ProviderCapability.Streaming) != 0);
         Assert.False((google.Registration.Capabilities & ProviderCapability.Streaming) != 0);
+        Assert.False((volcengine.Registration.Capabilities & ProviderCapability.Streaming) != 0);
     }
 
     [Fact]

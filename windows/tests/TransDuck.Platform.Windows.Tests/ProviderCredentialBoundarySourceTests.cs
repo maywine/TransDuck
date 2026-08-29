@@ -40,7 +40,7 @@ public sealed class ProviderCredentialBoundarySourceTests
     }
 
     [Fact]
-    public void SettingsWindow_UsesResourceBackedGoogleNoCredentialStateAndWebProviderDefaults()
+    public void SettingsWindow_UsesResourceBackedCredentialStateAndProviderDefaults()
     {
         var source = ReadSource("TransDuck.App", "Windows", "SettingsWindow.xaml.cs");
         var defaults = Slice(source, "private static ProviderProfileSettings? CreateDefaultProfile", "private void SelectProvider");
@@ -50,6 +50,7 @@ public sealed class ProviderCredentialBoundarySourceTests
 
         Assert.Contains("TranslationProviderIds.Bing => BingWebProvider.DefaultEndpoint", defaults, StringComparison.Ordinal);
         Assert.Contains("TranslationProviderIds.Google => GoogleWebProvider.DefaultEndpoint", defaults, StringComparison.Ordinal);
+        Assert.Contains("TranslationProviderIds.Volcengine => VolcengineProvider.DefaultEndpoint", defaults, StringComparison.Ordinal);
         Assert.True(refresh.IndexOf("if (!UsesCredential(provider))", StringComparison.Ordinal) <
             refresh.IndexOf("_controller.GetCredentialStatusAsync", StringComparison.Ordinal));
         Assert.Contains("provider.status.credential_not_required", refresh, StringComparison.Ordinal);
@@ -62,7 +63,7 @@ public sealed class ProviderCredentialBoundarySourceTests
     }
 
     [Fact]
-    public void AppRuntime_RegistersBothWebProvidersOnTheSharedTransport()
+    public void AppRuntime_RegistersHttpProvidersOnTheSharedTransport()
     {
         var source = ReadSource("TransDuck.App", "AppRuntime.cs");
 
@@ -71,6 +72,8 @@ public sealed class ProviderCredentialBoundarySourceTests
         Assert.Contains("Register(new BingWebProvider(_translationClientLeaseSource))", source,
             StringComparison.Ordinal);
         Assert.Contains("Register(new GoogleWebProvider(_translationClientLeaseSource))", source,
+            StringComparison.Ordinal);
+        Assert.Contains("Register(new VolcengineProvider(_translationClientLeaseSource))", source,
             StringComparison.Ordinal);
     }
 

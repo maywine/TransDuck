@@ -29,7 +29,7 @@
 
   <sys:String x:Key="settings.window.title">TransDuck 设置</sys:String>
   <sys:String x:Key="settings.heading.provider">翻译提供商设置</sys:String>
-  <sys:String x:Key="settings.description.credential">提供商需要凭据时，凭据只存储在当前 Windows 用户的受保护存储中，保存后不会显示或回填。Google 翻译网页接口不使用凭据；Bing Cookie 为可选项。</sys:String>
+  <sys:String x:Key="settings.description.credential">提供商需要凭据时，凭据只存储在当前 Windows 用户的受保护存储中，保存后不会显示或回填。火山翻译需要同时填写 AccessKey ID 和 Secret Access Key；Google 翻译网页接口不使用凭据；Bing Cookie 为可选项。</sys:String>
   <sys:String x:Key="settings.label.provider">提供商</sys:String>
   <sys:String x:Key="settings.label.instance_id">实例 ID（可选）</sys:String>
   <sys:String x:Key="settings.label.endpoint">Endpoint（HTTP(S) base/path）</sys:String>
@@ -40,6 +40,8 @@
   <sys:String x:Key="settings.label.history_max_entries">历史条数（0=不限）</sys:String>
   <sys:String x:Key="settings.label.history_max_age_days">历史天数（0=不限）</sys:String>
   <sys:String x:Key="settings.label.credential">凭据（Bing Cookie 可选；留空保持不变）</sys:String>
+  <sys:String x:Key="settings.label.volcengine_access_key_id">火山引擎 AccessKey ID（两项均留空则保持不变）</sys:String>
+  <sys:String x:Key="settings.label.volcengine_secret_access_key">火山引擎 Secret Access Key</sys:String>
   <sys:String x:Key="settings.heading.proxy">网络代理</sys:String>
   <sys:String x:Key="settings.description.proxy">仅作用于 Windows 翻译请求。localhost 和 loopback 连接始终直连。</sys:String>
   <sys:String x:Key="settings.label.proxy_mode">代理模式</sys:String>
@@ -69,7 +71,9 @@
   <sys:String x:Key="settings.automation.endpoint.name">提供商 Endpoint</sys:String>
   <sys:String x:Key="settings.automation.endpoint.help">输入提供商的 HTTP 或 HTTPS Endpoint。</sys:String>
   <sys:String x:Key="settings.automation.credential.name">提供商凭据</sys:String>
-  <sys:String x:Key="settings.automation.credential.help">在所选提供商需要时，输入受保护的 API Key、Token 或 Bing Cookie。Google 翻译网页接口不使用凭据。</sys:String>
+  <sys:String x:Key="settings.automation.credential.help">在所选提供商需要时，输入受保护的 API Key、Token、Bing Cookie 或火山引擎 Secret Access Key。Google 翻译网页接口不使用凭据。</sys:String>
+  <sys:String x:Key="settings.automation.volcengine_access_key_id.name">火山引擎 AccessKey ID</sys:String>
+  <sys:String x:Key="settings.automation.volcengine_access_key_id.help">输入与火山引擎 Secret Access Key 配对的 AccessKey ID；两项均留空则保留已保存的凭据。</sys:String>
   <sys:String x:Key="settings.automation.credential_status.name">凭据状态</sys:String>
   <sys:String x:Key="settings.automation.credential_status.help">显示凭据是否已保存。</sys:String>
   <sys:String x:Key="settings.automation.model.name">提供商模型</sys:String>
@@ -95,6 +99,7 @@
   <sys:String x:Key="settings.automation.proxy_status.help">显示代理加载、保存和当前策略状态。</sys:String>
   <sys:String x:Key="provider.name.bing">Bing 翻译（非官方网页接口）</sys:String>
   <sys:String x:Key="provider.name.google">Google 翻译（非官方网页接口）</sys:String>
+  <sys:String x:Key="provider.name.volcengine">火山翻译</sys:String>
   <sys:String x:Key="history.window.title">TransDuck 历史记录</sys:String>
   <sys:String x:Key="history.heading.list">历史记录（最新在前）</sys:String>
   <sys:String x:Key="history.heading.source">源文本</sys:String>

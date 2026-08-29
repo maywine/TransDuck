@@ -89,7 +89,12 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        var password = CredentialPasswordBox.Password;
+        if (!TryCreateCredentialValue(profile.Provider.ProviderId, out var password))
+        {
+            SettingsStatusTextBlock.Text = AppStrings.Get("settings.status.invalid_input");
+            return;
+        }
+
         _isBusy = true;
         SetPersistenceControlsEnabled(false);
         try
@@ -124,6 +129,7 @@ public partial class SettingsWindow : Window
         finally
         {
             CredentialPasswordBox.Clear();
+            VolcengineAccessKeyIdPasswordBox.Clear();
             _isBusy = false;
             if (CanUpdateUi())
             {
@@ -172,6 +178,7 @@ public partial class SettingsWindow : Window
         finally
         {
             CredentialPasswordBox.Clear();
+            VolcengineAccessKeyIdPasswordBox.Clear();
             _isBusy = false;
             if (CanUpdateUi())
             {
@@ -597,6 +604,7 @@ public partial class SettingsWindow : Window
         TimeoutSecondsTextBox.Text = (profile?.TimeoutSeconds ?? 30).ToString();
         HistoryMaxEntriesTextBox.Text = (configuration?.HistoryRetention.MaxEntries ?? 100).ToString();
         HistoryMaxAgeDaysTextBox.Text = (configuration?.HistoryRetention.MaxAgeDays ?? 30).ToString();
+        ApplyCredentialLayout();
         ApplyCredentialControlsEnabledState();
     }
 
@@ -606,6 +614,7 @@ public partial class SettingsWindow : Window
         {
             TranslationProviderIds.Bing => BingWebProvider.DefaultEndpoint,
             TranslationProviderIds.Google => GoogleWebProvider.DefaultEndpoint,
+            TranslationProviderIds.Volcengine => VolcengineProvider.DefaultEndpoint,
             _ => null,
         };
         return endpoint is null
@@ -855,13 +864,62 @@ public partial class SettingsWindow : Window
 
     private void SetCredentialControlsEnabled(bool isEnabled)
     {
+        var usesVolcengineKeyPair = SelectedProviderIsVolcengine();
+        VolcengineAccessKeyIdPasswordBox.IsEnabled = isEnabled && usesVolcengineKeyPair;
         CredentialPasswordBox.IsEnabled = isEnabled;
         ClearCredentialButton.IsEnabled = isEnabled;
         if (!isEnabled)
         {
             CredentialPasswordBox.Clear();
+            VolcengineAccessKeyIdPasswordBox.Clear();
+        }
+        else if (!usesVolcengineKeyPair)
+        {
+            VolcengineAccessKeyIdPasswordBox.Clear();
         }
     }
+
+    private void ApplyCredentialLayout()
+    {
+        var usesVolcengineKeyPair = SelectedProviderIsVolcengine();
+        VolcengineAccessKeyPanel.Visibility = usesVolcengineKeyPair
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        CredentialLabelTextBlock.Text = AppStrings.Get(usesVolcengineKeyPair
+            ? "settings.label.volcengine_secret_access_key"
+            : "settings.label.credential");
+    }
+
+    private bool TryCreateCredentialValue(string providerId, out string? value)
+    {
+        value = null;
+        if (!string.Equals(providerId, TranslationProviderIds.Volcengine, StringComparison.Ordinal))
+        {
+            value = string.IsNullOrEmpty(CredentialPasswordBox.Password)
+                ? null
+                : CredentialPasswordBox.Password;
+            return true;
+        }
+
+        var accessKeyId = VolcengineAccessKeyIdPasswordBox.Password;
+        var secretAccessKey = CredentialPasswordBox.Password;
+        if (string.IsNullOrEmpty(accessKeyId) && string.IsNullOrEmpty(secretAccessKey))
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(accessKeyId) || string.IsNullOrWhiteSpace(secretAccessKey))
+        {
+            return false;
+        }
+
+        value = VolcengineCredentialCodec.Encode(accessKeyId, secretAccessKey);
+        return true;
+    }
+
+    private bool SelectedProviderIsVolcengine() =>
+        ProviderComboBox.SelectedItem is ComboBoxItem item &&
+        string.Equals(item.Tag as string, TranslationProviderIds.Volcengine, StringComparison.Ordinal);
 
     private bool SelectedProviderUsesCredential() =>
         ProviderComboBox.SelectedItem is not ComboBoxItem item ||

@@ -112,6 +112,24 @@ public sealed class TranslationRequestTests
         Assert.False(requestText.Contains(apiKey, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void PrintableRepresentations_RedactAccessAndSecretKeyPair()
+    {
+        const string accessKey = "access-key-that-must-not-be-printed";
+        const string secretKey = "secret-key-that-must-not-be-printed";
+        var credentials = new TranslationCredentials(accessKey, secretKey);
+
+        var credentialsText = credentials.ToString();
+
+        Assert.True(credentials.HasApiKey);
+        Assert.True(credentials.HasSecretKey);
+        Assert.Equal(accessKey, credentials.GetApiKey());
+        Assert.Equal(secretKey, credentials.GetSecretKey());
+        Assert.DoesNotContain(accessKey, credentialsText, StringComparison.Ordinal);
+        Assert.DoesNotContain(secretKey, credentialsText, StringComparison.Ordinal);
+        Assert.Equal(2, credentialsText.Split("***redacted***", StringSplitOptions.None).Length - 1);
+    }
+
     public static IEnumerable<object[]> NonPositiveTimeouts =>
     [
         [TimeSpan.Zero],

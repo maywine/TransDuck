@@ -112,6 +112,7 @@ internal sealed class AppRuntime : IDisposable
         _translationProviderRegistry.Register(new OllamaProvider(_translationClientLeaseSource));
         _translationProviderRegistry.Register(new BingWebProvider(_translationClientLeaseSource));
         _translationProviderRegistry.Register(new GoogleWebProvider(_translationClientLeaseSource));
+        _translationProviderRegistry.Register(new VolcengineProvider(_translationClientLeaseSource));
         _trayMenu = CreateTrayMenu();
 
         _trayService.PrimaryActionRequested += HandleTrayPrimaryActionRequested;
@@ -508,8 +509,16 @@ internal sealed class AppRuntime : IDisposable
                 return;
             }
 
-            var apiKey = settings.Credential?.Reveal();
-            // The request owns only its transient string; release DPAPI-backed bytes before streaming.
+            var storedCredential = settings.Credential?.Reveal();
+            var credentials = string.Equals(
+                profile.Provider.ProviderId,
+                TranslationProviderIds.Volcengine,
+                StringComparison.Ordinal)
+                ? VolcengineCredentialCodec.TryDecode(storedCredential, out var volcengineCredentials)
+                    ? volcengineCredentials
+                    : new TranslationCredentials(null)
+                : new TranslationCredentials(storedCredential);
+            // The request owns only transient strings; release DPAPI-backed bytes before streaming.
             settings.Dispose();
 
             var request = new TranslationProviderRequest(
@@ -519,7 +528,7 @@ internal sealed class AppRuntime : IDisposable
                 text,
                 profile.SourceLanguage,
                 profile.TargetLanguage,
-                new TranslationCredentials(apiKey),
+                credentials,
                 TimeSpan.FromSeconds(profile.TimeoutSeconds));
             _resultWindow.ClearResult();
             await WriteDiagnosticAsync(
@@ -972,7 +981,7 @@ internal sealed class AppRuntime : IDisposable
     {
         // Shell notification-area menus require their hidden top-level owner to be foreground first.
         _trayService.TryActivateContextMenuOwner();
-        _trayMenu.PlacementTarget = _resultWindow;
+        // An unseen result window has no presentation source and cannot anchor the first tray menu.
         _trayMenu.IsOpen = true;
     }
 

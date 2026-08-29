@@ -25,6 +25,9 @@ public static class TranslationProviderIds
     /// <summary>Gets the unofficial Google Translate web provider identifier.</summary>
     public const string Google = "google";
 
+    /// <summary>Gets the Volcengine Translate provider identifier.</summary>
+    public const string Volcengine = "volcengine";
+
 }
 
 /// <summary>

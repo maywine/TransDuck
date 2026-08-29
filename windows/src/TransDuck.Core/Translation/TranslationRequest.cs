@@ -40,22 +40,28 @@ public sealed record TranslationRequest(
 }
 
 /// <summary>
-/// Keeps an API key out of printable request data and diagnostic strings.
+/// Keeps provider signing credentials out of printable request data and diagnostic strings.
 /// </summary>
 public sealed class TranslationCredentials
 {
     private readonly string? _apiKey;
+    private readonly string? _secretKey;
 
-    public TranslationCredentials(string? apiKey)
+    public TranslationCredentials(string? apiKey, string? secretKey = null)
     {
         _apiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey;
+        _secretKey = string.IsNullOrWhiteSpace(secretKey) ? null : secretKey;
     }
 
     public bool HasApiKey => _apiKey is not null;
 
+    public bool HasSecretKey => _secretKey is not null;
+
     public string? GetApiKey() => _apiKey;
 
-    public override string ToString() => HasApiKey
-        ? "TranslationCredentials(ApiKey=***redacted***)"
-        : "TranslationCredentials(ApiKey=<none>)";
+    public string? GetSecretKey() => _secretKey;
+
+    public override string ToString() =>
+        $"TranslationCredentials(ApiKey={(HasApiKey ? "***redacted***" : "<none>")}, " +
+        $"SecretKey={(HasSecretKey ? "***redacted***" : "<none>")})";
 }
