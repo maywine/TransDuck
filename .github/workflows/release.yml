@@ -15,7 +15,7 @@ concurrency:
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
   DOTNET_NOLOGO: '1'
-  RELEASE_TAG: ${{ github.ref_name }}
+  RELEASE_TRIGGER_TAG: ${{ github.ref_name }}
 
 jobs:
   release:
@@ -39,9 +39,15 @@ jobs:
           [xml]$props = Get-Content windows\Directory.Build.props
           $version = [string]$props.Project.PropertyGroup.VersionPrefix
           $expectedTag = "v$version"
-          if ($env:RELEASE_TAG -cne $expectedTag) {
+          $releaseTag = $env:RELEASE_TRIGGER_TAG
+          $retryPrefix = 'release-retry/'
+          if ($releaseTag.StartsWith($retryPrefix, [StringComparison]::Ordinal)) {
+            $releaseTag = $releaseTag.Substring($retryPrefix.Length)
+          }
+          if ($releaseTag -cne $expectedTag) {
             throw "tag_version_mismatch: expected $expectedTag"
           }
+          "RELEASE_TAG=$releaseTag" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Verify packaging contract
         shell: pwsh
@@ -147,3 +153,15 @@ jobs:
               throw 'release_creation_failed'
             }
           }
+
+          $releaseJson = gh release view $env:RELEASE_TAG `
+            --repo $env:RELEASE_REPOSITORY `
+            --json tagName,isDraft,isPrerelease,url
+          if ($LASTEXITCODE -ne 0) {
+            throw 'release_verification_failed'
+          }
+          $release = $releaseJson | ConvertFrom-Json
+          if ($release.tagName -cne $env:RELEASE_TAG -or $release.isDraft -or $release.isPrerelease) {
+            throw 'release_metadata_invalid'
+          }
+          Write-Output "::notice title=Published release::$($release.url)"
