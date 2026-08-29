@@ -136,28 +136,36 @@ jobs:
           $releaseExists = $LASTEXITCODE -eq 0
 
           if ($releaseExists) {
-            gh release upload $env:RELEASE_TAG $asset `
+            Write-Output "::notice title=Release operation::Updating $env:RELEASE_TAG"
+            $operationOutput = gh release upload $env:RELEASE_TAG $asset `
               --repo $env:RELEASE_REPOSITORY `
-              --clobber
+              --clobber 2>&1
             if ($LASTEXITCODE -ne 0) {
+              $annotation = (($operationOutput | Out-String).Trim()).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+              Write-Output "::error title=release_asset_upload_failed::$annotation"
               throw 'release_asset_upload_failed'
             }
           }
           else {
-            gh release create $env:RELEASE_TAG $asset `
+            Write-Output "::notice title=Release operation::Creating $env:RELEASE_TAG"
+            $operationOutput = gh release create $env:RELEASE_TAG $asset `
               --repo $env:RELEASE_REPOSITORY `
               --verify-tag `
               --generate-notes `
-              --title $env:RELEASE_TAG
+              --title $env:RELEASE_TAG 2>&1
             if ($LASTEXITCODE -ne 0) {
+              $annotation = (($operationOutput | Out-String).Trim()).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+              Write-Output "::error title=release_creation_failed::$annotation"
               throw 'release_creation_failed'
             }
           }
 
           $releaseJson = gh release view $env:RELEASE_TAG `
             --repo $env:RELEASE_REPOSITORY `
-            --json tagName,isDraft,isPrerelease,url
+            --json tagName,isDraft,isPrerelease,url 2>&1
           if ($LASTEXITCODE -ne 0) {
+            $annotation = (($releaseJson | Out-String).Trim()).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=release_verification_failed::$annotation"
             throw 'release_verification_failed'
           }
           $release = $releaseJson | ConvertFrom-Json
