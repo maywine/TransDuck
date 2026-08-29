@@ -47,9 +47,11 @@ service.
 ## Package and user data
 
 Package only with the ZIP workflow under `windows/packaging/`. Keep every
-published file from the self-contained output together; users must not launch
-only a copied executable. The portable package is unsigned and can trigger
-Windows publisher or SmartScreen warnings.
+published file from the self-contained single-file output together. Managed
+.NET assemblies are bundled into `TransDuck.exe`; required native WPF and
+Tesseract libraries remain external. Users must not launch only a copied
+executable. The portable package is unsigned and can trigger Windows publisher
+or SmartScreen warnings.
 
 Runtime settings, history, diagnostics, and protected credentials are kept
 outside the portable directory under `%LocalAppData%\TransDuck`. Secrets use

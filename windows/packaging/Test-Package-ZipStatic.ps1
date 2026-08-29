@@ -25,6 +25,7 @@ $report = [ordered]@{
     AuditScriptAstClean = $false
     ExactArtifactAndRootPinned = $false
     ReleaseWinX64SelfContainedPinned = $false
+    SingleFileManagedPayloadPinned = $false
     DefaultNoOverwriteAndAtomicForce = $false
     UniqueStagingAndFinallyCleanup = $false
     PublishExclusionsPinned = $false
@@ -54,7 +55,12 @@ try {
     $report.ExactArtifactAndRootPinned = $packageSource.Contains("ArchiveFileName = 'TransDuck-Windows-x64.zip'") -and
         $packageSource.Contains("PayloadDirectoryName = 'TransDuck-Windows-x64'")
     $report.ReleaseWinX64SelfContainedPinned = $packageSource.Contains("ValidateSet('Release')") -and
-        $packageSource.Contains('--runtime win-x64 --self-contained true')
+        $packageSource.Contains('--runtime win-x64 --self-contained true') -and
+        $packageSource.Contains('-p:PublishSingleFile=true')
+    $report.SingleFileManagedPayloadPinned = $auditSource.Contains('BundledManagedEntriesAbsent') -and
+        $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Core.dll') -and
+        $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Platform.Windows.dll') -and
+        $auditSource.Contains('TransDuck-Windows-x64/Tesseract.dll')
     $report.DefaultNoOverwriteAndAtomicForce = $packageSource.Contains('archive_exists_use_force') -and
         $packageSource.Contains('[IO.File]::Replace') -and $packageSource.Contains('[IO.File]::Move')
     $report.UniqueStagingAndFinallyCleanup = $packageSource.Contains('.transduck-zip-staging-') -and
@@ -80,8 +86,10 @@ try {
     }
     $report.ProxySettingsPayloadForbiddenPinned = $packageExclusions.Contains('proxy-settings') -and
         $auditForbiddenEntries.Contains('proxy-settings')
-    $report.RequiredRuntimeAndOcrClosurePinned = $packageSource.Contains('hostfxr.dll') -and
-        $packageSource.Contains('hostpolicy.dll') -and $packageSource.Contains('coreclr.dll') -and
+    $report.RequiredRuntimeAndOcrClosurePinned = $packageSource.Contains('D3DCompiler_47_cor3.dll') -and
+        $packageSource.Contains('PenImc_cor3.dll') -and
+        $packageSource.Contains('PresentationNative_cor3.dll') -and
+        $packageSource.Contains('vcruntime140_cor3.dll') -and $packageSource.Contains('wpfgfx_cor3.dll') -and
         $packageSource.Contains('x64/tesseract50.dll') -and $packageSource.Contains('x64/leptonica-1.82.0.dll') -and
         $packageSource.Contains('tessdata/eng.traineddata') -and $packageSource.Contains('tessdata/chi_sim.traineddata') -and
         $packageSource.Contains('THIRD-PARTY-NOTICES.md')
@@ -96,7 +104,8 @@ try {
     $report.TemporaryZipAuditedBeforeReplace = $auditPosition -ge 0 -and $replacePosition -gt $auditPosition
     $report.AuditCoversPeTreeAndStaging = $auditSource.Contains('Test-PeX64') -and
         $auditSource.Contains('0x8664') -and $auditSource.Contains('Get-ZipTreeHash') -and
-        $auditSource.Contains('StagingDirectoryCount') -and $auditSource.Contains('ForbiddenEntriesAbsent')
+        $auditSource.Contains('StagingDirectoryCount') -and $auditSource.Contains('ForbiddenEntriesAbsent') -and
+        $auditSource.Contains('WpfNativeRuntimeX64') -and $auditSource.Contains('BundledManagedEntriesAbsent')
     $report.PeInspectionAvoidsZipSeek = $auditSource.Contains('$remaining = $peOffset - 64') -and
         -not $auditSource.Contains('$stream.Position =')
     $chineseLabel = [string][char]0x4e2d + [char]0x6587
@@ -117,7 +126,8 @@ try {
         $packageSource.Contains('[IO.File]::Delete($replacementBackup)')
     foreach ($name in @(
         'PackageScriptAstClean', 'AuditScriptAstClean', 'ExactArtifactAndRootPinned',
-        'ReleaseWinX64SelfContainedPinned', 'DefaultNoOverwriteAndAtomicForce',
+        'ReleaseWinX64SelfContainedPinned', 'SingleFileManagedPayloadPinned',
+        'DefaultNoOverwriteAndAtomicForce',
         'UniqueStagingAndFinallyCleanup', 'PublishExclusionsPinned',
         'ProxySettingsPayloadForbiddenPinned',
         'RequiredRuntimeAndOcrClosurePinned', 'DeterministicEntrySafetyPinned',

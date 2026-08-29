@@ -3,6 +3,7 @@
 [Oo]bj/
 .vs/
 TestResults/
+/.local-dotnet/
 
 # Local release and temporary output
 artifacts/

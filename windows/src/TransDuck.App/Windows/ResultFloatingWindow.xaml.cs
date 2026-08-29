@@ -83,6 +83,15 @@ public partial class ResultFloatingWindow : Window
         base.OnClosing(eventArgs);
     }
 
+    protected override void OnDeactivated(EventArgs eventArgs)
+    {
+        base.OnDeactivated(eventArgs);
+        if (!_allowClose && IsVisible)
+        {
+            Hide();
+        }
+    }
+
     private void TranslateButtonClick(object sender, RoutedEventArgs eventArgs) =>
         TranslationRequested?.Invoke(this, InputTextBox.Text);
 

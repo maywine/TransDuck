@@ -12,12 +12,11 @@ $script:PayloadDirectoryName = 'TransDuck-Windows-x64'
 $script:FixedZipTimestamp = [DateTimeOffset]::new(2000, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
 $script:RequiredEntries = @(
     'TransDuck-Windows-x64/TransDuck.exe',
-    'TransDuck-Windows-x64/TransDuck.deps.json',
-    'TransDuck-Windows-x64/TransDuck.runtimeconfig.json',
-    'TransDuck-Windows-x64/coreclr.dll',
-    'TransDuck-Windows-x64/hostfxr.dll',
-    'TransDuck-Windows-x64/hostpolicy.dll',
-    'TransDuck-Windows-x64/Tesseract.dll',
+    'TransDuck-Windows-x64/D3DCompiler_47_cor3.dll',
+    'TransDuck-Windows-x64/PenImc_cor3.dll',
+    'TransDuck-Windows-x64/PresentationNative_cor3.dll',
+    'TransDuck-Windows-x64/vcruntime140_cor3.dll',
+    'TransDuck-Windows-x64/wpfgfx_cor3.dll',
     'TransDuck-Windows-x64/x64/tesseract50.dll',
     'TransDuck-Windows-x64/x64/leptonica-1.82.0.dll',
     'TransDuck-Windows-x64/tessdata/eng.traineddata',
@@ -28,6 +27,26 @@ $script:RequiredEntries = @(
     'TransDuck-Windows-x64/licenses/Leptonica-BSD-2-Clause.txt',
     'TransDuck-Windows-x64/THIRD-PARTY-NOTICES.md',
     'TransDuck-Windows-x64/README.txt'
+)
+$script:RequiredWpfNativeEntries = @(
+    'TransDuck-Windows-x64/D3DCompiler_47_cor3.dll',
+    'TransDuck-Windows-x64/PenImc_cor3.dll',
+    'TransDuck-Windows-x64/PresentationNative_cor3.dll',
+    'TransDuck-Windows-x64/vcruntime140_cor3.dll',
+    'TransDuck-Windows-x64/wpfgfx_cor3.dll'
+)
+$script:BundledManagedEntries = @(
+    'TransDuck-Windows-x64/TransDuck.deps.json',
+    'TransDuck-Windows-x64/TransDuck.runtimeconfig.json',
+    'TransDuck-Windows-x64/TransDuck.dll',
+    'TransDuck-Windows-x64/TransDuck.Core.dll',
+    'TransDuck-Windows-x64/TransDuck.Platform.Windows.dll',
+    'TransDuck-Windows-x64/Tesseract.dll',
+    'TransDuck-Windows-x64/System.Private.CoreLib.dll',
+    'TransDuck-Windows-x64/PresentationFramework.dll',
+    'TransDuck-Windows-x64/coreclr.dll',
+    'TransDuck-Windows-x64/hostfxr.dll',
+    'TransDuck-Windows-x64/hostpolicy.dll'
 )
 
 function Write-SafeJson($Value) {
@@ -126,7 +145,9 @@ $report = [ordered]@{
     TopLevelDirectoryValid = $false
     RequiredEntriesPresent = $false
     ForbiddenEntriesAbsent = $false
+    BundledManagedEntriesAbsent = $false
     MainExecutableX64 = $false
+    WpfNativeRuntimeX64 = $false
     TesseractNativeX64 = $false
     LeptonicaNativeX64 = $false
     StagingDirectoryCount = -1
@@ -176,9 +197,15 @@ try {
         }).Count -eq 0
         $report.RequiredEntriesPresent = @($script:RequiredEntries | Where-Object { -not $set.Contains($_) }).Count -eq 0
         $report.ForbiddenEntriesAbsent = @($names | Where-Object { Test-ForbiddenEntry $_ }).Count -eq 0
+        $report.BundledManagedEntriesAbsent = @(
+            $script:BundledManagedEntries | Where-Object { $set.Contains($_) }
+        ).Count -eq 0
         $byName = @{}
         foreach ($entry in $entries) { $byName[$entry.FullName] = $entry }
         $report.MainExecutableX64 = Test-PeX64 $byName['TransDuck-Windows-x64/TransDuck.exe']
+        $report.WpfNativeRuntimeX64 = @(
+            $script:RequiredWpfNativeEntries | Where-Object { -not (Test-PeX64 $byName[$_]) }
+        ).Count -eq 0
         $report.TesseractNativeX64 = Test-PeX64 $byName['TransDuck-Windows-x64/x64/tesseract50.dll']
         $report.LeptonicaNativeX64 = Test-PeX64 $byName['TransDuck-Windows-x64/x64/leptonica-1.82.0.dll']
         $orderedEntries = Sort-EntriesOrdinal $entries
@@ -190,7 +217,8 @@ try {
     foreach ($name in @(
         'EntriesUnique', 'EntriesSafe', 'EntriesSortedOrdinal', 'EntriesFixedTimestamp',
         'TopLevelDirectoryValid', 'RequiredEntriesPresent', 'ForbiddenEntriesAbsent',
-        'MainExecutableX64', 'TesseractNativeX64', 'LeptonicaNativeX64', 'StagingDirectoriesAbsent'
+        'BundledManagedEntriesAbsent', 'MainExecutableX64', 'WpfNativeRuntimeX64',
+        'TesseractNativeX64', 'LeptonicaNativeX64', 'StagingDirectoriesAbsent'
     )) {
         if (-not $report.$name) { $report.Failures += 'zip_audit_failed' }
     }

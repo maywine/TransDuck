@@ -17,8 +17,9 @@ $script:ArchiveFileName = 'TransDuck-Windows-x64.zip'
 $script:PayloadDirectoryName = 'TransDuck-Windows-x64'
 $script:FixedZipTimestamp = [DateTimeOffset]::new(2000, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
 $script:RequiredPayloadFiles = @(
-    'TransDuck.exe', 'TransDuck.deps.json', 'TransDuck.runtimeconfig.json',
-    'coreclr.dll', 'hostfxr.dll', 'hostpolicy.dll', 'Tesseract.dll',
+    'TransDuck.exe',
+    'D3DCompiler_47_cor3.dll', 'PenImc_cor3.dll',
+    'PresentationNative_cor3.dll', 'vcruntime140_cor3.dll', 'wpfgfx_cor3.dll',
     'x64/tesseract50.dll', 'x64/leptonica-1.82.0.dll',
     'tessdata/eng.traineddata', 'tessdata/chi_sim.traineddata',
     'tessdata/model-manifest.json', 'tessdata/LICENSE',
@@ -252,7 +253,7 @@ try {
     $payloadRoot = Join-Path $stagingRoot $script:PayloadDirectoryName
     $temporaryZip = Join-Path $stagingRoot $script:ArchiveFileName
     $dotnet = Resolve-DotnetPath $DotnetPath
-    & $dotnet publish $projectPath --configuration $Configuration --runtime win-x64 --self-contained true --output $publishRoot -p:DebugSymbols=false -p:DebugType=None
+    & $dotnet publish $projectPath --configuration $Configuration --runtime win-x64 --self-contained true --output $publishRoot -p:PublishSingleFile=true -p:DebugSymbols=false -p:DebugType=None
     if ($LASTEXITCODE -ne 0) { throw 'dotnet_publish_failed' }
 
     [IO.Directory]::CreateDirectory($payloadRoot) | Out-Null

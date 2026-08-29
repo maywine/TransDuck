@@ -429,6 +429,7 @@ internal sealed class AppRuntime : IDisposable
                     _resultWindow.ClearResult();
                     _resultWindow.SetStatus(AppStatusText.DescribeSelectionSuccess(selection));
                 });
+                await TranslateAsync(text, operation, cancellationToken);
                 return;
             }
 
@@ -448,9 +449,17 @@ internal sealed class AppRuntime : IDisposable
         }
     }
 
-    private async Task TranslateAsync(string text)
+    private Task TranslateAsync(string text)
     {
         var (operation, cancellationToken) = BeginOperation();
+        return TranslateAsync(text, operation, cancellationToken);
+    }
+
+    private async Task TranslateAsync(
+        string text,
+        long operation,
+        CancellationToken cancellationToken)
+    {
         if (string.IsNullOrWhiteSpace(text))
         {
             SetStatusForCurrentOperation(operation, AppStrings.Get("translation.input.empty"));
