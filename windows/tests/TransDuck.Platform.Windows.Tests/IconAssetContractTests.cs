@@ -62,6 +62,22 @@ public sealed class IconAssetContractTests
     }
 
     [Fact]
+    public void BrandIconSourceAndGenerator_PinTheApprovedMultiSizeAssetFlow()
+    {
+        var sourceBytes = File.ReadAllBytes(FindRepositoryFile(
+            "assets", "brand-source-icon", "icon_source.png"));
+        var generator = File.ReadAllText(FindRepositoryFile(
+            "windows", "packaging", "New-AppIcon.ps1"));
+
+        Assert.True(sourceBytes.AsSpan().StartsWith(PngSignature));
+        AssertPngDimensionsAndRgba(sourceBytes, 1254, 1254);
+        Assert.Contains("$sizes = @(16, 32, 64, 128, 256)", generator, StringComparison.Ordinal);
+        Assert.Contains("Format32bppArgb", generator, StringComparison.Ordinal);
+        Assert.Contains("icon_{0}x{0}.png", generator, StringComparison.Ordinal);
+        Assert.Contains("IO.BinaryWriter", generator, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AppProjectAndTraySource_UseTheEmbeddedProcessIconWithoutExternalIconLoading()
     {
         var project = File.ReadAllText(FindRepositoryFile(

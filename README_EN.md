@@ -1,5 +1,7 @@
 # TransDuck
 
+![TransDuck icon](assets/brand-source-icon/icon_128x128.png)
+
 TransDuck is a portable Windows translator. Select text in another application,
 press a configurable hotkey, and receive a translation without leaving the
 current task. It also provides screenshot OCR translation.
@@ -28,21 +30,22 @@ run `TransDuck.exe` from there.
 See the [English installation and use guide](docs/user-docs/en/install-windows.md)
 or the [Chinese guide](docs/user-docs/zh/install-windows.md).
 
-## Provider and privacy notes
+## Providers and data protection
 
-The built-in Bing and Google providers use unofficial web protocols. They are
-not Azure Translator, Google Cloud Translation, or Google Cloud Translation
-Basic v2. The Google provider has no Google Cloud API-key setting. Web provider
-behavior can change outside TransDuck's control.
+TransDuck supports OpenAI-compatible, DeepL, Ollama, Volcengine Translate, and
+built-in Bing and Google web translation. Bing and Google use unofficial web
+interfaces rather than Azure Translator or Google Cloud Translation, so web
+service or protocol changes can affect availability. Google web translation
+needs no credential; a Bing Cookie is optional.
 
-Translation text is sent to the provider selected in Settings. API keys,
-Volcengine AK/SK, and an optional Bing Cookie are protected for the current
-Windows user with Windows DPAPI. Settings, history, diagnostics, and protected
-credentials are stored outside the portable folder under
-`%LocalAppData%\TransDuck`.
+Selected text is sent to the provider currently chosen in Settings. API keys,
+Volcengine AK/SK, and an optional Bing Cookie are not written to ordinary
+configuration files; Windows DPAPI encrypts them for the current user. Other
+settings, translation history, and diagnostics are stored under
+`%LocalAppData%\TransDuck`, outside the portable application directory.
 
-The bundled application and icon reuse an inherited black-and-white visual
-asset; no new generated icon is used.
+TransDuck uses an original duck-and-bilingual-speech-bubbles icon. Multi-size
+icon resources are embedded in the application and require no runtime download.
 
 ## Security notice
 

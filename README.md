@@ -1,5 +1,7 @@
 # TransDuck
 
+![TransDuck 图标](assets/brand-source-icon/icon_128x128.png)
+
 TransDuck 是一款便携式 Windows 翻译应用。先在其他应用中选中文本，再按可配置的
 快捷键，就能在不离开当前任务的情况下看到翻译结果；也支持截图 OCR 翻译。
 
@@ -22,17 +24,19 @@ TransDuck 只发布自包含 single-file x64 便携包 `TransDuck-Windows-x64.zi
 详见[中文安装与使用说明](docs/user-docs/zh/install-windows.md)或
 [English guide](docs/user-docs/en/install-windows.md)。
 
-## 翻译服务与隐私
+## 翻译服务与数据安全
 
-内置 Bing 和 Google 使用的是非官方网页协议，不是 Azure Translator、Google Cloud
-Translation 或 Google Cloud Translation Basic v2。Google 提供商没有 Google Cloud
-API Key 配置；网页协议或服务端行为变更时，它们可能失效。
+TransDuck 支持 OpenAI-compatible、DeepL、Ollama、火山翻译，以及内置的 Bing 和
+Google 网页翻译。Bing 和 Google 使用非官方网页接口，不属于 Azure Translator 或
+Google Cloud Translation；网页服务或协议变化可能影响其可用性。Google 网页翻译无需
+凭据，Bing Cookie 为可选项。
 
-翻译文本会发送给设置中选定的服务商。API Key、火山引擎 AK/SK 与可选的 Bing Cookie
-会使用当前 Windows 用户的 DPAPI 保护。设置、历史记录、诊断信息和受保护凭据存放在
-便携目录之外的 `%LocalAppData%\TransDuck`。
+翻译时，选中文本会发送给当前选定的服务商。API Key、火山引擎 AK/SK 与可选的
+Bing Cookie 不写入普通配置文件，而由 Windows DPAPI 按当前用户加密保存。其他设置、
+翻译历史和诊断数据位于 `%LocalAppData%\TransDuck`，不写入便携程序目录。
 
-应用图标复用既有的黑白视觉资产，作为迁移资产继承；未生成或重绘新的图标。
+TransDuck 使用原创的“鸭子 + 双语对话气泡”图标。多尺寸图标已嵌入应用，无需运行时
+下载外部图标资源。
 
 ## 安全提示
 

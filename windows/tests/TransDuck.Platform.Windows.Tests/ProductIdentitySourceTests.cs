@@ -1,5 +1,7 @@
 // Copyright (c) 2026 maywine. All rights reserved.
 
+using System.Xml.Linq;
+
 namespace TransDuck.Platform.Windows.Tests;
 
 public sealed class ProductIdentitySourceTests
@@ -47,7 +49,25 @@ public sealed class ProductIdentitySourceTests
         Assert.DoesNotContain("Easydict", package + audit, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void ProductVersion_StartsAtZeroZeroOneAcrossAssemblyAndFileMetadata()
+    {
+        var document = XDocument.Load(ReadRepositoryPath("windows", "Directory.Build.props"));
+        var properties = document.Root!.Elements("PropertyGroup")
+            .SelectMany(group => group.Elements())
+            .ToDictionary(element => element.Name.LocalName, element => element.Value, StringComparer.Ordinal);
+
+        Assert.Equal("0.0.1", properties["VersionPrefix"]);
+        Assert.Equal("$(VersionPrefix)", properties["Version"]);
+        Assert.Equal("0.0.1.0", properties["AssemblyVersion"]);
+        Assert.Equal("0.0.1.0", properties["FileVersion"]);
+        Assert.Equal("$(VersionPrefix)", properties["InformationalVersion"]);
+    }
+
     private static string ReadRepositoryFile(params string[] relativePath)
+        => File.ReadAllText(ReadRepositoryPath(relativePath));
+
+    private static string ReadRepositoryPath(params string[] relativePath)
     {
         foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
         {
@@ -56,7 +76,7 @@ public sealed class ProductIdentitySourceTests
                 var candidate = Path.Combine([directory.FullName, .. relativePath]);
                 if (File.Exists(candidate))
                 {
-                    return File.ReadAllText(candidate);
+                    return candidate;
                 }
             }
         }

@@ -11,9 +11,9 @@ English
 4. Updates are manual: close TransDuck, replace the whole extracted directory with
    a newly extracted release, then run TransDuck.exe again. User data is kept
    separately in %LocalAppData%\TransDuck.
-5. Bing Translator and Google Translate are unofficial web providers. Google does
-   not use a credential. A Bing Cookie is optional and, when saved, is protected
-   with DPAPI for the current Windows user.
+5. Bing and Google use unofficial web interfaces, so service or protocol changes
+   can affect availability. Google web translation needs no credential; an
+   optional Bing Cookie is protected with DPAPI for the current Windows user.
 6. Translation requests can use the Windows system proxy, a custom HTTP proxy, or
    a direct connection. A custom proxy must be http://host:port with no credentials.
    Localhost and loopback requests always connect directly.
@@ -32,8 +32,8 @@ English
 3. 请先将整个目录移动到最终位置，再启用应用的登录启动选项；之后再移动目录可能留下失效的启动项。
 4. 更新需手动完成：关闭 TransDuck，完整替换解压目录，再运行 TransDuck.exe。用户数据位于
    %LocalAppData%\TransDuck，不在 ZIP 内，不会因替换应用目录而删除。
-5. Bing 翻译和 Google 翻译都是非官方网页提供商。Google 不使用凭据；Bing Cookie 可选，保存时会使用
-   当前 Windows 用户的 DPAPI 保护。
+5. Bing 和 Google 使用非官方网页接口，服务或协议变化可能影响可用性。Google 网页翻译无需凭据；
+   可选的 Bing Cookie 由当前 Windows 用户的 DPAPI 保护。
 6. 翻译请求可使用 Windows 系统代理、自定义 HTTP 代理或直连。自定义代理必须是无凭据的
    http://host:port。localhost 和 loopback 请求始终直连。
 7. 应用图标已内嵌在 TransDuck.exe 中，无需外部 Assets 目录。

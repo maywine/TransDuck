@@ -35,9 +35,9 @@ service.
   provider.
 - Screenshot OCR recognizes Simplified Chinese or English locally before the
   recognized text is translated.
-- Bing and Google are built-in unofficial web providers, not Azure Translator
-  or Google Cloud Translation. Google has no Google Cloud Translation Basic v2
-  API-key configuration.
+- Bing and Google use built-in unofficial web interfaces rather than Azure
+  Translator or Google Cloud Translation. Google web translation needs no
+  credential; a Bing Cookie is optional.
 - Translation connections can use the system proxy, a credential-free custom
   `http://host:port` proxy, or direct mode. Loopback destinations always bypass
   the proxy.
@@ -54,16 +54,16 @@ executable. The portable package is unsigned and can trigger Windows publisher
 or SmartScreen warnings.
 
 Runtime settings, history, diagnostics, and protected credentials are kept
-outside the portable directory under `%LocalAppData%\TransDuck`. Secrets use
-CurrentUser Windows DPAPI. Translation text is sent to the provider selected by
-the user.
+outside the portable directory under `%LocalAppData%\TransDuck`. API keys,
+Volcengine AK/SK, and an optional Bing Cookie use CurrentUser Windows DPAPI.
+Translation text is sent to the provider currently selected by the user.
 
 TransDuck is licensed under the repository-root MIT License. The portable ZIP
 includes that license together with the Microsoft .NET, Tesseract, Leptonica,
 and model notices required by its binary payload.
 
-The application and tray icon inherit an existing black-and-white visual asset
-as a migration asset. No generated or external icon asset is needed.
+The application and tray use the original duck-and-bilingual-speech-bubbles icon
+generated for TransDuck. Multi-size resources are embedded in the executable.
 
 For end-user instructions, see the [English guide](../docs/user-docs/en/install-windows.md)
 and [Chinese guide](../docs/user-docs/zh/install-windows.md).
