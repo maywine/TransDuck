@@ -263,30 +263,20 @@ public sealed class RegistryRunStartupRegistrationServiceTests
     private static string CreateExecutableWithCommandLongerThan260Characters(PersistenceTestDirectory temporary)
     {
         const string executableFileName = "TransDuck.exe";
-        const int targetPathLength = 259;
-        var targetDirectoryLength = targetPathLength - executableFileName.Length - 1;
+        const int maximumCommandLength = 260;
         var directory = temporary.RootDirectory;
-        while (Path.Combine(directory, "startup").Length <= targetDirectoryLength)
+        while (('"' + Path.Combine(directory, executableFileName) + '"').Length <= maximumCommandLength)
         {
-            directory = Path.Combine(directory, "startup");
+            directory = Path.Combine(directory, "s");
         }
 
-        var finalSegmentLength = targetDirectoryLength - directory.Length - 1;
-        Assert.True(finalSegmentLength >= 0);
-        if (finalSegmentLength > 0)
-        {
-            directory = Path.Combine(directory, new string('s', finalSegmentLength));
-        }
-
-        Assert.Equal(targetDirectoryLength, directory.Length);
         Directory.CreateDirectory(directory);
         var executablePath = Path.Combine(directory, executableFileName);
         File.WriteAllBytes(executablePath, [0]);
 
         Assert.True(File.Exists(executablePath));
         Assert.Equal(executableFileName, Path.GetFileName(executablePath));
-        Assert.Equal(targetPathLength, executablePath.Length);
-        Assert.Equal(261, ('"' + executablePath + '"').Length);
+        Assert.True(('"' + executablePath + '"').Length > maximumCommandLength);
         return executablePath;
     }
 
