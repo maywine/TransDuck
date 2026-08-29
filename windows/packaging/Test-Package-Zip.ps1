@@ -25,6 +25,9 @@ $script:RequiredEntries = @(
     'TransDuck-Windows-x64/tessdata/LICENSE',
     'TransDuck-Windows-x64/licenses/Apache-2.0.txt',
     'TransDuck-Windows-x64/licenses/Leptonica-BSD-2-Clause.txt',
+    'TransDuck-Windows-x64/licenses/Microsoft-DotNet-Library-License.txt',
+    'TransDuck-Windows-x64/licenses/Microsoft-DotNet-Third-Party-Notices.txt',
+    'TransDuck-Windows-x64/LICENSE.txt',
     'TransDuck-Windows-x64/THIRD-PARTY-NOTICES.md',
     'TransDuck-Windows-x64/README.txt'
 )

@@ -3,6 +3,14 @@
 本目录的 Windows OCR 交付物包含下列第三方组件。模型和 native runtime 都在构建/打包时
 随应用复制；运行时不会下载模型、许可证或 native 二进制。
 
+## Microsoft .NET and WPF runtime
+
+- The self-contained Windows package embeds managed .NET runtime and WPF assemblies in
+  `TransDuck.exe` and distributes the required native WPF runtime files beside it.
+- The package includes `licenses/Microsoft-DotNet-Library-License.txt` and
+  `licenses/Microsoft-DotNet-Third-Party-Notices.txt` from the .NET distribution used to publish it.
+- Upstream license information: <https://github.com/dotnet/core/blob/main/license-information.md>
+
 ## Tesseract .NET wrapper and native runtime
 
 - Component: [`Tesseract` NuGet package 5.2.0](https://www.nuget.org/packages/Tesseract/5.2.0)
