@@ -2,33 +2,43 @@
 
 ![TransDuck icon](assets/brand-source-icon/icon_128x128.png)
 
-TransDuck is a portable Windows translator. Select text in another application,
-press a configurable hotkey, and receive a translation without leaving the
-current task. It also provides screenshot OCR translation.
+TransDuck is a desktop translator for Windows and macOS. Select text in another
+application, press a configurable hotkey, and receive a translation without
+leaving the current task. It also provides screenshot OCR and manual-input
+translation.
 
-TransDuck targets Windows 10 x64 desktop sessions. The release baseline is a
-single display.
+TransDuck supports Windows 10 x64 and macOS 14 or later on Intel x64 and Apple
+Silicon arm64 Macs. The Windows release baseline is a single display.
 
 ## Highlights
 
-- Translate a selected word, sentence, or paragraph with the default hotkey
-  (`Ctrl+Alt+D` by default).
+- Translate selected text with the default platform hotkey: `Ctrl+Alt+D` on
+  Windows or `Command+Option+D` on macOS.
 - Capture a screen region and recognize Simplified Chinese or English locally
   before translating it.
 - Choose Bing, Google, OpenAI-compatible, DeepL, Ollama, or Volcengine Translate
   in Settings.
-- Use the Windows system proxy, a custom HTTP proxy, or a direct connection.
-- Enable login startup for the current Windows user.
+- Use the system proxy, a custom HTTP proxy, or a direct connection.
+- Enable per-user login startup and keep the app available from the Windows
+  notification area or macOS menu bar after closing its window.
 
 ## Install
 
-TransDuck is distributed only as the self-contained single-file x64 portable
-package `TransDuck-Windows-x64.zip`. There is no installer, MSIX package, or
-automatic updater. Extract the complete ZIP to a permanent writable folder and
-run `TransDuck.exe` from there.
+TransDuck ships three self-contained ZIPs and has no installer or automatic
+updater:
 
-See the [English installation and use guide](docs/user-docs/en/install-windows.md)
-or the [Chinese guide](docs/user-docs/zh/install-windows.md).
+- Windows x64: `TransDuck-Windows-x64.zip`
+- Intel Mac: `TransDuck-macOS-x64.zip`
+- Apple Silicon Mac: `TransDuck-macOS-arm64.zip`
+
+Extract the complete Windows ZIP before running `TransDuck.exe`. On macOS,
+extract the complete ZIP and move `TransDuck.app` to its permanent location
+before opening it.
+
+See the [Windows guide](docs/user-docs/en/install-windows.md), the
+[macOS guide](docs/user-docs/en/install-macos.md), or the corresponding
+[Chinese Windows](docs/user-docs/zh/install-windows.md) and
+[Chinese macOS](docs/user-docs/zh/install-macos.md) guides.
 
 ## Providers and data protection
 
@@ -40,32 +50,32 @@ needs no credential; a Bing Cookie is optional.
 
 Selected text is sent to the provider currently chosen in Settings. API keys,
 Volcengine AK/SK, and an optional Bing Cookie are not written to ordinary
-configuration files; Windows DPAPI encrypts them for the current user. Other
-settings, translation history, and diagnostics are stored under
-`%LocalAppData%\TransDuck`, outside the portable application directory.
+configuration files. Windows protects them with current-user DPAPI; macOS stores
+them in the current user's Keychain. Other settings, translation history, and
+diagnostics live under `%LocalAppData%\TransDuck` on Windows or
+`~/Library/Application Support/TransDuck` on macOS, outside the application
+directory.
 
 TransDuck uses an original duck-and-bilingual-speech-bubbles icon. Multi-size
 icon resources are embedded in the application and require no runtime download.
 
 ## Security notice
 
-The portable ZIP is unsigned. Windows may show a publisher, SmartScreen, or
-other security warning. Verify the release source before running it and do not
-disable security controls merely to bypass a warning.
+The release ZIPs are unsigned, and the macOS app is not notarized. Windows may
+show publisher or SmartScreen warnings; macOS may show a Gatekeeper warning.
+Verify the release source and use the operating system's supported Open or Open
+Anyway flow. Do not disable security controls merely to bypass a warning.
 
 ## License
 
 TransDuck is licensed under the [MIT License](LICENSE). Third-party licenses and
-notices are included in the Windows package under `licenses/` and in
-`THIRD-PARTY-NOTICES.md`.
+notices are included in each platform package.
 
 ## Release automation
 
-Pushing any new tag to GitHub triggers the Release workflow. A Windows runner
-builds and tests the solution, packages and audits the self-contained
-single-file ZIP, then creates the matching GitHub Release and uploads
-`TransDuck-Windows-x64.zip`. Re-running the workflow for the same tag replaces
-the ZIP asset with the newly verified package.
+Pushing any new tag to GitHub triggers the Release workflow. The Windows and
+macOS builds, tests, packages, and audits must all pass before the matching
+GitHub Release is created or updated with all three ZIPs.
 
 ## Development
 

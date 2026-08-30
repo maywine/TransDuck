@@ -1,0 +1,27 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TransDuck.MacOS.App.App"
+             RequestedThemeVariant="Default">
+  <Application.Styles>
+    <FluentTheme />
+  </Application.Styles>
+  <TrayIcon.Icons>
+    <TrayIcons>
+      <TrayIcon Icon="/Assets/TransDuck.png" ToolTipText="TransDuck">
+        <TrayIcon.Menu>
+          <NativeMenu>
+            <NativeMenuItem Header="Translate..." Click="HandleOpenRequested" />
+            <NativeMenuItem Header="Translate selected text" Click="HandleSelectionRequested" />
+            <NativeMenuItem Header="Screenshot OCR (English)" Click="HandleEnglishOcrRequested" />
+            <NativeMenuItem Header="Screenshot OCR (简体中文)" Click="HandleChineseOcrRequested" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="History" Click="HandleHistoryRequested" />
+            <NativeMenuItem Header="Settings..." Click="HandleSettingsRequested" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Quit TransDuck" Click="HandleQuitRequested" />
+          </NativeMenu>
+        </TrayIcon.Menu>
+      </TrayIcon>
+    </TrayIcons>
+  </TrayIcon.Icons>
+</Application>

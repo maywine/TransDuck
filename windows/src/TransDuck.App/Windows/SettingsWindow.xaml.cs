@@ -6,9 +6,9 @@ using TransDuck.App.Services;
 using TransDuck.Core.Contracts.V1;
 using TransDuck.Core.Translation;
 using TransDuck.Platform.Windows.Hotkeys;
-using TransDuck.Platform.Windows.Proxy;
+using TransDuck.Infrastructure.Proxy;
 using TransDuck.Platform.Windows.Startup;
-using TransDuck.Platform.Windows.Translation;
+using TransDuck.Infrastructure.Translation;
 
 namespace TransDuck.App.Windows;
 
@@ -528,26 +528,26 @@ public partial class SettingsWindow : Window
             HotkeyKeyTextBox.Text,
             out settings);
 
-    private bool TryCreateProxySettings(out WindowsProxySettings settings)
+    private bool TryCreateProxySettings(out ProxySettings settings)
     {
-        settings = WindowsProxySettings.Default;
+        settings = ProxySettings.Default;
         if (ProxyModeComboBox.SelectedItem is not ComboBoxItem item ||
             item.Tag is not string tag ||
-            !Enum.TryParse<WindowsProxyMode>(tag, ignoreCase: false, out var mode) ||
+            !Enum.TryParse<ProxyMode>(tag, ignoreCase: false, out var mode) ||
             !Enum.IsDefined(mode))
         {
             return false;
         }
 
         Uri? customProxyUri = null;
-        if (mode == WindowsProxyMode.CustomHttp &&
+        if (mode == ProxyMode.CustomHttp &&
             !Uri.TryCreate(CustomHttpProxyUriTextBox.Text, UriKind.Absolute, out customProxyUri))
         {
             return false;
         }
 
-        var candidate = new WindowsProxySettings(
-            WindowsProxySettingsMigration.CurrentVersion,
+        var candidate = new ProxySettings(
+            ProxySettingsMigration.CurrentVersion,
             mode,
             customProxyUri);
         try
@@ -820,14 +820,14 @@ public partial class SettingsWindow : Window
         SaveStartupButton.IsEnabled = isEnabled;
     }
 
-    private void ApplyProxySettings(WindowsProxySettings settings)
+    private void ApplyProxySettings(ProxySettings settings)
     {
         SelectProxyMode(settings.Mode);
         CustomHttpProxyUriTextBox.Text = settings.CustomHttpProxyUri?.OriginalString ?? string.Empty;
         ApplyProxyModeInputState();
     }
 
-    private void SelectProxyMode(WindowsProxyMode mode)
+    private void SelectProxyMode(ProxyMode mode)
     {
         foreach (var candidate in ProxyModeComboBox.Items.OfType<ComboBoxItem>())
         {
@@ -849,7 +849,7 @@ public partial class SettingsWindow : Window
     private void SetProxyControlsEnabled(bool isEnabled)
     {
         var customMode = ProxyModeComboBox.SelectedItem is ComboBoxItem item &&
-            string.Equals(item.Tag as string, nameof(WindowsProxyMode.CustomHttp), StringComparison.Ordinal);
+            string.Equals(item.Tag as string, nameof(ProxyMode.CustomHttp), StringComparison.Ordinal);
         ProxyModeComboBox.IsEnabled = isEnabled;
         CustomHttpProxyUriTextBox.IsEnabled = isEnabled && customMode;
         SaveProxySettingsButton.IsEnabled = isEnabled;

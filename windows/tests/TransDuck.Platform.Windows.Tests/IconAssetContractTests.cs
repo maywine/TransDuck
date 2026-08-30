@@ -71,10 +71,54 @@ public sealed class IconAssetContractTests
 
         Assert.True(sourceBytes.AsSpan().StartsWith(PngSignature));
         AssertPngDimensionsAndRgba(sourceBytes, 1254, 1254);
-        Assert.Contains("$sizes = @(16, 32, 64, 128, 256)", generator, StringComparison.Ordinal);
+        Assert.Contains("$pngSizes = @(16, 32, 64, 128, 256, 512, 1024)", generator,
+            StringComparison.Ordinal);
+        Assert.Contains("$icoSizes = @(16, 32, 64, 128, 256)", generator,
+            StringComparison.Ordinal);
+        Assert.Contains("$icnsTypes = [ordered]@{", generator, StringComparison.Ordinal);
         Assert.Contains("Format32bppArgb", generator, StringComparison.Ordinal);
         Assert.Contains("icon_{0}x{0}.png", generator, StringComparison.Ordinal);
         Assert.Contains("IO.BinaryWriter", generator, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TransDuckIcns_ContainsEveryGeneratedPngFrame()
+    {
+        var expectedTypes = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["icp4"] = 16,
+            ["icp5"] = 32,
+            ["icp6"] = 64,
+            ["ic07"] = 128,
+            ["ic08"] = 256,
+            ["ic09"] = 512,
+            ["ic10"] = 1024,
+        };
+        var iconBytes = File.ReadAllBytes(FindRepositoryFile(
+            "assets", "brand-source-icon", "TransDuck.icns"));
+
+        Assert.Equal("icns", System.Text.Encoding.ASCII.GetString(iconBytes, 0, 4));
+        Assert.Equal(iconBytes.Length, checked((int)BinaryPrimitives.ReadUInt32BigEndian(iconBytes.AsSpan(4, 4))));
+        var offset = 8;
+        var found = new HashSet<string>(StringComparer.Ordinal);
+        while (offset < iconBytes.Length)
+        {
+            var type = System.Text.Encoding.ASCII.GetString(iconBytes, offset, 4);
+            var chunkLength = checked((int)BinaryPrimitives.ReadUInt32BigEndian(iconBytes.AsSpan(offset + 4, 4)));
+            Assert.True(expectedTypes.TryGetValue(type, out var size));
+            Assert.True(chunkLength > 8 && offset <= iconBytes.Length - chunkLength);
+            var payload = iconBytes.AsSpan(offset + 8, chunkLength - 8).ToArray();
+            var source = File.ReadAllBytes(FindRepositoryFile(
+                "assets", "brand-source-icon", $"icon_{size}x{size}.png"));
+
+            Assert.True(found.Add(type));
+            Assert.Equal(source, payload);
+            AssertPngDimensionsAndRgba(payload, size, size);
+            offset += chunkLength;
+        }
+
+        Assert.Equal(iconBytes.Length, offset);
+        Assert.Equal(expectedTypes.Keys.OrderBy(static key => key), found.OrderBy(static key => key));
     }
 
     [Fact]

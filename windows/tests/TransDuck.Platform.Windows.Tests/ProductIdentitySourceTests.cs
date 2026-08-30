@@ -52,7 +52,7 @@ public sealed class ProductIdentitySourceTests
     [Fact]
     public void ProductVersion_StartsAtZeroZeroOneAcrossAssemblyAndFileMetadata()
     {
-        var document = XDocument.Load(ReadRepositoryPath("windows", "Directory.Build.props"));
+        var document = XDocument.Load(Path.Combine(FindRepositoryRoot(), "Directory.Build.props"));
         var properties = document.Root!.Elements("PropertyGroup")
             .SelectMany(group => group.Elements())
             .ToDictionary(element => element.Name.LocalName, element => element.Value, StringComparer.Ordinal);
@@ -83,5 +83,21 @@ public sealed class ProductIdentitySourceTests
         }
 
         throw new FileNotFoundException("The requested repository source file was not found from the test host path.");
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            for (var directory = new DirectoryInfo(start); directory is not null; directory = directory.Parent)
+            {
+                if (File.Exists(Path.Combine(directory.FullName, "contracts", "v1", "README.md")))
+                {
+                    return directory.FullName;
+                }
+            }
+        }
+
+        throw new DirectoryNotFoundException("The repository root was not found from the test host path.");
     }
 }

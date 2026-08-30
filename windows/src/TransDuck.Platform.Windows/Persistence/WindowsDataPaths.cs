@@ -1,13 +1,14 @@
 // Copyright (c) 2026 maywine. All rights reserved.
 
 using System.IO;
+using TransDuck.Infrastructure.Persistence;
 
 namespace TransDuck.Platform.Windows.Persistence;
 
 /// <summary>
 /// Resolves Windows persistence paths without creating files or directories in its constructor.
 /// </summary>
-public sealed class WindowsDataPaths
+public sealed class WindowsDataPaths : IApplicationDataPaths
 {
     /// <summary>Creates paths rooted at an injected directory or %LocalAppData%\TransDuck.</summary>
     public WindowsDataPaths(string? rootDirectory = null)
@@ -38,6 +39,9 @@ public sealed class WindowsDataPaths
 
     /// <summary>Gets the non-secret global hotkey settings file path.</summary>
     public string HotkeySettingsFilePath => Path.Combine(RootDirectory, "hotkey-settings.v1.json");
+
+    /// <summary>Gets the non-secret proxy settings file path.</summary>
+    public string ProxySettingsFilePath => Path.Combine(RootDirectory, "proxy-settings.v1.json");
 
     /// <summary>Gets the directory used for DPAPI credential envelopes.</summary>
     public string CredentialsDirectoryPath => Path.Combine(RootDirectory, "credentials");

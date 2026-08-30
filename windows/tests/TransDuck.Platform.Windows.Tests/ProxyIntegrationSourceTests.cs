@@ -43,7 +43,7 @@ public sealed class ProxyIntegrationSourceTests
         var constructor = Slice(source, "public ProxySettingsController(", "public event EventHandler? StateChanged");
         var initialize = Slice(source, "public async Task<ProxySettingsInitializationResult> InitializeAsync", "public async Task<ProxySettingsSaveResult> SaveAsync");
         var save = Slice(source, "public async Task<ProxySettingsSaveResult> SaveAsync", "public void Dispose()");
-        var apply = Slice(source, "private ProxySettingsInitializationResult TryApplyReadSettings", "private async Task<(PersistenceStatus Status, WindowsProxySettings? Settings)> ReadSettingsAsync");
+        var apply = Slice(source, "private ProxySettingsInitializationResult TryApplyReadSettings", "private async Task<(PersistenceStatus Status, ProxySettings? Settings)> ReadSettingsAsync");
         var diagnostic = Slice(source, "private async Task WritePersistenceDiagnosticAsync", "private static bool TryValidate");
         var eventIds = Regex.Matches(source, "DiagnosticEventId\\.(?<id>[A-Za-z]+)")
             .Select(match => match.Groups["id"].Value)
@@ -57,7 +57,7 @@ public sealed class ProxyIntegrationSourceTests
         var update = save.IndexOf("_clientPool.Update(settings)", StringComparison.Ordinal);
 
         Assert.Contains("_currentSettings = _clientPool.CurrentSettings", constructor, StringComparison.Ordinal);
-        Assert.Contains("TryApplyReadSettings(WindowsProxySettings.Default)", initialize, StringComparison.Ordinal);
+        Assert.Contains("TryApplyReadSettings(ProxySettings.Default)", initialize, StringComparison.Ordinal);
         Assert.True(write >= 0 && write < failure && failure < failureReturn && failureReturn < update);
         Assert.True(update < save.IndexOf("_currentSettings = _clientPool.CurrentSettings", update, StringComparison.Ordinal));
         Assert.True(apply.IndexOf("_clientPool.Update(settings)", StringComparison.Ordinal) <
@@ -75,13 +75,13 @@ public sealed class ProxyIntegrationSourceTests
         var create = Slice(source, "private bool TryCreateProxySettings", "private bool TryCreateProvider");
         var controls = Slice(source, "private void SetProxyControlsEnabled", "private void ApplyCredentialControlsEnabledState");
 
-        var candidate = create.IndexOf("var candidate = new WindowsProxySettings", StringComparison.Ordinal);
+        var candidate = create.IndexOf("var candidate = new ProxySettings", StringComparison.Ordinal);
         var validate = create.IndexOf("candidate.Validate()", candidate, StringComparison.Ordinal);
         var assignment = create.IndexOf("settings = candidate", validate, StringComparison.Ordinal);
         Assert.Contains("Uri.TryCreate(CustomHttpProxyUriTextBox.Text, UriKind.Absolute", create,
             StringComparison.Ordinal);
         Assert.True(candidate >= 0 && validate > candidate && assignment > validate);
-        Assert.Contains("nameof(WindowsProxyMode.CustomHttp)", controls, StringComparison.Ordinal);
+        Assert.Contains("nameof(ProxyMode.CustomHttp)", controls, StringComparison.Ordinal);
         Assert.Contains("CustomHttpProxyUriTextBox.IsEnabled = isEnabled && customMode", controls,
             StringComparison.Ordinal);
         Assert.True(controls.IndexOf("if (!customMode)", StringComparison.Ordinal) <

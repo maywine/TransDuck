@@ -2,10 +2,12 @@
 
 ## Product scope
 
-TransDuck is an independent, Windows-only translation product. Its public
-distribution is the self-contained portable ZIP
-`TransDuck-Windows-x64.zip`; do not add MSIX, an installer, or an automatic
-update channel as a release target.
+TransDuck is an independent Windows and macOS translation product. Windows is
+distributed as the self-contained portable ZIP `TransDuck-Windows-x64.zip`.
+macOS is distributed as architecture-specific ZIPs containing `TransDuck.app`:
+`TransDuck-macOS-x64.zip` and `TransDuck-macOS-arm64.zip`. Do not add MSIX, a
+platform installer, or an automatic update channel as a release target. The
+macOS baseline is macOS 14 or later on Intel x64 and Apple Silicon arm64.
 
 ## Working rules
 
@@ -22,8 +24,8 @@ update channel as a release target.
   Google Cloud Translation Basic v2 configuration unless a separate request
   explicitly authorizes it.
 - Treat `assets/brand-source-icon/icon_source.png` as the approved icon source.
-  Regenerate PNG/ICO derivatives with `windows/packaging/New-AppIcon.ps1`; do
-  not replace it with a downloaded visual asset without explicit approval.
+  Regenerate PNG/ICO/ICNS derivatives with `windows/packaging/New-AppIcon.ps1`;
+  do not replace it with a downloaded visual asset without explicit approval.
 
 ## Local verification
 
@@ -34,6 +36,16 @@ usual checks are:
 dotnet build windows/TransDuck.Windows.sln --configuration Release
 dotnet test windows/TransDuck.Windows.sln --configuration Release --no-build
 ```
+
+For the macOS solution, the usual platform-independent checks are:
+
+```bash
+dotnet build macos/TransDuck.MacOS.sln --configuration Release
+dotnet test macos/TransDuck.MacOS.sln --configuration Release --no-build
+```
+
+Native macOS UI, permission, Keychain, and login-start behavior still requires
+final verification in a local interactive macOS session.
 
 Tests must use fakes or task-local loopback endpoints for translation providers;
 they must not claim real Bing, Google, proxy, or other external-service

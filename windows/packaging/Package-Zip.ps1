@@ -256,6 +256,7 @@ try {
     $stagingRoot = Join-Path $outputRoot ('.transduck-zip-staging-' + [guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($stagingRoot) | Out-Null
     $publishRoot = Join-Path $stagingRoot 'publish'
+    $buildArtifactsRoot = Join-Path $stagingRoot 'build-artifacts'
     $payloadRoot = Join-Path $stagingRoot $script:PayloadDirectoryName
     $temporaryZip = Join-Path $stagingRoot $script:ArchiveFileName
     $dotnet = Resolve-DotnetPath $DotnetPath
@@ -266,7 +267,7 @@ try {
         -not (Test-Path -LiteralPath $dotnetNoticesSource -PathType Leaf)) {
         throw 'dotnet_license_source_missing'
     }
-    & $dotnet publish $projectPath --configuration $Configuration --runtime win-x64 --self-contained true --output $publishRoot -p:PublishSingleFile=true -p:DebugSymbols=false -p:DebugType=None
+    & $dotnet publish $projectPath --configuration $Configuration --runtime win-x64 --self-contained true --output $publishRoot --artifacts-path $buildArtifactsRoot -p:PublishSingleFile=true -p:DebugSymbols=false -p:DebugType=None
     if ($LASTEXITCODE -ne 0) { throw 'dotnet_publish_failed' }
 
     [IO.Directory]::CreateDirectory($payloadRoot) | Out-Null

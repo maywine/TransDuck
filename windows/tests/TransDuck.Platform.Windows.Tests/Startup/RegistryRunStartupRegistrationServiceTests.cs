@@ -1,7 +1,7 @@
 // Copyright (c) 2026 maywine. All rights reserved.
 
 using TransDuck.Platform.Windows.Startup;
-using TransDuck.Platform.Windows.Tests.Persistence;
+using TransDuck.Infrastructure.Tests.Persistence;
 
 namespace TransDuck.Platform.Windows.Tests.Startup;
 

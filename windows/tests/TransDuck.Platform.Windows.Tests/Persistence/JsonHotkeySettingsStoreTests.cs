@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using TransDuck.Core.Contracts.V1;
 using TransDuck.Core.Persistence;
+using TransDuck.Infrastructure.Persistence;
+using TransDuck.Infrastructure.Tests.Persistence;
 using TransDuck.Platform.Windows.Hotkeys;
 using TransDuck.Platform.Windows.Persistence;
 

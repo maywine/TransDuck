@@ -60,6 +60,7 @@ try {
         $packageSource.Contains('-p:PublishSingleFile=true')
     $report.SingleFileManagedPayloadPinned = $auditSource.Contains('BundledManagedEntriesAbsent') -and
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Core.dll') -and
+        $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Infrastructure.dll') -and
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Platform.Windows.dll') -and
         $auditSource.Contains('TransDuck-Windows-x64/Tesseract.dll')
     $report.ApplicationAndDotNetLicensesPinned = $packageSource.Contains("licenseSource = Join-Path `$repositoryRoot 'LICENSE'") -and

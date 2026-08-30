@@ -2,6 +2,8 @@
 
 using System.Text;
 using TransDuck.Core.Persistence;
+using TransDuck.Infrastructure.Persistence;
+using TransDuck.Infrastructure.Tests.Persistence;
 using TransDuck.Platform.Windows.Persistence;
 
 namespace TransDuck.Platform.Windows.Tests.Persistence;

@@ -18,36 +18,48 @@ env:
   RELEASE_TRIGGER_TAG: ${{ github.ref_name }}
 
 jobs:
-  release:
-    name: Build and publish Windows release
+  version:
+    name: Verify release version
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Verify tag matches product version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's:.*<VersionPrefix>\([^<]*\)</VersionPrefix>.*:\1:p' Directory.Build.props)
+          expected_tag="v$version"
+          release_tag=$RELEASE_TRIGGER_TAG
+          if [[ $release_tag == release-retry/* ]]; then
+            release_tag=${release_tag#release-retry/}
+          fi
+          if [[ $release_tag != "$expected_tag" ]]; then
+            echo "tag_version_mismatch: expected $expected_tag" >&2
+            exit 1
+          fi
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  windows:
+    name: Build Windows package
+    needs: version
     runs-on: windows-latest
 
     steps:
       - name: Check out tagged source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
 
       - name: Set up .NET 10 SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.400'
-
-      - name: Verify tag matches product version
-        shell: pwsh
-        run: |
-          [xml]$props = Get-Content windows\Directory.Build.props
-          $version = [string]$props.Project.PropertyGroup.VersionPrefix
-          $expectedTag = "v$version"
-          $releaseTag = $env:RELEASE_TRIGGER_TAG
-          $retryPrefix = 'release-retry/'
-          if ($releaseTag.StartsWith($retryPrefix, [StringComparison]::Ordinal)) {
-            $releaseTag = $releaseTag.Substring($retryPrefix.Length)
-          }
-          if ($releaseTag -cne $expectedTag) {
-            throw "tag_version_mismatch: expected $expectedTag"
-          }
-          "RELEASE_TAG=$releaseTag" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Verify packaging contract
         shell: pwsh
@@ -67,7 +79,8 @@ jobs:
         run: |
           $resultsDirectory = Join-Path $PWD 'windows\TestResults'
           $projects = @(
-            @{ Name = 'core'; Path = 'windows\tests\TransDuck.Core.Tests\TransDuck.Core.Tests.csproj' },
+            @{ Name = 'core'; Path = 'shared\tests\TransDuck.Core.Tests\TransDuck.Core.Tests.csproj' },
+            @{ Name = 'infrastructure'; Path = 'shared\tests\TransDuck.Infrastructure.Tests\TransDuck.Infrastructure.Tests.csproj' },
             @{ Name = 'platform-windows'; Path = 'windows\tests\TransDuck.Platform.Windows.Tests\TransDuck.Platform.Windows.Tests.csproj' }
           )
           $failed = $false
@@ -123,65 +136,146 @@ jobs:
             -ZipPath $zipPath `
             -OutputDirectory $outputDirectory
 
+      - name: Upload Windows package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-package
+          path: windows/packaging/artifacts/TransDuck-Windows-x64.zip
+          if-no-files-found: error
+
+  macos:
+    name: Build macOS packages (arm64 host)
+    needs: version
+    runs-on: macos-15
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.400'
+
+      - name: Verify native host architecture
+        run: test "$(uname -m)" = arm64
+
+      - name: Restore
+        run: dotnet restore macos/TransDuck.MacOS.sln
+
+      - name: Build
+        run: dotnet build macos/TransDuck.MacOS.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test macos/TransDuck.MacOS.sln --configuration Release --no-restore --no-build
+
+      - name: Package and audit Apple Silicon ZIP
+        env:
+          TRANSDUCK_DOTNET: dotnet
+        run: |
+          ./macos/packaging/package-app.sh osx-arm64
+          ./macos/packaging/test-package.sh \
+            macos/packaging/artifacts/TransDuck-macOS-arm64.zip osx-arm64
+
+      - name: Upload Apple Silicon package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-arm64-package
+          path: macos/packaging/artifacts/TransDuck-macOS-arm64.zip
+          if-no-files-found: error
+
+  macos-intel:
+    name: Test macOS native boundaries (x64 host)
+    needs: version
+    runs-on: macos-15-intel
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.400'
+
+      - name: Verify native host architecture
+        run: test "$(uname -m)" = x86_64
+
+      - name: Test native macOS boundaries
+        run: dotnet test macos/TransDuck.MacOS.sln --configuration Release
+
+      - name: Build, launch, and audit Intel package
+        env:
+          TRANSDUCK_DOTNET: dotnet
+        run: |
+          ./macos/packaging/package-app.sh osx-x64
+          ./macos/packaging/test-package.sh \
+            macos/packaging/artifacts/TransDuck-macOS-x64.zip osx-x64
+
+      - name: Upload Intel package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-x64-package
+          path: macos/packaging/artifacts/TransDuck-macOS-x64.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish verified release
+    needs: [version, windows, macos, macos-intel]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download verified packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verify release asset set
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=(
+            TransDuck-Windows-x64.zip
+            TransDuck-macOS-x64.zip
+            TransDuck-macOS-arm64.zip
+          )
+          for asset in "${expected[@]}"; do
+            test -s "release-assets/$asset"
+          done
+          actual_count=$(find release-assets -maxdepth 1 -type f -name '*.zip' | wc -l)
+          test "$actual_count" -eq "${#expected[@]}"
+
       - name: Create or update GitHub Release
-        shell: pwsh
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.version.outputs.release_tag }}
         run: |
-          $asset = Join-Path $PWD 'windows\packaging\artifacts\TransDuck-Windows-x64.zip'
-          gh release view $env:RELEASE_TAG `
-            --repo $env:RELEASE_REPOSITORY `
-            --json tagName *> $null
-          $releaseExists = $LASTEXITCODE -eq 0
-
-          if ($releaseExists) {
-            Write-Output "::notice title=Release operation::Updating $env:RELEASE_TAG"
-            $operationOutput = gh release upload $env:RELEASE_TAG $asset `
-              --repo $env:RELEASE_REPOSITORY `
-              --clobber 2>&1
-            if ($LASTEXITCODE -ne 0) {
-              $annotation = (($operationOutput | Out-String).Trim()).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
-              Write-Output "::error title=release_asset_upload_failed::$annotation"
-              throw 'release_asset_upload_failed'
-            }
-          }
-          else {
-            Write-Output "::notice title=Release operation::Creating $env:RELEASE_TAG"
-            $operationOutput = gh release create $env:RELEASE_TAG $asset `
-              --repo $env:RELEASE_REPOSITORY `
-              --verify-tag `
-              --generate-notes `
-              --title $env:RELEASE_TAG 2>&1
-            if ($LASTEXITCODE -ne 0) {
-              $annotation = (($operationOutput | Out-String).Trim()).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
-              Write-Output "::error title=release_creation_failed::$annotation"
-              throw 'release_creation_failed'
-            }
-          }
-
-          $publishOutput = gh release edit $env:RELEASE_TAG `
-            --repo $env:RELEASE_REPOSITORY `
-            --draft=false `
-            --prerelease=false `
-            --latest 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            $annotation = (($publishOutput | Out-String).Trim()).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
-            Write-Output "::error title=release_publish_failed::$annotation"
-            throw 'release_publish_failed'
-          }
-
-          $releaseJson = gh release view $env:RELEASE_TAG `
-            --repo $env:RELEASE_REPOSITORY `
-            --json tagName,isDraft,isPrerelease,url 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            $annotation = (($releaseJson | Out-String).Trim()).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
-            Write-Output "::error title=release_verification_failed::$annotation"
-            throw 'release_verification_failed'
-          }
-          $release = $releaseJson | ConvertFrom-Json
-          if ($release.tagName -cne $env:RELEASE_TAG -or $release.isDraft -or $release.isPrerelease) {
-            Write-Output "::error title=release_metadata_invalid::tag=$($release.tagName), draft=$($release.isDraft), prerelease=$($release.isPrerelease)"
-            throw 'release_metadata_invalid'
-          }
-          Write-Output "::notice title=Published release::$($release.url)"
+          set -euo pipefail
+          assets=(
+            release-assets/TransDuck-Windows-x64.zip
+            release-assets/TransDuck-macOS-x64.zip
+            release-assets/TransDuck-macOS-arm64.zip
+          )
+          if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" \
+              --repo "$RELEASE_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" \
+              --repo "$RELEASE_REPOSITORY" \
+              --verify-tag \
+              --generate-notes \
+              --title "$RELEASE_TAG"
+          fi
+          gh release edit "$RELEASE_TAG" \
+            --repo "$RELEASE_REPOSITORY" \
+            --draft=false \
+            --prerelease=false \
+            --latest
+          test "$(gh release view "$RELEASE_TAG" \
+            --repo "$RELEASE_REPOSITORY" \
+            --json tagName,isDraft,isPrerelease \
+            --jq '[.tagName, (.isDraft|tostring), (.isPrerelease|tostring)] | join("|")')" \
+            = "$RELEASE_TAG|false|false"

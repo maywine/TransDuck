@@ -43,6 +43,7 @@ $script:BundledManagedEntries = @(
     'TransDuck-Windows-x64/TransDuck.runtimeconfig.json',
     'TransDuck-Windows-x64/TransDuck.dll',
     'TransDuck-Windows-x64/TransDuck.Core.dll',
+    'TransDuck-Windows-x64/TransDuck.Infrastructure.dll',
     'TransDuck-Windows-x64/TransDuck.Platform.Windows.dll',
     'TransDuck-Windows-x64/Tesseract.dll',
     'TransDuck-Windows-x64/System.Private.CoreLib.dll',
