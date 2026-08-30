@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using Avalonia;
+using TransDuck.Core.Lookup;
+using TransDuck.Platform.MacOS.Dictionary;
 
 namespace TransDuck.MacOS.App;
 
@@ -8,23 +10,23 @@ internal static class Program
 {
     internal static bool StartInBackground { get; private set; }
 
-    internal static bool SmokeTestMode { get; private set; }
-
     [STAThread]
     public static int Main(string[] args)
     {
-        SmokeTestMode = args.Contains("--smoke-test", StringComparer.Ordinal);
-        StartInBackground = SmokeTestMode || args.Contains("--background", StringComparer.Ordinal);
+        if (args.Contains("--smoke-test", StringComparer.Ordinal))
+        {
+            return RunSmokeTest();
+        }
+
+        StartInBackground = args.Contains("--background", StringComparer.Ordinal);
         var avaloniaArgs = args.Where(
-            static argument =>
-                !string.Equals(argument, "--background", StringComparison.Ordinal) &&
-                !string.Equals(argument, "--smoke-test", StringComparison.Ordinal)).ToArray();
+            static argument => !string.Equals(argument, "--background", StringComparison.Ordinal)).ToArray();
         var identity = Convert.ToHexString(SHA256.HashData(
             Encoding.UTF8.GetBytes(Environment.UserName)))[..16];
         using var mutex = new Mutex(initiallyOwned: true, "TransDuck.MacOS." + identity, out var createdNew);
         if (!createdNew)
         {
-            return SmokeTestMode ? 2 : 0;
+            return 0;
         }
 
         try
@@ -43,4 +45,27 @@ internal static class Program
         .UseSkia()
         .WithInterFont()
         .LogToTrace();
+
+    private static int RunSmokeTest()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return 1;
+        }
+
+        try
+        {
+            var result = new MacSystemDictionaryProvider().LookupAsync(
+                "dictionary",
+                dataFilePath: null,
+                CancellationToken.None).GetAwaiter().GetResult();
+            return result.Status is DictionaryLookupStatus.Found or DictionaryLookupStatus.NotFound
+                ? 0
+                : 1;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            return 1;
+        }
+    }
 }

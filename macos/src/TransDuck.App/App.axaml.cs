@@ -4,7 +4,6 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
-using TransDuck.Core.Lookup;
 using TransDuck.MacOS.App.Views;
 
 namespace TransDuck.MacOS.App;
@@ -28,12 +27,6 @@ public partial class App : Application
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _runtime = new MacAppRuntime();
             _mainWindow = new MainWindow(_runtime);
-            if (Program.SmokeTestMode)
-            {
-                _settingsWindow = new SettingsWindow(_runtime);
-                _historyWindow = new HistoryWindow(_runtime);
-            }
-
             if (!Program.StartInBackground)
             {
                 desktop.MainWindow = _mainWindow;
@@ -51,37 +44,11 @@ public partial class App : Application
     {
         try
         {
-            var initialization = runtime.InitializeAsync();
-            if (Program.SmokeTestMode)
-            {
-                var completed = await Task.WhenAny(
-                    initialization,
-                    Task.Delay(TimeSpan.FromSeconds(15)));
-                if (!ReferenceEquals(completed, initialization))
-                {
-                    await StopAsync(exitCode: 1);
-                    return;
-                }
-            }
-
-            await initialization;
-            if (Program.SmokeTestMode)
-            {
-                var dictionaryStatus = await runtime.SmokeTestSystemDictionaryAsync(
-                    CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(15));
-                await StopAsync(exitCode: dictionaryStatus is
-                    DictionaryLookupStatus.Found or DictionaryLookupStatus.NotFound
-                    ? 0
-                    : 1);
-            }
+            await runtime.InitializeAsync();
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {
             runtime.ReportStartupFailure();
-            if (Program.SmokeTestMode)
-            {
-                await StopAsync(exitCode: 1);
-            }
         }
     }
 

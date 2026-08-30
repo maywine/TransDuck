@@ -169,7 +169,7 @@ jobs:
       - name: Test
         run: dotnet test macos/TransDuck.MacOS.sln --configuration Release --no-restore --no-build
 
-      - name: Package and audit Apple Silicon ZIP
+      - name: Build, smoke-test, and audit Apple Silicon package
         env:
           TRANSDUCK_DOTNET: dotnet
         run: |
@@ -204,7 +204,7 @@ jobs:
       - name: Test native macOS boundaries
         run: dotnet test macos/TransDuck.MacOS.sln --configuration Release
 
-      - name: Build, launch, and audit Intel package
+      - name: Build, smoke-test, and audit Intel package
         env:
           TRANSDUCK_DOTNET: dotnet
         run: |

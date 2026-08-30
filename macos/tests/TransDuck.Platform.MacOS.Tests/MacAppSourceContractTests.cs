@@ -89,12 +89,11 @@ public sealed class MacAppSourceContractTests
             "macos", "src", "TransDuck.Platform.MacOS", "Startup", "LaunchAgentStartupService.cs"),
             StringComparison.Ordinal);
         Assert.Contains("--smoke-test", package, StringComparison.Ordinal);
-        Assert.Contains("SmokeTestMode", ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Program.cs"), StringComparison.Ordinal);
-        Assert.Contains("return SmokeTestMode ? 2 : 0", ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Program.cs"), StringComparison.Ordinal);
-        Assert.Contains("SmokeTestSystemDictionaryAsync", ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "App.axaml.cs"), StringComparison.Ordinal);
+        var program = ReadRepositoryFile("macos", "src", "TransDuck.App", "Program.cs");
+        Assert.Contains("RunSmokeTest()", program, StringComparison.Ordinal);
+        Assert.Contains("new MacSystemDictionaryProvider()", program, StringComparison.Ordinal);
+        Assert.Contains("DictionaryLookupStatus.Found or DictionaryLookupStatus.NotFound", program,
+            StringComparison.Ordinal);
         Assert.Contains("osx-x64", package + verify, StringComparison.Ordinal);
         Assert.Contains("osx-arm64", package + verify, StringComparison.Ordinal);
         Assert.Contains("libuiohook.dylib", verify, StringComparison.Ordinal);
