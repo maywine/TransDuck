@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using TransDuck.Core.Contracts.V1;
 using TransDuck.Core.Persistence;
+using TransDuck.Infrastructure.Persistence;
 using TransDuck.Platform.Windows.Hotkeys;
 
 namespace TransDuck.Platform.Windows.Persistence;

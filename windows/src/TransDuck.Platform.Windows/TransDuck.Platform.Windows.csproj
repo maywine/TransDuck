@@ -9,7 +9,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TransDuck.Core\TransDuck.Core.csproj" />
+    <ProjectReference Include="..\..\..\shared\src\TransDuck.Core\TransDuck.Core.csproj" />
+    <ProjectReference Include="..\..\..\shared\src\TransDuck.Infrastructure\TransDuck.Infrastructure.csproj" />
     <PackageReference Include="Tesseract" Version="5.2.0" />
   </ItemGroup>
 </Project>

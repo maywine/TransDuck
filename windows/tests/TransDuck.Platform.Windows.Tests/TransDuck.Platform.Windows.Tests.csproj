@@ -18,7 +18,12 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\shared\src\TransDuck.Infrastructure\TransDuck.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\TransDuck.Platform.Windows\TransDuck.Platform.Windows.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\shared\tests\TransDuck.Infrastructure.Tests\Persistence\PersistenceTestDirectory.cs"
+             Link="Persistence\PersistenceTestDirectory.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Fixtures\*.png" CopyToOutputDirectory="PreserveNewest" />

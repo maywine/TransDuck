@@ -1,0 +1,48 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TransDuck.MacOS.App.Views.MainWindow"
+        Width="760" Height="650" MinWidth="560" MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/TransDuck.png"
+        Title="TransDuck">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,*,Auto,*,Auto" RowSpacing="10">
+    <Grid ColumnDefinitions="*,Auto,Auto">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <Image Source="/Assets/TransDuck.png" Width="42" Height="42" />
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="TransDuck" FontSize="22" FontWeight="SemiBold" />
+          <TextBlock Text="Selected text and screenshot translation for macOS"
+                     Opacity="0.7" FontSize="12" />
+        </StackPanel>
+      </StackPanel>
+      <Button Grid.Column="1" Margin="8,0" Content="History" Click="HandleHistoryClick" />
+      <Button Grid.Column="2" Content="Settings" Click="HandleSettingsClick" />
+    </Grid>
+
+    <TextBlock Grid.Row="1" Text="Text to translate" FontWeight="SemiBold" />
+    <TextBox Grid.Row="2" x:Name="InputTextBox" AcceptsReturn="True"
+             TextWrapping="Wrap" PlaceholderText="Type or paste text here" />
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8">
+      <Button x:Name="TranslateButton" Content="Translate" Click="HandleTranslateClick" />
+      <Button x:Name="SelectedTextButton" Content="Selected text" Click="HandleSelectedTextClick" />
+      <ComboBox x:Name="OcrLanguageComboBox" Width="160" SelectedIndex="0">
+        <ComboBoxItem Content="OCR: English" Tag="en-US" />
+        <ComboBoxItem Content="OCR: 简体中文" Tag="zh-Hans" />
+      </ComboBox>
+      <Button x:Name="OcrButton" Content="Capture OCR" Click="HandleOcrClick" />
+      <Button x:Name="CancelButton" Content="Cancel" Click="HandleCancelClick" IsEnabled="False" />
+      <Button x:Name="RetryButton" Content="Retry" Click="HandleRetryClick" IsEnabled="False" />
+    </StackPanel>
+
+    <TextBox Grid.Row="4" x:Name="OutputTextBox" AcceptsReturn="True"
+             IsReadOnly="True" TextWrapping="Wrap" PlaceholderText="Translation result" />
+
+    <Grid Grid.Row="5" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+      <TextBlock x:Name="StatusTextBlock" Text="Starting TransDuck..."
+                 VerticalAlignment="Center" TextWrapping="Wrap" />
+      <Button Grid.Column="1" x:Name="CopyButton" Content="Copy result"
+              Click="HandleCopyClick" />
+    </Grid>
+  </Grid>
+</Window>

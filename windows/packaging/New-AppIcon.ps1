@@ -2,7 +2,8 @@
 param(
     [string]$InputPath,
     [string]$OutputDirectory,
-    [string]$IcoPath
+    [string]$IcoPath,
+    [string]$IcnsPath
 )
 
 Set-StrictMode -Version Latest
@@ -19,10 +20,14 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 if ([string]::IsNullOrWhiteSpace($IcoPath)) {
     $IcoPath = Join-Path $windowsRoot 'src\TransDuck.App\Assets\TransDuck.ico'
 }
+if ([string]::IsNullOrWhiteSpace($IcnsPath)) {
+    $IcnsPath = Join-Path $repositoryRoot 'assets\brand-source-icon\TransDuck.icns'
+}
 
 $sourcePath = [IO.Path]::GetFullPath($InputPath)
 $outputRoot = [IO.Path]::GetFullPath($OutputDirectory)
 $iconPath = [IO.Path]::GetFullPath($IcoPath)
+$macIconPath = [IO.Path]::GetFullPath($IcnsPath)
 if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
     throw 'icon_source_missing'
 }
@@ -30,14 +35,16 @@ if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
 Add-Type -AssemblyName System.Drawing
 [IO.Directory]::CreateDirectory($outputRoot) | Out-Null
 [IO.Directory]::CreateDirectory((Split-Path -Parent $iconPath)) | Out-Null
-$sizes = @(16, 32, 64, 128, 256)
+[IO.Directory]::CreateDirectory((Split-Path -Parent $macIconPath)) | Out-Null
+$pngSizes = @(16, 32, 64, 128, 256, 512, 1024)
+$icoSizes = @(16, 32, 64, 128, 256)
 $source = [Drawing.Image]::FromFile($sourcePath)
 try {
     if ($source.Width -ne $source.Height) {
         throw 'icon_source_not_square'
     }
 
-    foreach ($size in $sizes) {
+    foreach ($size in $pngSizes) {
         $bitmap = New-Object Drawing.Bitmap(
             $size,
             $size,
@@ -69,7 +76,7 @@ finally {
     $source.Dispose()
 }
 
-$frames = @($sizes | ForEach-Object {
+$frames = @($icoSizes | ForEach-Object {
     $path = Join-Path $outputRoot ("icon_{0}x{0}.png" -f $_)
     [pscustomobject]@{ Size = $_; Bytes = [IO.File]::ReadAllBytes($path) }
 })
@@ -101,9 +108,60 @@ finally {
     $stream.Dispose()
 }
 
+function Write-BigEndianUInt32 {
+    param(
+        [Parameter(Mandatory)] [IO.BinaryWriter]$Writer,
+        [Parameter(Mandatory)] [uint32]$Value
+    )
+
+    $Writer.Write([byte](($Value -shr 24) -band 0xff))
+    $Writer.Write([byte](($Value -shr 16) -band 0xff))
+    $Writer.Write([byte](($Value -shr 8) -band 0xff))
+    $Writer.Write([byte]($Value -band 0xff))
+}
+
+$icnsTypes = [ordered]@{
+    '16' = 'icp4'
+    '32' = 'icp5'
+    '64' = 'icp6'
+    '128' = 'ic07'
+    '256' = 'ic08'
+    '512' = 'ic09'
+    '1024' = 'ic10'
+}
+$icnsFrames = @($pngSizes | ForEach-Object {
+    $path = Join-Path $outputRoot ("icon_{0}x{0}.png" -f $_)
+    [pscustomobject]@{
+        Type = $icnsTypes[[string]$_]
+        Bytes = [IO.File]::ReadAllBytes($path)
+    }
+})
+$icnsLength = [uint32](8 + (($icnsFrames | ForEach-Object { 8 + $_.Bytes.Length }) |
+    Measure-Object -Sum).Sum)
+$icnsStream = [IO.File]::Open(
+    $macIconPath,
+    [IO.FileMode]::Create,
+    [IO.FileAccess]::Write,
+    [IO.FileShare]::None)
+$icnsWriter = New-Object IO.BinaryWriter($icnsStream)
+try {
+    $icnsWriter.Write([Text.Encoding]::ASCII.GetBytes('icns'))
+    Write-BigEndianUInt32 -Writer $icnsWriter -Value $icnsLength
+    foreach ($frame in $icnsFrames) {
+        $icnsWriter.Write([Text.Encoding]::ASCII.GetBytes($frame.Type))
+        Write-BigEndianUInt32 -Writer $icnsWriter -Value ([uint32](8 + $frame.Bytes.Length))
+        $icnsWriter.Write([byte[]]$frame.Bytes)
+    }
+}
+finally {
+    $icnsWriter.Dispose()
+    $icnsStream.Dispose()
+}
+
 [pscustomobject]@{
     Source = $sourcePath
     PngDirectory = $outputRoot
     Ico = $iconPath
-    Sizes = $sizes
+    Icns = $macIconPath
+    Sizes = $pngSizes
 }

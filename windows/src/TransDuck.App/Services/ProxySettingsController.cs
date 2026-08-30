@@ -2,7 +2,7 @@
 
 using TransDuck.Core.Contracts.V1;
 using TransDuck.Core.Persistence;
-using TransDuck.Platform.Windows.Proxy;
+using TransDuck.Infrastructure.Proxy;
 
 namespace TransDuck.App.Services;
 
@@ -11,11 +11,11 @@ namespace TransDuck.App.Services;
 /// </summary>
 internal sealed class ProxySettingsController : IDisposable
 {
-    private readonly JsonWindowsProxySettingsStore _settingsStore;
+    private readonly JsonProxySettingsStore _settingsStore;
     private readonly ProxyHttpClientPool _clientPool;
     private readonly IDiagnosticSink _diagnosticSink;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private WindowsProxySettings _currentSettings;
+    private ProxySettings _currentSettings;
     private ProxySettingsInitializationResult _initializationResult =
         ProxySettingsInitializationResult.Loading();
     private string _statusMessage = AppStrings.Get("proxy.status.loading");
@@ -23,7 +23,7 @@ internal sealed class ProxySettingsController : IDisposable
     private bool _disposed;
 
     public ProxySettingsController(
-        JsonWindowsProxySettingsStore settingsStore,
+        JsonProxySettingsStore settingsStore,
         ProxyHttpClientPool clientPool,
         IDiagnosticSink diagnosticSink)
     {
@@ -35,7 +35,7 @@ internal sealed class ProxySettingsController : IDisposable
 
     public event EventHandler? StateChanged;
 
-    public WindowsProxySettings CurrentSettings => _currentSettings;
+    public ProxySettings CurrentSettings => _currentSettings;
 
     public bool IsInitialized => _isInitialized;
 
@@ -74,7 +74,7 @@ internal sealed class ProxySettingsController : IDisposable
             }
             else if (readStatus.Status == PersistenceStatus.NotFound)
             {
-                var defaultResult = TryApplyReadSettings(WindowsProxySettings.Default);
+                var defaultResult = TryApplyReadSettings(ProxySettings.Default);
                 result = defaultResult.Stage == ProxySettingsInitializationStage.ApplyFailed
                     ? defaultResult
                     : ProxySettingsInitializationResult.NotFound(_currentSettings);
@@ -97,7 +97,7 @@ internal sealed class ProxySettingsController : IDisposable
     }
 
     public async Task<ProxySettingsSaveResult> SaveAsync(
-        WindowsProxySettings settings,
+        ProxySettings settings,
         CancellationToken cancellationToken)
     {
         if (!TryValidate(settings))
@@ -177,7 +177,7 @@ internal sealed class ProxySettingsController : IDisposable
         _disposed = true;
     }
 
-    private ProxySettingsInitializationResult TryApplyReadSettings(WindowsProxySettings settings)
+    private ProxySettingsInitializationResult TryApplyReadSettings(ProxySettings settings)
     {
         if (_disposed)
         {
@@ -196,7 +196,7 @@ internal sealed class ProxySettingsController : IDisposable
         }
     }
 
-    private async Task<(PersistenceStatus Status, WindowsProxySettings? Settings)> ReadSettingsAsync(
+    private async Task<(PersistenceStatus Status, ProxySettings? Settings)> ReadSettingsAsync(
         CancellationToken cancellationToken)
     {
         try
@@ -215,7 +215,7 @@ internal sealed class ProxySettingsController : IDisposable
     }
 
     private async Task<PersistenceStatus> WriteSettingsAsync(
-        WindowsProxySettings settings,
+        ProxySettings settings,
         CancellationToken cancellationToken)
     {
         try
@@ -268,7 +268,7 @@ internal sealed class ProxySettingsController : IDisposable
         }
     }
 
-    private static bool TryValidate(WindowsProxySettings? settings)
+    private static bool TryValidate(ProxySettings? settings)
     {
         if (settings is null)
         {
@@ -325,7 +325,7 @@ internal sealed class ProxySettingsController : IDisposable
 internal sealed record ProxySettingsInitializationResult(
     ProxySettingsInitializationStage Stage,
     PersistenceStatus ReadStatus,
-    WindowsProxySettings Settings)
+    ProxySettings Settings)
 {
     public PersistenceStatus DiagnosticStatus => Stage == ProxySettingsInitializationStage.ApplyFailed
         ? PersistenceStatus.IoFailure
@@ -335,9 +335,9 @@ internal sealed record ProxySettingsInitializationResult(
     {
         ProxySettingsInitializationStage.Loaded => Settings.Mode switch
         {
-            WindowsProxyMode.SystemDefault => AppStrings.Get("proxy.status.loaded.system_default"),
-            WindowsProxyMode.CustomHttp => AppStrings.Get("proxy.status.loaded.custom_http"),
-            WindowsProxyMode.Disabled => AppStrings.Get("proxy.status.loaded.disabled"),
+            ProxyMode.SystemDefault => AppStrings.Get("proxy.status.loaded.system_default"),
+            ProxyMode.CustomHttp => AppStrings.Get("proxy.status.loaded.custom_http"),
+            ProxyMode.Disabled => AppStrings.Get("proxy.status.loaded.disabled"),
             _ => AppStrings.Get("proxy.status.failed"),
         },
         ProxySettingsInitializationStage.NotFound => AppStrings.Get("proxy.status.not_found"),
@@ -354,28 +354,28 @@ internal sealed record ProxySettingsInitializationResult(
     public static ProxySettingsInitializationResult Loading() => new(
         ProxySettingsInitializationStage.Loading,
         PersistenceStatus.NotFound,
-        WindowsProxySettings.Default);
+        ProxySettings.Default);
 
-    public static ProxySettingsInitializationResult Loaded(WindowsProxySettings settings) => new(
+    public static ProxySettingsInitializationResult Loaded(ProxySettings settings) => new(
         ProxySettingsInitializationStage.Loaded,
         PersistenceStatus.Succeeded,
         settings);
 
-    public static ProxySettingsInitializationResult NotFound(WindowsProxySettings settings) => new(
+    public static ProxySettingsInitializationResult NotFound(ProxySettings settings) => new(
         ProxySettingsInitializationStage.NotFound,
         PersistenceStatus.NotFound,
         settings);
 
     public static ProxySettingsInitializationResult ReadFailure(
         PersistenceStatus status,
-        WindowsProxySettings settings) => new(
+        ProxySettings settings) => new(
         status == PersistenceStatus.Cancelled
             ? ProxySettingsInitializationStage.Cancelled
             : ProxySettingsInitializationStage.ReadFailed,
         status,
         settings);
 
-    public static ProxySettingsInitializationResult ApplyFailure(WindowsProxySettings settings) => new(
+    public static ProxySettingsInitializationResult ApplyFailure(ProxySettings settings) => new(
         ProxySettingsInitializationStage.ApplyFailed,
         PersistenceStatus.Succeeded,
         settings);
@@ -398,11 +398,11 @@ internal enum ProxySettingsInitializationStage
 internal sealed record ProxySettingsSaveResult(
     ProxySettingsSaveStage Stage,
     PersistenceStatus? PersistenceStatus = null,
-    WindowsProxyMode? Mode = null)
+    ProxyMode? Mode = null)
 {
     public string StatusMessage => Stage switch
     {
-        ProxySettingsSaveStage.Completed => DescribeMode(Mode ?? WindowsProxyMode.SystemDefault),
+        ProxySettingsSaveStage.Completed => DescribeMode(Mode ?? ProxyMode.SystemDefault),
         ProxySettingsSaveStage.Invalid => AppStrings.Get("proxy.save.invalid"),
         ProxySettingsSaveStage.WriteFailed when PersistenceStatus == global::TransDuck.Core.Persistence.PersistenceStatus.Cancelled =>
             AppStrings.Get("proxy.save.cancelled"),
@@ -411,7 +411,7 @@ internal sealed record ProxySettingsSaveResult(
         _ => AppStrings.Get("proxy.save.failed"),
     };
 
-    public static ProxySettingsSaveResult Completed(WindowsProxyMode mode) => new(
+    public static ProxySettingsSaveResult Completed(ProxyMode mode) => new(
         ProxySettingsSaveStage.Completed,
         global::TransDuck.Core.Persistence.PersistenceStatus.Succeeded,
         mode);
@@ -424,11 +424,11 @@ internal sealed record ProxySettingsSaveResult(
 
     public static ProxySettingsSaveResult ApplyFailed() => new(ProxySettingsSaveStage.ApplyFailed);
 
-    private static string DescribeMode(WindowsProxyMode mode) => mode switch
+    private static string DescribeMode(ProxyMode mode) => mode switch
     {
-        WindowsProxyMode.SystemDefault => AppStrings.Get("proxy.save.completed.system_default"),
-        WindowsProxyMode.CustomHttp => AppStrings.Get("proxy.save.completed.custom_http"),
-        WindowsProxyMode.Disabled => AppStrings.Get("proxy.save.completed.disabled"),
+        ProxyMode.SystemDefault => AppStrings.Get("proxy.save.completed.system_default"),
+        ProxyMode.CustomHttp => AppStrings.Get("proxy.save.completed.custom_http"),
+        ProxyMode.Disabled => AppStrings.Get("proxy.save.completed.disabled"),
         _ => AppStrings.Get("proxy.save.failed"),
     };
 }

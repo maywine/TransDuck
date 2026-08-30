@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using TransDuck.Core.Contracts.V1;
 using TransDuck.Core.Persistence;
+using TransDuck.Infrastructure.Persistence;
 
 namespace TransDuck.Platform.Windows.Persistence;
 

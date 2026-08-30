@@ -12,7 +12,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TransDuck.Core\TransDuck.Core.csproj" />
+    <ProjectReference Include="..\..\..\shared\src\TransDuck.Core\TransDuck.Core.csproj" />
+    <ProjectReference Include="..\..\..\shared\src\TransDuck.Infrastructure\TransDuck.Infrastructure.csproj" />
     <ProjectReference Include="..\TransDuck.Platform.Windows\TransDuck.Platform.Windows.csproj" />
     <!-- The final WinExe directly references Tesseract so publish retains its managed and native closure. -->
     <PackageReference Include="Tesseract" Version="5.2.0" />

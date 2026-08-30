@@ -15,11 +15,12 @@ using TransDuck.Platform.Windows.Clipboard;
 using TransDuck.Platform.Windows.Hotkeys;
 using TransDuck.Platform.Windows.Interop;
 using TransDuck.Platform.Windows.Ocr;
+using TransDuck.Infrastructure.Persistence;
 using TransDuck.Platform.Windows.Persistence;
-using TransDuck.Platform.Windows.Proxy;
+using TransDuck.Infrastructure.Proxy;
 using TransDuck.Platform.Windows.Selection;
 using TransDuck.Platform.Windows.Startup;
-using TransDuck.Platform.Windows.Translation;
+using TransDuck.Infrastructure.Translation;
 using TransDuck.Platform.Windows.Tray;
 
 namespace TransDuck.App;
@@ -42,7 +43,7 @@ internal sealed class AppRuntime : IDisposable
     private readonly JsonConfigurationStore _configurationStore;
     private readonly JsonProviderSettingsStore _providerSettingsStore;
     private readonly JsonHotkeySettingsStore _hotkeySettingsStore;
-    private readonly JsonWindowsProxySettingsStore _proxySettingsStore;
+    private readonly JsonProxySettingsStore _proxySettingsStore;
     private readonly DpapiCredentialStore _credentialStore;
     private readonly JsonLinesHistoryStore _historyStore;
     private readonly JsonLinesDiagnosticSink _diagnosticSink;
@@ -79,11 +80,11 @@ internal sealed class AppRuntime : IDisposable
         _configurationStore = new JsonConfigurationStore(dataPaths);
         _providerSettingsStore = new JsonProviderSettingsStore(dataPaths);
         _hotkeySettingsStore = new JsonHotkeySettingsStore(dataPaths);
-        _proxySettingsStore = new JsonWindowsProxySettingsStore(dataPaths);
+        _proxySettingsStore = new JsonProxySettingsStore(dataPaths);
         _credentialStore = new DpapiCredentialStore(dataPaths);
         _historyStore = new JsonLinesHistoryStore(dataPaths);
         _diagnosticSink = new JsonLinesDiagnosticSink(dataPaths);
-        _proxyHttpClientPool = new ProxyHttpClientPool(WindowsProxySettings.Default);
+        _proxyHttpClientPool = new ProxyHttpClientPool(ProxySettings.Default);
         _translationClientLeaseSource = new ProxyTranslationHttpClientLeaseSource(_proxyHttpClientPool);
         _translationController = new TranslationSessionController(
             new OpenAiCompatibleSseClient(_translationClientLeaseSource));

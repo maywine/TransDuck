@@ -1,5 +1,7 @@
 // Copyright (c) 2026 maywine. All rights reserved.
 
+using TransDuck.Infrastructure.Persistence;
+using TransDuck.Infrastructure.Tests.Persistence;
 using TransDuck.Platform.Windows.Persistence;
 
 namespace TransDuck.Platform.Windows.Tests.Persistence;
