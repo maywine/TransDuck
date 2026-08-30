@@ -143,16 +143,6 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         status: "TransDuck could not finish startup initialization.",
         isBusy: false);
 
-    internal async Task<DictionaryLookupStatus> SmokeTestSystemDictionaryAsync(
-        CancellationToken cancellationToken)
-    {
-        var result = await _systemDictionaryProvider.LookupAsync(
-            "dictionary",
-            dataFilePath: null,
-            cancellationToken);
-        return result.Status;
-    }
-
     public Task InitializeAsync() => TrackOperation(InitializeCoreAsync);
 
     private async Task InitializeCoreAsync()
