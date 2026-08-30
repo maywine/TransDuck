@@ -50,17 +50,17 @@ public sealed class ProductIdentitySourceTests
     }
 
     [Fact]
-    public void ProductVersion_StartsAtZeroZeroOneAcrossAssemblyAndFileMetadata()
+    public void ProductVersion_MatchesTheNextReleaseAcrossAssemblyAndFileMetadata()
     {
         var document = XDocument.Load(Path.Combine(FindRepositoryRoot(), "Directory.Build.props"));
         var properties = document.Root!.Elements("PropertyGroup")
             .SelectMany(group => group.Elements())
             .ToDictionary(element => element.Name.LocalName, element => element.Value, StringComparer.Ordinal);
 
-        Assert.Equal("0.0.1", properties["VersionPrefix"]);
+        Assert.Equal("0.0.2", properties["VersionPrefix"]);
         Assert.Equal("$(VersionPrefix)", properties["Version"]);
-        Assert.Equal("0.0.1.0", properties["AssemblyVersion"]);
-        Assert.Equal("0.0.1.0", properties["FileVersion"]);
+        Assert.Equal("0.0.2.0", properties["AssemblyVersion"]);
+        Assert.Equal("0.0.2.0", properties["FileVersion"]);
         Assert.Equal("$(VersionPrefix)", properties["InformationalVersion"]);
         Assert.Equal("false", properties["IncludeSourceRevisionInInformationalVersion"]);
     }
