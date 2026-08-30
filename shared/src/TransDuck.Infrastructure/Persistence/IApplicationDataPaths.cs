@@ -11,6 +11,8 @@ public interface IApplicationDataPaths
 
     string ProviderSettingsFilePath { get; }
 
+    string QuerySourceSettingsFilePath { get; }
+
     string ProxySettingsFilePath { get; }
 
     string HistoryFilePath { get; }

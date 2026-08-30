@@ -37,6 +37,9 @@ public sealed class WindowsDataPaths : IApplicationDataPaths
     /// <summary>Gets the non-secret provider profile settings file path.</summary>
     public string ProviderSettingsFilePath => Path.Combine(RootDirectory, "provider-settings.v1.json");
 
+    /// <summary>Gets the selected translation and dictionary source settings file path.</summary>
+    public string QuerySourceSettingsFilePath => Path.Combine(RootDirectory, "query-sources.v1.json");
+
     /// <summary>Gets the non-secret global hotkey settings file path.</summary>
     public string HotkeySettingsFilePath => Path.Combine(RootDirectory, "hotkey-settings.v1.json");
 

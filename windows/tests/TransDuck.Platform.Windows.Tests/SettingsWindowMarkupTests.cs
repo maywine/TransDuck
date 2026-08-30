@@ -23,6 +23,16 @@ public sealed class SettingsWindowMarkupTests
         var required = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["ProviderComboBox"] = "ComboBox",
+            ["OpenAiSourceCheckBox"] = "CheckBox",
+            ["DeepLSourceCheckBox"] = "CheckBox",
+            ["OllamaSourceCheckBox"] = "CheckBox",
+            ["BingSourceCheckBox"] = "CheckBox",
+            ["GoogleSourceCheckBox"] = "CheckBox",
+            ["VolcengineSourceCheckBox"] = "CheckBox",
+            ["EcdictEnabledCheckBox"] = "CheckBox",
+            ["EcdictPathTextBox"] = "TextBox",
+            ["BrowseEcdictButton"] = "Button",
+            ["SaveQuerySourcesButton"] = "Button",
             ["InstanceIdTextBox"] = "TextBox",
             ["EndpointTextBox"] = "TextBox",
             ["ModelTextBox"] = "TextBox",
@@ -103,6 +113,9 @@ public sealed class SettingsWindowMarkupTests
         var saveStartupButton = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "SaveStartupButton", StringComparison.Ordinal)).Element;
         Assert.Equal("SaveStartupButtonClick", saveStartupButton.Attribute("Click")?.Value);
+        var saveSourcesButton = Assert.Single(controls, control =>
+            string.Equals(control.AutomationId, "SaveQuerySourcesButton", StringComparison.Ordinal)).Element;
+        Assert.Equal("SaveQuerySourcesButtonClick", saveSourcesButton.Attribute("Click")?.Value);
         var providerComboBox = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "ProviderComboBox", StringComparison.Ordinal)).Element;
         Assert.Equal(
@@ -119,6 +132,16 @@ public sealed class SettingsWindowMarkupTests
         Assert.Equal("{DynamicResource provider.name.bing}", bingProvider.Attribute("Content")?.Value);
         Assert.Equal("{DynamicResource provider.name.google}", googleProvider.Attribute("Content")?.Value);
         Assert.Equal("{DynamicResource provider.name.volcengine}", volcengineProvider.Attribute("Content")?.Value);
+        var sourceIds = new[]
+        {
+            "openai-compatible", "deepl", "ollama", "bing", "google", "volcengine",
+        };
+        Assert.Equal(sourceIds, new[]
+        {
+            "OpenAiSourceCheckBox", "DeepLSourceCheckBox", "OllamaSourceCheckBox",
+            "BingSourceCheckBox", "GoogleSourceCheckBox", "VolcengineSourceCheckBox",
+        }.Select(id => Assert.Single(controls, control =>
+            string.Equals(control.AutomationId, id, StringComparison.Ordinal)).Element.Attribute("Tag")?.Value));
     }
 
     private static string FindSettingsWindowPath()

@@ -23,15 +23,16 @@ ZIP 未签名。Windows 可能显示发布者、SmartScreen 或其他安全提�
 
 1. 在其他应用中选中单词、句子或段落。
 2. 按翻译快捷键，默认是 `Ctrl+Alt+D`。
-3. TransDuck 读取选区后，用当前默认服务自动翻译，并在悬浮结果窗口显示结果。
+3. TransDuck 读取选区后，并发查询所有已启用的结果来源，并在悬浮窗口中分别显示结果。
 
-可在设置中修改快捷键和默认翻译服务。一些应用不会通过 Windows 辅助功能 API 提供
+可在设置中修改快捷键和启用的结果来源。一些应用不会通过 Windows 辅助功能 API 提供
 选区；此时 TransDuck 会提示无法取得选区，可打开输入窗口手动输入文本。
 
 ## 截图 OCR 翻译
 
 在 TransDuck 中打开截图 OCR 功能，拖拽框选文字区域，并在需要时选择 OCR 语言。
-TransDuck 会先在本机识别简体中文或英文，再用选定的翻译服务翻译识别结果。
+TransDuck 会在本机识别简体中文或英文，并将识别结果填入输入窗口；点击“翻译”后查询
+所有已启用的结果来源。
 
 OCR 效果取决于原图、文字大小、对比度和语言。尽量紧贴清晰文字框选，可获得更好的
 识别结果。
@@ -45,8 +46,11 @@ OCR 效果取决于原图、文字大小、对比度和语言。尽量紧贴清�
 - **Google** 网页翻译无需凭据；**Bing** Cookie 为可选项。
 - OpenAI-compatible、DeepL、Ollama 和火山翻译按各自要求配置 endpoint、model 或凭据。
 
-每次翻译会将选定文本发送给当前选择的服务商。API Key、火山引擎 AK/SK 与可选的
+每次翻译会将选定文本分别发送给所有已启用的在线服务商。API Key、火山引擎 AK/SK 与可选的
 Bing Cookie 由 Windows DPAPI 按当前用户加密，不会写入普通配置文件或便携应用目录。
+
+Windows 也支持用户提供的 ECDICT CSV 或 SQLite 本地词典，详见
+[本地词典与多翻译结果](dictionaries-and-multiple-results.md)。
 
 ## 配置代理
 

@@ -69,6 +69,54 @@ internal sealed class ProviderSettingsController
     public async Task<ProviderTranslationSettingsResult> LoadForTranslationAsync(
         CancellationToken cancellationToken)
     {
+        var configurationRead = await _configurationStore.ReadAsync(cancellationToken).ConfigureAwait(false);
+        var configurationReadStatus = GetReadStatus(configurationRead);
+        if (configurationReadStatus != PersistenceStatus.Succeeded)
+        {
+            await WritePersistenceDiagnosticAsync(
+                DiagnosticEventId.ConfigurationRead,
+                configurationReadStatus,
+                null).ConfigureAwait(false);
+            return ProviderTranslationSettingsResult.Failed(
+                TranslateConfigurationStatus(configurationReadStatus),
+                configurationReadStatus);
+        }
+
+        return await LoadForTranslationAsync(
+            configurationRead.Value!.DefaultProvider,
+            configurationRead.Value,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<ProviderTranslationSettingsResult> LoadForTranslationAsync(
+        ProviderDescriptor selectedProvider,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(selectedProvider);
+        var configurationRead = await _configurationStore.ReadAsync(cancellationToken).ConfigureAwait(false);
+        var configurationReadStatus = GetReadStatus(configurationRead);
+        await WritePersistenceDiagnosticAsync(
+            DiagnosticEventId.ConfigurationRead,
+            configurationReadStatus,
+            selectedProvider.ProviderId).ConfigureAwait(false);
+        if (configurationReadStatus != PersistenceStatus.Succeeded)
+        {
+            return ProviderTranslationSettingsResult.Failed(
+                TranslateConfigurationStatus(configurationReadStatus),
+                configurationReadStatus);
+        }
+
+        return await LoadForTranslationAsync(
+            selectedProvider,
+            configurationRead.Value!,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ProviderTranslationSettingsResult> LoadForTranslationAsync(
+        ProviderDescriptor selectedProvider,
+        Configuration configuration,
+        CancellationToken cancellationToken)
+    {
         var providerRead = await _providerSettingsStore.ReadAsync(cancellationToken).ConfigureAwait(false);
         var providerReadStatus = GetReadStatus(providerRead);
         await WritePersistenceDiagnosticAsync(
@@ -82,22 +130,8 @@ internal sealed class ProviderSettingsController
                 providerReadStatus);
         }
 
-        var configurationRead = await _configurationStore.ReadAsync(cancellationToken).ConfigureAwait(false);
-        var configurationReadStatus = GetReadStatus(configurationRead);
-        await WritePersistenceDiagnosticAsync(
-            DiagnosticEventId.ConfigurationRead,
-            configurationReadStatus,
-            configurationRead.Value?.DefaultProvider.ProviderId).ConfigureAwait(false);
-        if (configurationReadStatus != PersistenceStatus.Succeeded)
-        {
-            return ProviderTranslationSettingsResult.Failed(
-                TranslateConfigurationStatus(configurationReadStatus),
-                configurationReadStatus);
-        }
-
-        var configuration = configurationRead.Value!;
         var profile = providerRead.Value!.Profiles.FirstOrDefault(candidate =>
-            string.Equals(candidate.CanonicalProviderKey, CanonicalKey(configuration.DefaultProvider), StringComparison.Ordinal));
+            string.Equals(candidate.CanonicalProviderKey, CanonicalKey(selectedProvider), StringComparison.Ordinal));
         if (profile is null)
         {
             return ProviderTranslationSettingsResult.Failed(

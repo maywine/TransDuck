@@ -26,10 +26,10 @@ warning.
 
 1. In another application, select a word, sentence, or paragraph.
 2. Press the translation hotkey. The default is `Ctrl+Alt+D`.
-3. TransDuck reads the selection and translates it with the selected default
-   provider. The result appears in the floating result window.
+3. TransDuck reads the selection, queries every enabled result source, and shows
+   a separate result card for each source in the floating window.
 
-Change the hotkey and the default provider in Settings. Some applications do
+Change the hotkey and enabled result sources in Settings. Some applications do
 not expose their selection to Windows accessibility APIs. In that case,
 TransDuck can report that it cannot obtain the selection; use the input window
 to enter text manually.
@@ -38,7 +38,8 @@ to enter text manually.
 
 Open the screenshot OCR action in TransDuck, drag over the text region, and
 choose the OCR language if needed. TransDuck recognizes Simplified Chinese or
-English locally, then translates the recognized text with the selected provider.
+English locally and places the recognized text in the input window. Choose
+**Translate** to query the enabled result sources.
 
 OCR quality depends on the source image, text size, contrast, and language.
 Use a tight selection around clear text for better results.
@@ -54,10 +55,13 @@ Select and configure a provider in Settings.
 - OpenAI-compatible, DeepL, Ollama, and Volcengine Translate use their respective
   endpoint, model, or credential settings.
 
-A translation request sends selected text to the provider currently chosen in
+A translation request sends selected text to every online provider enabled in
 Settings. API keys, Volcengine AK/SK, and an optional Bing Cookie are encrypted
 for the current user with Windows DPAPI; they are not written to ordinary
 configuration files or the portable application directory.
+
+Windows also supports a user-supplied ECDICT CSV or SQLite dictionary. See
+[Local dictionaries and multiple translation results](dictionaries-and-multiple-results.md).
 
 ## Configure a proxy
 

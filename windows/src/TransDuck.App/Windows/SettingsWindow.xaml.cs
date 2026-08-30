@@ -1,9 +1,13 @@
 // Copyright (c) 2026 maywine. All rights reserved.
 
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Win32;
 using TransDuck.App.Services;
 using TransDuck.Core.Contracts.V1;
+using TransDuck.Core.Lookup;
+using TransDuck.Core.Persistence;
 using TransDuck.Core.Translation;
 using TransDuck.Platform.Windows.Hotkeys;
 using TransDuck.Infrastructure.Proxy;
@@ -18,12 +22,14 @@ namespace TransDuck.App.Windows;
 public partial class SettingsWindow : Window
 {
     private readonly ProviderSettingsController _controller;
+    private readonly QuerySourceSettingsController _querySourceController;
     private readonly ProxySettingsController _proxyController;
     private readonly HotkeySettingsController _hotkeyController;
     private readonly StartupSettingsController _startupController;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private IReadOnlyList<ProviderProfileSettings> _profiles = [];
     private Configuration? _configuration;
+    private QuerySourceSettings? _querySources;
     private int _credentialStatusGeneration;
     private int _hotkeyStateGeneration;
     private int _proxyStateGeneration;
@@ -38,11 +44,13 @@ public partial class SettingsWindow : Window
 
     internal SettingsWindow(
         ProviderSettingsController controller,
+        QuerySourceSettingsController querySourceController,
         ProxySettingsController proxyController,
         HotkeySettingsController hotkeyController,
         StartupSettingsController startupController)
     {
         _controller = controller;
+        _querySourceController = querySourceController;
         _proxyController = proxyController;
         _hotkeyController = hotkeyController;
         _startupController = startupController;
@@ -83,7 +91,8 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        if (!TryCreateSettings(out var profile, out var retention))
+        if (!TryCreateSettings(out var profile, out var retention) ||
+            !TryCreateQuerySourceSettings(profile, out var querySources))
         {
             SettingsStatusTextBlock.Text = AppStrings.Get("settings.status.invalid_input");
             return;
@@ -100,15 +109,24 @@ public partial class SettingsWindow : Window
         try
         {
             var result = await _controller.SaveAsync(profile, retention, password, _lifetimeCancellation.Token);
+            PersistenceResult? querySourceSave = null;
+            if (result.Succeeded)
+            {
+                querySourceSave = await _querySourceController.SaveAsync(
+                    querySources,
+                    _lifetimeCancellation.Token);
+            }
             if (!CanUpdateUi())
             {
                 return;
             }
 
-            SettingsStatusTextBlock.Text = result.StatusMessage;
+            SettingsStatusTextBlock.Text = querySourceSave is { Succeeded: false }
+                ? AppStrings.Get("settings.status.sources_save_failed")
+                : result.StatusMessage;
             if (result.RequiresSettingsReload)
             {
-                var statusMessage = result.StatusMessage;
+                var statusMessage = SettingsStatusTextBlock.Text;
                 await LoadAsync(profile.Provider);
                 if (CanUpdateUi())
                 {
@@ -135,6 +153,70 @@ public partial class SettingsWindow : Window
             {
                 SetPersistenceControlsEnabled(true);
                 ApplyHotkeyControllerState();
+            }
+        }
+    }
+
+    private void BrowseEcdictButtonClick(object sender, RoutedEventArgs eventArgs)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = AppStrings.Get("settings.label.ecdict_file"),
+            CheckFileExists = true,
+            Multiselect = false,
+            Filter = "ECDICT data (*.csv;*.db;*.sqlite;*.sqlite3)|*.csv;*.db;*.sqlite;*.sqlite3|All files (*.*)|*.*",
+        };
+        if (dialog.ShowDialog(this) == true)
+        {
+            EcdictPathTextBox.Text = dialog.FileName;
+            EcdictEnabledCheckBox.IsChecked = true;
+        }
+    }
+
+    private async void SaveQuerySourcesButtonClick(object sender, RoutedEventArgs eventArgs)
+    {
+        if (_isLoading || _isBusy || _isClosed ||
+            !TryCreateQuerySourceSettings(currentProfile: null, out var querySources))
+        {
+            SettingsStatusTextBlock.Text = AppStrings.Get("settings.status.invalid_input");
+            return;
+        }
+
+        _isBusy = true;
+        SetPersistenceControlsEnabled(false);
+        try
+        {
+            var result = await _querySourceController.SaveAsync(
+                querySources,
+                _lifetimeCancellation.Token);
+            if (CanUpdateUi())
+            {
+                if (result.Succeeded)
+                {
+                    _querySources = querySources;
+                }
+
+                SettingsStatusTextBlock.Text = result.Succeeded
+                    ? AppStrings.Get("settings.status.sources_saved")
+                    : AppStrings.Get("settings.status.sources_save_failed");
+            }
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            if (CanUpdateUi())
+            {
+                SettingsStatusTextBlock.Text = AppStrings.Get("settings.status.sources_save_failed");
+            }
+        }
+        finally
+        {
+            _isBusy = false;
+            if (CanUpdateUi())
+            {
+                SetPersistenceControlsEnabled(true);
             }
         }
     }
@@ -345,6 +427,27 @@ public partial class SettingsWindow : Window
 
             _profiles = loaded.ProviderSettings.Profiles;
             _configuration = loaded.Configuration;
+            var querySources = await _querySourceController.LoadAsync(
+                loaded.Configuration.DefaultProvider,
+                _lifetimeCancellation.Token);
+            if (!IsCurrentLoad(generation))
+            {
+                return;
+            }
+
+            _querySources = querySources.Settings;
+            ApplyQuerySourceSettings(querySources.Settings);
+            if (querySources.UsesMigrationDefault &&
+                !_profiles.Any(profile => string.Equals(
+                    profile.CanonicalProviderKey,
+                    CanonicalKey(loaded.Configuration.DefaultProvider),
+                    StringComparison.Ordinal)))
+            {
+                foreach (var checkBox in SourceCheckBoxes())
+                {
+                    checkBox.IsChecked = false;
+                }
+            }
             var preferredProviderKey = preferredProvider is null
                 ? null
                 : CanonicalKey(preferredProvider);
@@ -519,6 +622,80 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private bool TryCreateQuerySourceSettings(
+        ProviderProfileSettings? currentProfile,
+        out QuerySourceSettings settings)
+    {
+        settings = default!;
+        var providers = new List<ProviderDescriptor>();
+        foreach (var checkBox in SourceCheckBoxes())
+        {
+            if (checkBox.IsChecked != true || checkBox.Tag is not string providerId)
+            {
+                continue;
+            }
+
+            var profile = currentProfile is not null && string.Equals(
+                currentProfile.Provider.ProviderId,
+                providerId,
+                StringComparison.Ordinal)
+                ? currentProfile
+                : ResolveSelectedProfile(providerId);
+            if (profile is null)
+            {
+                return false;
+            }
+
+            providers.Add(profile.Provider);
+        }
+
+        var ecdictEnabled = EcdictEnabledCheckBox.IsChecked == true;
+        var ecdictPath = NullIfWhiteSpace(EcdictPathTextBox.Text);
+        if (ecdictEnabled && (ecdictPath is null || !Path.IsPathFullyQualified(ecdictPath) || !File.Exists(ecdictPath)))
+        {
+            return false;
+        }
+
+        var candidate = new QuerySourceSettings(
+            QuerySourceSettingsMigration.CurrentVersion,
+            providers,
+            new EcdictDictionarySettings(ecdictEnabled, ecdictPath),
+            MacSystemDictionaryEnabled: false);
+        try
+        {
+            candidate.Validate();
+            settings = candidate;
+            return true;
+        }
+        catch (ContractValidationException)
+        {
+            return false;
+        }
+    }
+
+    private ProviderProfileSettings? ResolveSelectedProfile(string providerId)
+    {
+        var selected = _querySources?.EnabledTranslationProviders.FirstOrDefault(provider =>
+            string.Equals(provider.ProviderId, providerId, StringComparison.Ordinal));
+        if (selected is not null)
+        {
+            var canonicalKey = CanonicalKey(selected);
+            var selectedProfile = _profiles.FirstOrDefault(profile => string.Equals(
+                profile.CanonicalProviderKey,
+                canonicalKey,
+                StringComparison.Ordinal));
+            if (selectedProfile is not null)
+            {
+                return selectedProfile;
+            }
+        }
+
+        return _profiles.FirstOrDefault(profile => string.Equals(
+            profile.Provider.ProviderId,
+            providerId,
+            StringComparison.Ordinal));
+    }
+
     private bool TryCreateHotkeySettings(out HotkeySettings settings) =>
         HotkeySettingsController.TryCreateSettings(
             ControlHotkeyModifierCheckBox.IsChecked == true,
@@ -592,6 +769,20 @@ public partial class SettingsWindow : Window
         var profile = _profiles.FirstOrDefault(profile =>
             string.Equals(profile.Provider.ProviderId, providerId, StringComparison.Ordinal));
         ApplyProfile(profile ?? CreateDefaultProfile(providerId), _configuration);
+    }
+
+    private void ApplyQuerySourceSettings(QuerySourceSettings settings)
+    {
+        var enabledProviderIds = settings.EnabledTranslationProviders
+            .Select(static provider => provider.ProviderId)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var checkBox in SourceCheckBoxes())
+        {
+            checkBox.IsChecked = checkBox.Tag is string providerId && enabledProviderIds.Contains(providerId);
+        }
+
+        EcdictEnabledCheckBox.IsChecked = settings.Ecdict.Enabled;
+        EcdictPathTextBox.Text = settings.Ecdict.DataFilePath ?? string.Empty;
     }
 
     private void ApplyProfile(ProviderProfileSettings? profile, Configuration? configuration)
@@ -675,6 +866,15 @@ public partial class SettingsWindow : Window
     private void SetPersistenceControlsEnabled(bool isEnabled)
     {
         ProviderComboBox.IsEnabled = isEnabled;
+        foreach (var checkBox in SourceCheckBoxes())
+        {
+            checkBox.IsEnabled = isEnabled;
+        }
+
+        EcdictEnabledCheckBox.IsEnabled = isEnabled;
+        EcdictPathTextBox.IsEnabled = isEnabled;
+        BrowseEcdictButton.IsEnabled = isEnabled;
+        SaveQuerySourcesButton.IsEnabled = isEnabled;
         SaveProviderSettingsButton.IsEnabled = isEnabled;
         SetCredentialControlsEnabled(isEnabled && SelectedProviderUsesCredential());
         SetProxyControlsEnabled(
@@ -948,4 +1148,14 @@ public partial class SettingsWindow : Window
 
     private static string? NullIfWhiteSpace(string value) =>
         string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private IReadOnlyList<CheckBox> SourceCheckBoxes() =>
+    [
+        OpenAiSourceCheckBox,
+        DeepLSourceCheckBox,
+        OllamaSourceCheckBox,
+        BingSourceCheckBox,
+        GoogleSourceCheckBox,
+        VolcengineSourceCheckBox,
+    ];
 }

@@ -43,9 +43,9 @@ Choose English or Simplified Chinese OCR from the window or menu-bar menu, then
 select a screen region with the system capture UI. macOS may request Screen
 Recording permission on first use. TransDuck recognizes text locally with the
 system Vision framework. Quit and reopen TransDuck if macOS still reports that
-permission is unavailable after it is granted. TransDuck deletes the task-local PNG after completion or
-cancellation, then sends the recognized text to the selected translation
-provider.
+permission is unavailable after it is granted. TransDuck deletes the task-local
+PNG after completion or cancellation, then queries the enabled translation and
+dictionary sources.
 
 ## Providers and proxy
 
@@ -70,8 +70,9 @@ Non-secret settings, history, and diagnostics are stored under:
 
 API keys, Volcengine AK/SK, and an optional Bing Cookie are generic-password
 items in the current user's macOS Keychain. They are not written to ordinary
-JSON, diagnostics, or the app directory. Translation text is sent to the
-provider selected in Settings.
+JSON, diagnostics, or the app directory. Translation text is sent to every online
+provider enabled in Settings. ECDICT and the macOS system Dictionary remain local.
+See [Local dictionaries and multiple translation results](dictionaries-and-multiple-results.md).
 
 **Start TransDuck when I log in** manages
 `~/Library/LaunchAgents/com.transduck.app.plist` for the current user. TransDuck

@@ -9,6 +9,13 @@ namespace TransDuck.Packaging;
 internal static class Program
 {
     private const string AppName = "TransDuck.app";
+    private const string MacOSContentsDirectory = AppName + "/Contents/MacOS/";
+    private const uint LoadDylibCommand = 0x0c;
+    private const uint LoadWeakDylibCommand = 0x80000018;
+    private const uint ReexportDylibCommand = 0x8000001f;
+    private const uint LazyLoadDylibCommand = 0x20;
+    private const uint LoadUpwardDylibCommand = 0x80000023;
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private static readonly byte[][] ForbiddenCanaries =
     [
         "APIKEY_CANARY"u8.ToArray(),
@@ -98,6 +105,7 @@ internal static class Program
         var avaloniaNative = RequireEntry(archive, AppName + "/Contents/MacOS/libAvaloniaNative.dylib");
         var skia = RequireEntry(archive, AppName + "/Contents/MacOS/libSkiaSharp.dylib");
         var harfBuzz = RequireEntry(archive, AppName + "/Contents/MacOS/libHarfBuzzSharp.dylib");
+        var sqlite = RequireEntry(archive, AppName + "/Contents/MacOS/libe_sqlite3.dylib");
         RequireEntry(archive, AppName + "/Contents/Resources/TransDuck.icns");
         RequireEntry(archive, AppName + "/Contents/Resources/LICENSE");
         var notices = RequireEntry(
@@ -107,6 +115,9 @@ internal static class Program
         RequireEntry(archive, AppName + "/Contents/Resources/licenses/libuiohook-GPL-3.0.txt");
         RequireEntry(archive, AppName + "/Contents/Resources/licenses/MicroCom-MIT.txt");
         RequireEntry(archive, AppName + "/Contents/Resources/licenses/Inter-OFL-1.1.txt");
+        RequireEntry(archive, AppName + "/Contents/Resources/licenses/Microsoft.Data.Sqlite-MIT.txt");
+        RequireEntry(archive, AppName + "/Contents/Resources/licenses/SQLitePCLRaw-Apache-2.0.txt");
+        RequireEntry(archive, AppName + "/Contents/Resources/licenses/SQLite-Public-Domain.txt");
         RequireEntry(
             archive,
             AppName + "/Contents/Resources/licenses/SkiaSharp-HarfBuzz-ThirdPartyNotices.txt");
@@ -125,6 +136,7 @@ internal static class Program
         VerifyMachOArchitecture(avaloniaNative, runtimeIdentifier);
         VerifyMachOArchitecture(skia, runtimeIdentifier);
         VerifyMachOArchitecture(harfBuzz, runtimeIdentifier);
+        VerifyMachOArchitecture(sqlite, runtimeIdentifier);
         VerifyMinimumMacOS(executable, runtimeIdentifier);
         foreach (var nativeLibrary in archive.Entries.Where(static entry =>
                      entry.FullName.StartsWith(AppName + "/Contents/MacOS/", StringComparison.Ordinal) &&
@@ -133,6 +145,7 @@ internal static class Program
             VerifyMinimumMacOS(nativeLibrary, runtimeIdentifier);
         }
         VerifyInfoPlist(RequireEntry(archive, AppName + "/Contents/Info.plist"), version);
+        VerifyNativeDependencyClosure(archive, runtimeIdentifier);
         if (names.Any(name => name.EndsWith(".pdb", StringComparison.OrdinalIgnoreCase)))
         {
             throw new InvalidDataException("The release bundle contains debug symbols.");
@@ -172,6 +185,156 @@ internal static class Program
 
         Console.WriteLine("package_verified: " + path);
         return 0;
+    }
+
+    private static void VerifyNativeDependencyClosure(ZipArchive archive, string runtimeIdentifier)
+    {
+        var bundleFiles = archive.Entries
+            .Where(static entry => entry.FullName.StartsWith(MacOSContentsDirectory, StringComparison.Ordinal))
+            .Select(static entry => entry.FullName[MacOSContentsDirectory.Length..])
+            .Where(static relative => !string.IsNullOrEmpty(relative) &&
+                                      !relative.EndsWith('/') &&
+                                      !relative.Contains('/'))
+            .ToHashSet(StringComparer.Ordinal);
+        var expectedCpu = runtimeIdentifier == "osx-x64" ? 0x01000007u : 0x0100000cu;
+        var nativeEntries = archive.Entries.Where(static entry =>
+            string.Equals(entry.FullName, MacOSContentsDirectory + "TransDuck", StringComparison.Ordinal) ||
+            (entry.FullName.StartsWith(MacOSContentsDirectory, StringComparison.Ordinal) &&
+             entry.FullName.EndsWith(".dylib", StringComparison.Ordinal)));
+        foreach (var nativeEntry in nativeEntries)
+        {
+            foreach (var dependency in ReadDylibDependencies(ReadEntry(nativeEntry), expectedCpu, nativeEntry.Name))
+            {
+                if (IsSystemDylib(dependency))
+                {
+                    continue;
+                }
+
+                var fileName = GetBundleDependencyFileName(dependency, nativeEntry.Name);
+                if (!bundleFiles.Contains(fileName))
+                {
+                    throw new InvalidDataException(
+                        nativeEntry.Name + " depends on a native library absent from Contents/MacOS: " +
+                        dependency + ".");
+                }
+            }
+        }
+    }
+
+    private static IReadOnlyList<string> ReadDylibDependencies(
+        byte[] bytes,
+        uint expectedCpu,
+        string entryName)
+    {
+        var (sliceOffset, sliceSize) = FindMachOSlice(bytes, expectedCpu, entryName);
+        if (sliceSize < 32 || !bytes.AsSpan(sliceOffset, 4).SequenceEqual(
+                new byte[] { 0xcf, 0xfa, 0xed, 0xfe }))
+        {
+            throw new InvalidDataException(entryName + " has an invalid 64-bit Mach-O slice.");
+        }
+
+        var commandCount = checked((int)BinaryPrimitives.ReadUInt32LittleEndian(
+            bytes.AsSpan(sliceOffset + 16, 4)));
+        var commandBytes = checked((int)BinaryPrimitives.ReadUInt32LittleEndian(
+            bytes.AsSpan(sliceOffset + 20, 4)));
+        var commandOffset = checked(sliceOffset + 32);
+        var commandEnd = checked(commandOffset + commandBytes);
+        if (commandCount < 1 || commandEnd > checked(sliceOffset + sliceSize))
+        {
+            throw new InvalidDataException(entryName + " has invalid Mach-O load commands.");
+        }
+
+        var dependencies = new List<string>();
+        for (var index = 0; index < commandCount; index++)
+        {
+            if (commandOffset > commandEnd - 8)
+            {
+                throw new InvalidDataException(entryName + " has a truncated Mach-O load command.");
+            }
+
+            var command = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(commandOffset, 4));
+            var commandSize = checked((int)BinaryPrimitives.ReadUInt32LittleEndian(
+                bytes.AsSpan(commandOffset + 4, 4)));
+            if (commandSize < 8 || commandOffset > commandEnd - commandSize)
+            {
+                throw new InvalidDataException(entryName + " has an invalid Mach-O load command size.");
+            }
+
+            if (IsDylibLoadCommand(command))
+            {
+                dependencies.Add(ReadDylibLoadName(bytes, commandOffset, commandSize, entryName));
+            }
+
+            commandOffset += commandSize;
+        }
+
+        return dependencies;
+    }
+
+    private static bool IsDylibLoadCommand(uint command) => command is
+        LoadDylibCommand or
+        LoadWeakDylibCommand or
+        ReexportDylibCommand or
+        LazyLoadDylibCommand or
+        LoadUpwardDylibCommand;
+
+    private static string ReadDylibLoadName(
+        byte[] bytes,
+        int commandOffset,
+        int commandSize,
+        string entryName)
+    {
+        const int DylibCommandMinimumSize = 24;
+        if (commandSize < DylibCommandMinimumSize)
+        {
+            throw new InvalidDataException(entryName + " has a truncated dylib load command.");
+        }
+
+        var nameOffset = checked((int)BinaryPrimitives.ReadUInt32LittleEndian(
+            bytes.AsSpan(commandOffset + 8, 4)));
+        if (nameOffset < DylibCommandMinimumSize || nameOffset >= commandSize)
+        {
+            throw new InvalidDataException(entryName + " has an invalid dylib load name offset.");
+        }
+
+        var nameStart = checked(commandOffset + nameOffset);
+        var nameBytes = bytes.AsSpan(nameStart, commandSize - nameOffset);
+        var terminator = nameBytes.IndexOf((byte)0);
+        if (terminator <= 0)
+        {
+            throw new InvalidDataException(entryName + " has an unterminated dylib load name.");
+        }
+
+        try
+        {
+            return StrictUtf8.GetString(nameBytes[..terminator]);
+        }
+        catch (DecoderFallbackException exception)
+        {
+            throw new InvalidDataException(entryName + " has an invalid dylib load name encoding.", exception);
+        }
+    }
+
+    private static bool IsSystemDylib(string dependency) =>
+        dependency.StartsWith("/usr/lib/", StringComparison.Ordinal) ||
+        dependency.StartsWith("/System/Library/", StringComparison.Ordinal);
+
+    private static string GetBundleDependencyFileName(string dependency, string entryName)
+    {
+        if (dependency.Length == 0 || dependency.Contains('\\') ||
+            dependency.Split('/').Any(static component => component is "." or ".."))
+        {
+            throw new InvalidDataException(entryName + " has an unsafe dylib dependency name.");
+        }
+
+        var separator = dependency.LastIndexOf('/');
+        var fileName = separator < 0 ? dependency : dependency[(separator + 1)..];
+        if (fileName.Length == 0 || fileName is "." or "..")
+        {
+            throw new InvalidDataException(entryName + " has an invalid dylib dependency name.");
+        }
+
+        return fileName;
     }
 
     private static void VerifyMachO(ZipArchiveEntry executable, string runtimeIdentifier)

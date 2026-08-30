@@ -29,6 +29,8 @@ public sealed class MacDataPaths : IApplicationDataPaths
 
     public string ProviderSettingsFilePath => Path.Combine(RootDirectory, "provider-settings.v1.json");
 
+    public string QuerySourceSettingsFilePath => Path.Combine(RootDirectory, "query-sources.v1.json");
+
     public string ProxySettingsFilePath => Path.Combine(RootDirectory, "proxy-settings.v1.json");
 
     public string HotkeySettingsFilePath => Path.Combine(RootDirectory, "hotkey-settings.v1.json");

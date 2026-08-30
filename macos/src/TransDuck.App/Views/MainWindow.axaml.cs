@@ -10,6 +10,7 @@ namespace TransDuck.MacOS.App.Views;
 internal partial class MainWindow : Window
 {
     private readonly MacAppRuntime _runtime;
+    private long _lastAppliedRevision = -1;
     private bool _allowClose;
 
     public MainWindow(MacAppRuntime runtime)
@@ -32,20 +33,26 @@ internal partial class MainWindow : Window
 
     private void ApplyState(MacRuntimeState state)
     {
+        if (state.Revision < _lastAppliedRevision)
+        {
+            return;
+        }
+
+        _lastAppliedRevision = state.Revision;
         if (!string.Equals(InputTextBox.Text, state.Input, StringComparison.Ordinal) &&
             !string.IsNullOrEmpty(state.Input))
         {
             InputTextBox.Text = state.Input;
         }
 
-        OutputTextBox.Text = state.Output;
+        ResultsItemsControl.ItemsSource = state.Results;
         StatusTextBlock.Text = state.Status;
         TranslateButton.IsEnabled = !state.IsBusy;
         SelectedTextButton.IsEnabled = !state.IsBusy;
         OcrButton.IsEnabled = !state.IsBusy;
         CancelButton.IsEnabled = state.IsBusy;
         RetryButton.IsEnabled = !state.IsBusy && state.CanRetry;
-        CopyButton.IsEnabled = !string.IsNullOrEmpty(state.Output);
+        CopyButton.IsEnabled = state.Results.Any(static result => !string.IsNullOrWhiteSpace(result.Text));
     }
 
     private void HandleTranslateClick(object? sender, RoutedEventArgs eventArgs) =>
@@ -68,14 +75,15 @@ internal partial class MainWindow : Window
     private async void HandleCopyClick(object? sender, RoutedEventArgs eventArgs)
     {
         var clipboard = GetTopLevel(this)?.Clipboard;
-        if (clipboard is null || string.IsNullOrEmpty(OutputTextBox.Text))
+        var output = _runtime.State.Output;
+        if (clipboard is null || string.IsNullOrEmpty(output))
         {
             return;
         }
 
         try
         {
-            await clipboard.SetTextAsync(OutputTextBox.Text);
+            await clipboard.SetTextAsync(output);
             StatusTextBlock.Text = "Result copied.";
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)

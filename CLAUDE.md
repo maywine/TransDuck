@@ -14,3 +14,13 @@
   Screen Recording permission. Permission denial must leave manual translation usable.
 - Keep `assets/brand-source-icon/icon_source.png` as the only brand icon source and
   generate platform derivatives from it.
+- Query every enabled translation provider independently and present source-labeled
+  results without letting one provider failure erase another provider's output.
+- Preserve completed source cards across retries and retry only the retryable failed
+  sources; do not repeat successful provider calls or duplicate their history entries.
+- Support user-supplied ECDICT UTF-8 CSV and SQLite files on both platforms without
+  redistributing the dictionary data. CSV query caches belong below the platform app-data
+  root and must never modify or lock the source file after a lookup completes.
+- On macOS, system dictionary lookup uses the user's active Dictionary Services sources.
+  Dictionary text stays local; diagnostics must not include lookup terms, definitions, or
+  dictionary file paths.

@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using TransDuck.Core.Contracts.V1;
+using TransDuck.Core.Lookup;
 using TransDuck.Core.Persistence;
 using TransDuck.Core.Translation;
 using TransDuck.Infrastructure.Proxy;
@@ -56,6 +58,15 @@ internal partial class SettingsWindow : Window
 
             SelectByTag(ProviderComboBox, snapshot.Configuration.DefaultProvider.ProviderId, fallbackIndex: 0);
             ApplySelectedProvider();
+            ApplyQuerySourceSettings(snapshot.QuerySourceSettings);
+            if (snapshot.QuerySourceSettingsStatus == PersistenceStatus.NotFound &&
+                !_profiles.ContainsKey(snapshot.Configuration.DefaultProvider.ProviderId))
+            {
+                foreach (var checkBox in SourceCheckBoxes())
+                {
+                    checkBox.IsChecked = false;
+                }
+            }
             SelectByTag(ProxyModeComboBox, snapshot.ProxySettings.Mode.ToString(), fallbackIndex: 0);
             ProxyUriTextBox.Text = snapshot.ProxySettings.CustomHttpProxyUri?.OriginalString ?? string.Empty;
             ApplyProxyInputState();
@@ -163,6 +174,55 @@ internal partial class SettingsWindow : Window
 
     private void HandleReloadClick(object? sender, RoutedEventArgs eventArgs) => _ = LoadAsync();
 
+    private async void HandleBrowseEcdictClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        try
+        {
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Choose an ECDICT CSV or SQLite database",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("ECDICT data")
+                    {
+                        Patterns = ["*.csv", "*.db", "*.sqlite", "*.sqlite3"],
+                    },
+                    FilePickerFileTypes.All,
+                ],
+            });
+            if (files.Count > 0)
+            {
+                EcdictPathTextBox.Text = files[0].Path.LocalPath;
+                EcdictEnabledCheckBox.IsChecked = true;
+            }
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            StatusTextBlock.Text = "The ECDICT data file could not be selected.";
+        }
+    }
+
+    private async void HandleSaveQuerySourcesClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (!TryCreateQuerySourceSettings(includeCurrentUnsavedProvider: false, out var settings, out var error))
+        {
+            StatusTextBlock.Text = error;
+            return;
+        }
+
+        SaveQuerySourcesButton.IsEnabled = false;
+        try
+        {
+            var result = await _runtime.SaveQuerySourcesAsync(settings, CancellationToken.None);
+            StatusTextBlock.Text = result.Message;
+        }
+        finally
+        {
+            SaveQuerySourcesButton.IsEnabled = true;
+        }
+    }
+
     private async void HandleSaveClick(object? sender, RoutedEventArgs eventArgs)
     {
         SaveButton.IsEnabled = false;
@@ -216,6 +276,14 @@ internal partial class SettingsWindow : Window
             return false;
         }
 
+        if (!TryCreateQuerySourceSettings(
+                includeCurrentUnsavedProvider: true,
+                out var querySources,
+                out error))
+        {
+            return false;
+        }
+
         input = new MacSettingsInput(
             SelectedProviderId(),
             EndpointTextBox.Text ?? string.Empty,
@@ -226,6 +294,7 @@ internal partial class SettingsWindow : Window
             CredentialTextBox.Text,
             SecondaryCredentialTextBox.Text,
             ClearCredentialCheckBox.IsChecked == true,
+            querySources,
             new ProxySettings(ProxySettingsMigration.CurrentVersion, proxyMode, proxyUri),
             new MacHotkeySettings(MacHotkeySettingsMigration.CurrentVersion, modifiers, key),
             StartAtLoginCheckBox.IsChecked == true,
@@ -233,6 +302,82 @@ internal partial class SettingsWindow : Window
                 checked((int)(MaxEntriesNumericUpDown.Value ?? 100)),
                 checked((int)(MaxAgeNumericUpDown.Value ?? 30))));
         return true;
+    }
+
+    private bool TryCreateQuerySourceSettings(
+        bool includeCurrentUnsavedProvider,
+        out QuerySourceSettings settings,
+        out string error)
+    {
+        settings = default!;
+        error = string.Empty;
+        var selectedProviderId = SelectedProviderId();
+        var providers = new List<ProviderDescriptor>();
+        foreach (var checkBox in SourceCheckBoxes())
+        {
+            if (checkBox.IsChecked != true || checkBox.Tag is not string providerId)
+            {
+                continue;
+            }
+
+            if (includeCurrentUnsavedProvider &&
+                string.Equals(providerId, selectedProviderId, StringComparison.Ordinal))
+            {
+                providers.Add(new ProviderDescriptor(providerId));
+                continue;
+            }
+
+            if (!_profiles.TryGetValue(providerId, out var profile))
+            {
+                error = "Configure and save each enabled translation provider first.";
+                return false;
+            }
+
+            providers.Add(profile.Provider);
+        }
+
+        var ecdictEnabled = EcdictEnabledCheckBox.IsChecked == true;
+        var ecdictPath = string.IsNullOrWhiteSpace(EcdictPathTextBox.Text)
+            ? null
+            : EcdictPathTextBox.Text.Trim();
+        if (ecdictEnabled &&
+            (ecdictPath is null || !Path.IsPathFullyQualified(ecdictPath) || !File.Exists(ecdictPath)))
+        {
+            error = "Choose an existing ECDICT CSV or SQLite data file.";
+            return false;
+        }
+
+        var candidate = new QuerySourceSettings(
+            QuerySourceSettingsMigration.CurrentVersion,
+            providers,
+            new EcdictDictionarySettings(ecdictEnabled, ecdictPath),
+            MacSystemDictionaryCheckBox.IsChecked == true);
+        try
+        {
+            candidate.Validate();
+            settings = candidate;
+            return true;
+        }
+        catch (ContractValidationException)
+        {
+            error = "Enable at least one configured translation or dictionary source.";
+            return false;
+        }
+    }
+
+    private void ApplyQuerySourceSettings(QuerySourceSettings settings)
+    {
+        var enabledProviderIds = settings.EnabledTranslationProviders
+            .Select(static provider => provider.ProviderId)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var checkBox in SourceCheckBoxes())
+        {
+            checkBox.IsChecked = checkBox.Tag is string providerId && enabledProviderIds.Contains(providerId);
+        }
+
+        EcdictEnabledCheckBox.IsChecked = settings.Ecdict.Enabled;
+        EcdictPathTextBox.Text = settings.Ecdict.DataFilePath ?? string.Empty;
+        MacSystemDictionaryCheckBox.IsChecked = settings.MacSystemDictionaryEnabled;
     }
 
     private void ApplyHotkey(MacHotkeySettings settings)
@@ -270,6 +415,16 @@ internal partial class SettingsWindow : Window
         var value when value.StartsWith("Digit", StringComparison.Ordinal) => value[5..],
         var value => value,
     };
+
+    private IReadOnlyList<CheckBox> SourceCheckBoxes() =>
+    [
+        OpenAiSourceCheckBox,
+        DeepLSourceCheckBox,
+        OllamaSourceCheckBox,
+        BingSourceCheckBox,
+        GoogleSourceCheckBox,
+        VolcengineSourceCheckBox,
+    ];
 
     private void HandleClosing(object? sender, WindowClosingEventArgs eventArgs)
     {

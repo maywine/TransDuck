@@ -25,6 +25,36 @@ public sealed class MacAppSourceContractTests
     }
 
     [Fact]
+    public void Runtime_FansOutConfiguredProvidersAndBothDictionarySources()
+    {
+        var source = ReadRepositoryFile("macos", "src", "TransDuck.App", "MacAppRuntime.cs");
+        var settings = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.axaml");
+
+        Assert.Contains("new EcdictDictionaryProvider", source, StringComparison.Ordinal);
+        Assert.Contains("new MacSystemDictionaryProvider", source, StringComparison.Ordinal);
+        Assert.Contains("RunTranslationSourceAsync", source, StringComparison.Ordinal);
+        Assert.Contains("RunDictionarySourceAsync", source, StringComparison.Ordinal);
+        Assert.Contains("await Task.WhenAll(runs)", source, StringComparison.Ordinal);
+        Assert.Contains("Revision = _state.Revision + 1", source, StringComparison.Ordinal);
+        Assert.Contains("state.Revision < _lastAppliedRevision", ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml.cs"),
+            StringComparison.Ordinal);
+        Assert.Contains("TranslateAsync(retry.Text, retry.QueryKind, retry.SourceKeys)", source,
+            StringComparison.Ordinal);
+        Assert.Contains("PrepareRetryResults(presentations)", source, StringComparison.Ordinal);
+        Assert.Contains("MarkActiveSourcesCancelled()", source, StringComparison.Ordinal);
+        Assert.Contains("TranslationStreamEventKind.Completed => string.Empty", source,
+            StringComparison.Ordinal);
+        Assert.Contains("DictionaryLookupStatus.Found => string.Empty", source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("All available results completed.", source, StringComparison.Ordinal);
+        Assert.Contains("MacSystemDictionaryCheckBox", settings, StringComparison.Ordinal);
+        Assert.Contains("EcdictEnabledCheckBox", settings, StringComparison.Ordinal);
+        Assert.Contains("HandleSaveQuerySourcesClick", settings, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Runtime_UsesKeychainAndClosedDiagnosticsWithoutAPlaintextCredentialFallback()
     {
         var source = ReadRepositoryFile("macos", "src", "TransDuck.App", "MacAppRuntime.cs");
@@ -63,12 +93,34 @@ public sealed class MacAppSourceContractTests
             "macos", "src", "TransDuck.App", "Program.cs"), StringComparison.Ordinal);
         Assert.Contains("return SmokeTestMode ? 2 : 0", ReadRepositoryFile(
             "macos", "src", "TransDuck.App", "Program.cs"), StringComparison.Ordinal);
+        Assert.Contains("SmokeTestSystemDictionaryAsync", ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "App.axaml.cs"), StringComparison.Ordinal);
         Assert.Contains("osx-x64", package + verify, StringComparison.Ordinal);
         Assert.Contains("osx-arm64", package + verify, StringComparison.Ordinal);
         Assert.Contains("libuiohook.dylib", verify, StringComparison.Ordinal);
         Assert.Contains("TransDuck.icns", package + verify, StringComparison.Ordinal);
         Assert.Contains("a41658fb2bef7503a3bcb305ab8bf849755fe906", notices,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BundleVerifier_ClosesNonSystemDylibDependenciesInsideMacOSContents()
+    {
+        var verify = ReadRepositoryFile("macos", "packaging", "TransDuck.Packaging", "Program.cs");
+
+        Assert.Contains("VerifyNativeDependencyClosure(archive, runtimeIdentifier)", verify,
+            StringComparison.Ordinal);
+        Assert.Contains("ReadDylibDependencies", verify, StringComparison.Ordinal);
+        Assert.Contains("LoadDylibCommand", verify, StringComparison.Ordinal);
+        Assert.Contains("LoadWeakDylibCommand", verify, StringComparison.Ordinal);
+        Assert.Contains("ReexportDylibCommand", verify, StringComparison.Ordinal);
+        Assert.Contains("LazyLoadDylibCommand", verify, StringComparison.Ordinal);
+        Assert.Contains("LoadUpwardDylibCommand", verify, StringComparison.Ordinal);
+        Assert.Contains("/usr/lib/", verify, StringComparison.Ordinal);
+        Assert.Contains("/System/Library/", verify, StringComparison.Ordinal);
+        Assert.Contains("GetBundleDependencyFileName", verify, StringComparison.Ordinal);
+        Assert.Contains("invalid dylib load name offset", verify, StringComparison.Ordinal);
+        Assert.Contains("unterminated dylib load name", verify, StringComparison.Ordinal);
     }
 
     [Fact]

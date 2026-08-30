@@ -1,4 +1,5 @@
 using TransDuck.Core.Contracts.V1;
+using TransDuck.Core.Lookup;
 using TransDuck.Core.Persistence;
 using TransDuck.Core.Translation;
 using TransDuck.Infrastructure.Proxy;
@@ -27,7 +28,15 @@ internal sealed record MacRuntimeState(
     string Output,
     string Status,
     bool IsBusy,
-    bool CanRetry);
+    bool CanRetry,
+    IReadOnlyList<MacQuerySourceResult> Results,
+    long Revision);
+
+internal sealed record MacQuerySourceResult(
+    string Key,
+    string DisplayName,
+    string Text,
+    string Status);
 
 internal sealed record MacSettingsSnapshot(
     Configuration Configuration,
@@ -35,8 +44,10 @@ internal sealed record MacSettingsSnapshot(
     ProxySettings ProxySettings,
     MacHotkeySettings HotkeySettings,
     MacStartupResult StartupResult,
+    QuerySourceSettings QuerySourceSettings,
     PersistenceStatus ProviderSettingsStatus,
     PersistenceStatus ConfigurationStatus,
+    PersistenceStatus QuerySourceSettingsStatus,
     PersistenceStatus ProxyStatus,
     PersistenceStatus HotkeyStatus);
 
@@ -50,6 +61,7 @@ internal sealed record MacSettingsInput(
     string? Credential,
     string? SecondaryCredential,
     bool ClearCredential,
+    QuerySourceSettings QuerySourceSettings,
     ProxySettings ProxySettings,
     MacHotkeySettings HotkeySettings,
     bool StartAtLogin,
@@ -57,4 +69,7 @@ internal sealed record MacSettingsInput(
 
 internal sealed record MacSettingsSaveResult(bool Succeeded, string Message);
 
-internal sealed record RetrySnapshot(string Text, QueryKind QueryKind);
+internal sealed record RetrySnapshot(
+    string Text,
+    QueryKind QueryKind,
+    IReadOnlySet<string> SourceKeys);
