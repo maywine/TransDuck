@@ -36,6 +36,7 @@
   <sys:String x:Key="result.automation.error_code.help">显示稳定的契约错误代码。</sys:String>
   <sys:String x:Key="result.automation.status.name">操作状态</sys:String>
   <sys:String x:Key="result.automation.status.help">显示当前操作状态。</sys:String>
+  <sys:String x:Key="result.automation.product_version.help">显示应用版本。</sys:String>
 
   <sys:String x:Key="settings.window.title">TransDuck 设置</sys:String>
   <sys:String x:Key="settings.heading.provider">翻译提供商设置</sys:String>
@@ -110,6 +111,7 @@
   <sys:String x:Key="settings.automation.startup_status.help">显示当前用户的开机启动注册状态。</sys:String>
   <sys:String x:Key="settings.automation.status.name">设置状态</sys:String>
   <sys:String x:Key="settings.automation.status.help">显示设置和凭据状态。</sys:String>
+  <sys:String x:Key="settings.automation.product_version.help">显示应用版本。</sys:String>
   <sys:String x:Key="settings.automation.proxy_mode.name">翻译代理模式</sys:String>
   <sys:String x:Key="settings.automation.proxy_mode.help">选择 Windows 翻译请求的代理策略。</sys:String>
   <sys:String x:Key="settings.automation.custom_http_proxy_uri.name">自定义 HTTP 代理 URI</sys:String>

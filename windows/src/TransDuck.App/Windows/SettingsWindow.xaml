@@ -7,7 +7,16 @@
         WindowStartupLocation="CenterScreen">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="20">
-      <TextBlock FontSize="18" FontWeight="SemiBold" Text="{DynamicResource settings.heading.provider}" />
+      <DockPanel>
+        <TextBlock x:Name="ProductVersionTextBlock"
+                   DockPanel.Dock="Right"
+                   Margin="8,4,0,0"
+                   Foreground="#4A5568"
+                   AutomationProperties.AutomationId="ProductVersionTextBlock"
+                   AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}"
+                   AutomationProperties.HelpText="{DynamicResource settings.automation.product_version.help}" />
+        <TextBlock FontSize="18" FontWeight="SemiBold" Text="{DynamicResource settings.heading.provider}" />
+      </DockPanel>
       <TextBlock Margin="0,6,0,14" TextWrapping="Wrap"
                  Text="{DynamicResource settings.description.credential}" />
 

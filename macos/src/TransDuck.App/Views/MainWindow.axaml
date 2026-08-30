@@ -13,6 +13,7 @@
           <TextBlock Text="TransDuck" FontSize="22" FontWeight="SemiBold" />
           <TextBlock Text="Selected text and screenshot translation for macOS"
                      Opacity="0.7" FontSize="12" />
+          <TextBlock x:Name="VersionTextBlock" Opacity="0.6" FontSize="11" />
         </StackPanel>
       </StackPanel>
       <Button Grid.Column="1" Margin="8,0" Content="History" Click="HandleHistoryClick" />

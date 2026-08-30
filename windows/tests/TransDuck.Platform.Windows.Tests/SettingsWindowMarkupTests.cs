@@ -76,6 +76,13 @@ public sealed class SettingsWindowMarkupTests
 
         Assert.Equal("TransDuck.App.Windows.SettingsWindow", document.Root!.Attributes().Single(attribute =>
             attribute.Name.LocalName == "Class").Value);
+        var version = Assert.Single(controls, control =>
+            string.Equals(control.AutomationId, "ProductVersionTextBlock", StringComparison.Ordinal)).Element;
+        Assert.Equal("TextBlock", version.Name.LocalName);
+        Assert.Equal("{Binding Text, RelativeSource={RelativeSource Self}}", version.Attributes()
+            .SingleOrDefault(attribute => attribute.Name.LocalName == "AutomationProperties.Name")?.Value);
+        Assert.Equal("{DynamicResource settings.automation.product_version.help}", version.Attributes()
+            .SingleOrDefault(attribute => attribute.Name.LocalName == "AutomationProperties.HelpText")?.Value);
         var credentialStatus = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "CredentialStatusTextBlock", StringComparison.Ordinal)).Element;
         Assert.Equal("{Binding Text, RelativeSource={RelativeSource Self}}", credentialStatus.Attributes()

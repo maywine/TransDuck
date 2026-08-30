@@ -26,7 +26,8 @@
         <RowDefinition Height="*" />
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
-      <DockPanel Grid.Row="0" Margin="0,0,0,10" MouseLeftButtonDown="TitleBarMouseLeftButtonDown">
+      <DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="False"
+                 MouseLeftButtonDown="TitleBarMouseLeftButtonDown">
         <TextBlock DockPanel.Dock="Left" FontWeight="SemiBold" FontSize="16"
                    Text="{DynamicResource result.heading.brand}" />
         <Button x:Name="HideButton"
@@ -37,6 +38,13 @@
                 Click="HideButtonClick"
                 AutomationProperties.AutomationId="HideButton"
                 AutomationProperties.Name="{DynamicResource result.button.hide}" />
+        <TextBlock x:Name="ProductVersionTextBlock"
+                   DockPanel.Dock="Right"
+                   Margin="0,4,8,0"
+                   Foreground="#4A5568"
+                   AutomationProperties.AutomationId="ProductVersionTextBlock"
+                   AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}"
+                   AutomationProperties.HelpText="{DynamicResource result.automation.product_version.help}" />
       </DockPanel>
       <TextBox x:Name="InputTextBox"
                Grid.Row="1"

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using TransDuck.Core;
 using TransDuck.Core.Contracts.V1;
 using TransDuck.Core.Lookup;
 using TransDuck.Core.Persistence;
@@ -22,6 +23,7 @@ internal partial class SettingsWindow : Window
     {
         _runtime = runtime;
         InitializeComponent();
+        VersionTextBlock.Text = ProductVersionDisplay.FromAssembly(typeof(App).Assembly);
         foreach (var definition in MacAppRuntime.ProviderDefinitions)
         {
             ProviderComboBox.Items.Add(new ComboBoxItem

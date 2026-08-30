@@ -19,6 +19,7 @@ public partial class ResultFloatingWindow : Window
     public ResultFloatingWindow()
     {
         InitializeComponent();
+        ProductVersionTextBlock.Text = TransDuck.Core.ProductVersionDisplay.FromAssembly(typeof(App).Assembly);
         ResultItemsControl.ItemsSource = _results;
         StatusTextBlock.Text = AppStrings.Get("result.hint.default");
     }

@@ -36,6 +36,7 @@
   <sys:String x:Key="result.automation.error_code.help">Shows the stable contract error code.</sys:String>
   <sys:String x:Key="result.automation.status.name">Operation status</sys:String>
   <sys:String x:Key="result.automation.status.help">Shows the current operation status.</sys:String>
+  <sys:String x:Key="result.automation.product_version.help">Shows the application version.</sys:String>
 
   <sys:String x:Key="settings.window.title">TransDuck Settings</sys:String>
   <sys:String x:Key="settings.heading.provider">Translation provider settings</sys:String>
@@ -110,6 +111,7 @@
   <sys:String x:Key="settings.automation.startup_status.help">Shows the current user startup registration state.</sys:String>
   <sys:String x:Key="settings.automation.status.name">Settings status</sys:String>
   <sys:String x:Key="settings.automation.status.help">Shows settings and credential state.</sys:String>
+  <sys:String x:Key="settings.automation.product_version.help">Shows the application version.</sys:String>
   <sys:String x:Key="settings.automation.proxy_mode.name">Translation proxy mode</sys:String>
   <sys:String x:Key="settings.automation.proxy_mode.help">Choose the Windows proxy policy for translation requests.</sys:String>
   <sys:String x:Key="settings.automation.custom_http_proxy_uri.name">Custom HTTP proxy URI</sys:String>

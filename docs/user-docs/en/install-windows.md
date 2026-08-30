@@ -86,6 +86,8 @@ later, disable and re-enable the setting to refresh that entry.
 
 Updates are manual: exit TransDuck from its tray menu, extract the new ZIP, and
 replace the old portable folder as a whole. Do not copy only the executable.
+After restarting, confirm that the version shown in the result window or Settings
+matches the release you installed.
 
 ## Data and privacy
 

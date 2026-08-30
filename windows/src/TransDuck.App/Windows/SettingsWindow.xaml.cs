@@ -55,6 +55,7 @@ public partial class SettingsWindow : Window
         _hotkeyController = hotkeyController;
         _startupController = startupController;
         InitializeComponent();
+        ProductVersionTextBlock.Text = TransDuck.Core.ProductVersionDisplay.FromAssembly(typeof(App).Assembly);
         Loaded += HandleLoaded;
         Closed += HandleClosed;
         _hotkeyController.StateChanged += HandleHotkeyStateChanged;

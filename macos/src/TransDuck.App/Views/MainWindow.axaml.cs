@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using TransDuck.Core;
 
 namespace TransDuck.MacOS.App.Views;
 
@@ -17,6 +18,7 @@ internal partial class MainWindow : Window
     {
         _runtime = runtime;
         InitializeComponent();
+        VersionTextBlock.Text = ProductVersionDisplay.FromAssembly(typeof(App).Assembly);
         _runtime.StateChanged += HandleRuntimeStateChanged;
         Closing += HandleClosing;
         ApplyState(_runtime.State);

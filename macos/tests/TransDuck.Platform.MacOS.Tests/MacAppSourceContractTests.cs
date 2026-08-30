@@ -79,6 +79,28 @@ public sealed class MacAppSourceContractTests
     }
 
     [Fact]
+    public void MainAndSettingsWindows_DisplayTheSharedAppAssemblyVersionWithoutHardcodingIt()
+    {
+        var mainMarkup = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml");
+        var mainCode = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml.cs");
+        var settingsMarkup = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.axaml");
+        var settingsCode = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.axaml.cs");
+        const string versionAssignment =
+            "VersionTextBlock.Text = ProductVersionDisplay.FromAssembly(typeof(App).Assembly);";
+
+        Assert.Contains("x:Name=\"VersionTextBlock\"", mainMarkup, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"VersionTextBlock\"", settingsMarkup, StringComparison.Ordinal);
+        Assert.Contains(versionAssignment, mainCode, StringComparison.Ordinal);
+        Assert.Contains(versionAssignment, settingsCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("VersionTextBlock.Text = \"v", mainCode + settingsCode,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BundleContract_PinsMenuBarIdentityPermissionsAndBothArchitectures()
     {
         var app = ReadRepositoryFile("macos", "src", "TransDuck.App", "App.axaml");
