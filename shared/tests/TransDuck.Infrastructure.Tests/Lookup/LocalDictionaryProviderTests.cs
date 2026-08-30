@@ -8,13 +8,23 @@ using TransDuck.Infrastructure.Tests.Persistence;
 
 namespace TransDuck.Infrastructure.Tests.Lookup;
 
-public sealed class EcdictDictionaryProviderTests
+public sealed class LocalDictionaryProviderTests
 {
+    [Fact]
+    public void Registration_UsesGenericLocalDictionaryIdentity()
+    {
+        var provider = new LocalDictionaryProvider(Path.GetTempPath());
+
+        Assert.Equal(LocalDictionaryIds.File, provider.Registration.ProviderId);
+        Assert.Equal("Local dictionary", provider.Registration.DisplayName);
+        Assert.True(provider.Registration.RequiresDataFile);
+    }
+
     [Fact]
     public async Task LookupAsync_IndexesQuotedUtf8CsvAndReusesCache()
     {
         using var temporary = new PersistenceTestDirectory();
-        var csvPath = temporary.FilePath("ecdict.csv");
+        var csvPath = temporary.FilePath("dictionary.csv");
         await File.WriteAllTextAsync(csvPath, """
             word,phonetic,definition,translation,pos,collins,oxford,tag,bnc,frq,exchange,detail,audio
             duck,dʌk,"a water bird,
@@ -22,7 +32,7 @@ public sealed class EcdictDictionaryProviderTests
             v. 低头躲避",n:80/v:20,3,1,cet4,1,2,,,,
             "long-time",,"lasting for a long time",长期的,adj,0,0,,,,,,
             """, new UTF8Encoding(false));
-        var provider = new EcdictDictionaryProvider(temporary.DirectoryPath("cache"));
+        var provider = new LocalDictionaryProvider(temporary.DirectoryPath("cache"));
 
         var first = await provider.LookupAsync("DUCK", csvPath, CancellationToken.None);
         var normalized = await provider.LookupAsync("long time", csvPath, CancellationToken.None);
@@ -43,12 +53,12 @@ public sealed class EcdictDictionaryProviderTests
     public async Task LookupAsync_DecodesOfficialEcdictCsvEscapes()
     {
         using var temporary = new PersistenceTestDirectory();
-        var csvPath = temporary.FilePath("ecdict.csv");
+        var csvPath = temporary.FilePath("dictionary.csv");
         await File.WriteAllTextAsync(csvPath, """
             word,phonetic,definition,translation,pos,collins,oxford,tag,bnc,frq,exchange,detail,audio
             escaped,ph\n,"definition\nsecond\rthird\\slash\q\",translation\nnext,pos\q,0,0,,,,,,
             """, new UTF8Encoding(false));
-        var provider = new EcdictDictionaryProvider(temporary.DirectoryPath("cache"));
+        var provider = new LocalDictionaryProvider(temporary.DirectoryPath("cache"));
 
         var result = await provider.LookupAsync("escaped", csvPath, CancellationToken.None);
 
@@ -63,7 +73,7 @@ public sealed class EcdictDictionaryProviderTests
     public async Task LookupAsync_RebuildsCacheWhenContentChangesWithoutSizeOrTimestampChange()
     {
         using var temporary = new PersistenceTestDirectory();
-        var csvPath = temporary.FilePath("ecdict.csv");
+        var csvPath = temporary.FilePath("dictionary.csv");
         const string header = "word,phonetic,definition,translation,pos,collins,oxford,tag,bnc,frq,exchange,detail,audio\n";
         const string initialContent = header + "duck,,a water bird,first,n,0,0,,,,,,,\n";
         const string updatedContent = header + "duck,,a water bird,other,n,0,0,,,,,,,\n";
@@ -71,7 +81,7 @@ public sealed class EcdictDictionaryProviderTests
         await File.WriteAllTextAsync(csvPath, initialContent, new UTF8Encoding(false));
         var sourceLength = new FileInfo(csvPath).Length;
         var sourceWriteTime = File.GetLastWriteTimeUtc(csvPath);
-        var provider = new EcdictDictionaryProvider(temporary.DirectoryPath("cache"));
+        var provider = new LocalDictionaryProvider(temporary.DirectoryPath("cache"));
 
         var initial = await provider.LookupAsync("duck", csvPath, CancellationToken.None);
         await File.WriteAllTextAsync(csvPath, updatedContent, new UTF8Encoding(false));
@@ -95,7 +105,7 @@ public sealed class EcdictDictionaryProviderTests
         var databasePath = temporary.FilePath("stardict.db");
         await CreateDatabaseAsync(databasePath);
         var writeTime = File.GetLastWriteTimeUtc(databasePath);
-        var provider = new EcdictDictionaryProvider(temporary.DirectoryPath("cache"));
+        var provider = new LocalDictionaryProvider(temporary.DirectoryPath("cache"));
 
         var found = await provider.LookupAsync("gave", databasePath, CancellationToken.None);
         var missing = await provider.LookupAsync("not-in-fixture", databasePath, CancellationToken.None);
@@ -129,7 +139,7 @@ public sealed class EcdictDictionaryProviderTests
             await command.ExecuteNonQueryAsync();
         }
 
-        var provider = new EcdictDictionaryProvider(temporary.DirectoryPath("cache"));
+        var provider = new LocalDictionaryProvider(temporary.DirectoryPath("cache"));
         var result = await provider.LookupAsync("empty", databasePath, CancellationToken.None);
 
         Assert.Equal(DictionaryLookupStatus.NotFound, result.Status);
@@ -140,7 +150,7 @@ public sealed class EcdictDictionaryProviderTests
     public async Task LookupAsync_ReportsMissingAndInvalidFilesWithoutLeakingExceptions()
     {
         using var temporary = new PersistenceTestDirectory();
-        var provider = new EcdictDictionaryProvider(temporary.DirectoryPath("cache"));
+        var provider = new LocalDictionaryProvider(temporary.DirectoryPath("cache"));
         var invalidPath = temporary.FilePath("invalid.csv");
         await File.WriteAllTextAsync(invalidPath, "wrong,headers\nvalue,other", new UTF8Encoding(false));
 

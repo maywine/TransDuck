@@ -18,21 +18,25 @@ remain in Windows DPAPI-protected storage or macOS Keychain, but the text must s
 be disclosed to each selected provider for translation. Disable any service that
 should not receive the text.
 
-## Use ECDICT locally
+## Use a local dictionary
 
-TransDuck supports the UTF-8 CSV files and SQLite databases produced by the
-[ECDICT project](https://github.com/skywind3000/ECDICT) on both Windows and macOS.
-The dictionary data is not included in TransDuck and is never downloaded by the
-application.
+TransDuck accepts user-supplied UTF-8 CSV or SQLite dictionary files on Windows
+and macOS. CSV files must contain `word`, `phonetic`, `definition`, `translation`,
+and `pos` columns. SQLite files must contain a `stardict` table with `word`, `sw`,
+`phonetic`, `definition`, `translation`, and `pos` columns. CSV and SQLite files
+published by the [ECDICT project](https://github.com/skywind3000/ECDICT) are
+compatible examples. Dictionary data is not included in TransDuck and is never
+downloaded by the application.
 
-1. Obtain `ecdict.csv`, `ecdict.mini.csv`, or an ECDICT SQLite database from a
-   source you trust. Extract compressed files before selecting them.
-2. Open Settings and choose the ECDICT data file.
-3. Enable **ECDICT local dictionary**, then choose **Save result sources**.
+1. Obtain a supported CSV or SQLite file from a source you trust. Extract
+   compressed files before selecting them.
+2. Open Settings and choose the dictionary file.
+3. Enable **Local dictionary**, then choose **Save result sources**.
 
-No online provider needs to be configured when ECDICT is the only enabled source.
+No online provider needs to be configured when the local dictionary is the only
+enabled source.
 
-SQLite files must use ECDICT's `stardict` table shape. For a CSV file, the first
+For a CSV file, the first
 lookup builds a SQLite query cache below the TransDuck application-data directory;
 large files can therefore take longer the first time. Later lookups reuse the
 cache. TransDuck rebuilds it after the source file's size or modification time
@@ -41,9 +45,13 @@ preserve size and timestamps. Each CSV lookup validates that checksum before
 reusing the cache, so very large CSV files can add a short local read delay. It
 does not modify the selected source file and releases the file after each lookup.
 
-ECDICT is an English-to-Chinese word and phrase dictionary, not a general sentence
-translator. A result card reports **No entry** when the complete selected text does
-not match a dictionary entry.
+Matched entries show the phonetic value supplied by the file and provide a
+**Pronounce** button. Pronunciation uses an installed operating-system voice; it
+does not read dictionary audio URLs or access the network.
+
+The local dictionary matches complete words and phrases rather than acting as a
+general sentence translator. A result card reports **No entry** when the complete
+selected text does not match a dictionary entry.
 
 ## Use the macOS system Dictionary
 
@@ -53,7 +61,7 @@ Dictionary Services appears in its own result card. Dictionary availability and
 language coverage depend on the sources enabled in the macOS Dictionary app.
 The macOS system Dictionary can also be saved as the only enabled source.
 
-ECDICT and macOS system Dictionary lookups run locally. Lookup terms, definitions,
+Local dictionary files and macOS system Dictionary lookups run locally. Lookup terms, definitions,
 and dictionary file paths are not written to diagnostics. Completed results can
 still appear in TransDuck history according to the configured retention limits.
 

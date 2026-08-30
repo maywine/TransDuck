@@ -31,17 +31,17 @@
                   Content="{DynamicResource provider.name.volcengine}"
                   AutomationProperties.AutomationId="VolcengineSourceCheckBox" />
       </UniformGrid>
-      <CheckBox x:Name="EcdictEnabledCheckBox" Margin="0,0,0,6"
-                Content="{DynamicResource settings.source.ecdict}"
-                AutomationProperties.AutomationId="EcdictEnabledCheckBox" />
-      <TextBlock Text="{DynamicResource settings.label.ecdict_file}" />
+      <CheckBox x:Name="LocalDictionaryEnabledCheckBox" Margin="0,0,0,6"
+                Content="{DynamicResource settings.source.local_dictionary}"
+                AutomationProperties.AutomationId="LocalDictionaryEnabledCheckBox" />
+      <TextBlock Text="{DynamicResource settings.label.local_dictionary_file}" />
       <DockPanel Margin="0,4,0,14">
-        <Button x:Name="BrowseEcdictButton" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="12,4"
-                Content="{DynamicResource settings.button.browse_ecdict}"
-                Click="BrowseEcdictButtonClick"
-                AutomationProperties.AutomationId="BrowseEcdictButton" />
-        <TextBox x:Name="EcdictPathTextBox"
-                 AutomationProperties.AutomationId="EcdictPathTextBox" />
+        <Button x:Name="BrowseLocalDictionaryButton" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="12,4"
+                Content="{DynamicResource settings.button.browse_local_dictionary}"
+                Click="BrowseLocalDictionaryButtonClick"
+                AutomationProperties.AutomationId="BrowseLocalDictionaryButton" />
+        <TextBox x:Name="LocalDictionaryPathTextBox"
+                 AutomationProperties.AutomationId="LocalDictionaryPathTextBox" />
       </DockPanel>
       <Button x:Name="SaveQuerySourcesButton" Margin="0,0,0,14" Padding="14,5"
               HorizontalAlignment="Left"

@@ -14,13 +14,13 @@ public static class QuerySourceSettingsMigration
 }
 
 /// <summary>
-/// Selects an optional user-owned ECDICT CSV or SQLite data file.
+/// Selects an optional user-owned local dictionary file.
 /// </summary>
-public sealed record EcdictDictionarySettings(
+public sealed record LocalDictionarySettings(
     [property: JsonRequired] bool Enabled,
     string? DataFilePath)
 {
-    public static EcdictDictionarySettings Disabled { get; } = new(false, null);
+    public static LocalDictionarySettings Disabled { get; } = new(false, null);
 
     public void Validate()
     {
@@ -29,19 +29,19 @@ public sealed record EcdictDictionarySettings(
         {
             throw new ContractValidationException(
                 ContractValidationError.InvalidValue,
-                "ECDICT data file path is invalid.");
+                "Local dictionary data file path is invalid.");
         }
 
         if (Enabled && DataFilePath is null)
         {
             throw new ContractValidationException(
                 ContractValidationError.MissingRequired,
-                "An enabled ECDICT source requires a data file path.");
+                "An enabled local dictionary requires a data file path.");
         }
     }
 
     public override string ToString() =>
-        $"EcdictDictionarySettings(Enabled={Enabled}, HasDataFilePath={DataFilePath is not null})";
+        $"LocalDictionarySettings(Enabled={Enabled}, HasDataFilePath={DataFilePath is not null})";
 }
 
 /// <summary>
@@ -50,7 +50,7 @@ public sealed record EcdictDictionarySettings(
 public sealed record QuerySourceSettings(
     [property: JsonRequired] int Version,
     [property: JsonRequired] IReadOnlyList<ProviderDescriptor> EnabledTranslationProviders,
-    [property: JsonRequired] EcdictDictionarySettings Ecdict,
+    [property: JsonRequired, JsonPropertyName("localDictionary")] LocalDictionarySettings LocalDictionary,
     [property: JsonRequired] bool MacSystemDictionaryEnabled)
 {
     public static QuerySourceSettings CreateDefault(ProviderDescriptor provider)
@@ -59,7 +59,7 @@ public sealed record QuerySourceSettings(
         return new QuerySourceSettings(
             QuerySourceSettingsMigration.CurrentVersion,
             [provider],
-            EcdictDictionarySettings.Disabled,
+            LocalDictionarySettings.Disabled,
             MacSystemDictionaryEnabled: false);
     }
 
@@ -81,9 +81,9 @@ public sealed record QuerySourceSettings(
             ContractValidationError.InvalidValue,
             "Too many translation providers are enabled.");
         ContractValidation.RequireCondition(
-            Ecdict is not null,
+            LocalDictionary is not null,
             ContractValidationError.MissingRequired,
-            "Missing required property: ecdict.");
+            "Missing required property: localDictionary.");
 
         var keys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var provider in EnabledTranslationProviders)
@@ -102,9 +102,9 @@ public sealed record QuerySourceSettings(
                 "Enabled translation providers must be unique by provider and instance.");
         }
 
-        Ecdict!.Validate();
+        LocalDictionary!.Validate();
         ContractValidation.RequireCondition(
-            EnabledTranslationProviders.Count > 0 || Ecdict.Enabled || MacSystemDictionaryEnabled,
+            EnabledTranslationProviders.Count > 0 || LocalDictionary.Enabled || MacSystemDictionaryEnabled,
             ContractValidationError.InvalidValue,
             "At least one translation or dictionary source must be enabled.");
     }
@@ -112,6 +112,6 @@ public sealed record QuerySourceSettings(
     public override string ToString() =>
         $"QuerySourceSettings(Version={Version}, " +
         $"TranslationProviderCount={EnabledTranslationProviders?.Count ?? 0}, " +
-        $"EcdictEnabled={Ecdict?.Enabled ?? false}, " +
+        $"LocalDictionaryEnabled={LocalDictionary?.Enabled ?? false}, " +
         $"MacSystemDictionaryEnabled={MacSystemDictionaryEnabled})";
 }

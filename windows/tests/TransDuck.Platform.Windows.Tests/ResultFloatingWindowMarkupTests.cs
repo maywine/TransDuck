@@ -66,6 +66,19 @@ public sealed class ResultFloatingWindowMarkupTests
             string.Equals(element.Attribute("Text")?.Value, "{Binding Status}", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void ResultFloatingWindow_ShowsPronunciationOnlyForDictionaryEntries()
+    {
+        var document = XDocument.Load(FindResultFloatingWindowPath());
+        var pronounceButton = FindAutomationElement(document, "PronounceButton");
+
+        Assert.Equal("Button", pronounceButton.Name.LocalName);
+        Assert.Equal("PronounceButtonClick", pronounceButton.Attribute("Click")?.Value);
+        Assert.Equal("{Binding PronunciationTerm}", pronounceButton.Attribute("Tag")?.Value);
+        Assert.Equal("{Binding PronunciationVisibility}", pronounceButton.Attribute("Visibility")?.Value);
+        Assert.Equal("{DynamicResource result.button.pronounce}", pronounceButton.Attribute("Content")?.Value);
+    }
+
     private static string FindResultFloatingWindowPath()
     {
         foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })

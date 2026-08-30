@@ -16,8 +16,8 @@ arm64 Mac。Windows 当前发布验证基线为单显示器环境。
 - 截取屏幕区域，先在本机识别简体中文或英文，再翻译识别结果。
 - 可同时启用 Bing、Google、OpenAI-compatible、DeepL、Ollama 或火山翻译，并分别
   查看各服务返回的结果。
-- Windows 与 macOS 均支持用户提供的 ECDICT CSV/SQLite 本地词典；macOS 还可查询
-  系统已启用的词典。
+- Windows 与 macOS 均支持用户提供、采用受支持结构的 CSV/SQLite 本地词典，并可使用
+  系统语音播放词条发音；macOS 还可查询系统已启用的词典。
 - 使用系统代理、自定义 HTTP 代理或直连。
 - 为当前用户启用登录时启动，并在窗口关闭后继续从任务栏通知区或 macOS 菜单栏使用。
 

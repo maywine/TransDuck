@@ -10,6 +10,7 @@
   <sys:String x:Key="result.button.cancel">Cancel</sys:String>
   <sys:String x:Key="result.button.copy">Copy result</sys:String>
   <sys:String x:Key="result.button.retry">Retry failed sources</sys:String>
+  <sys:String x:Key="result.button.pronounce">Pronounce</sys:String>
   <sys:String x:Key="result.button.hide">Hide</sys:String>
   <sys:String x:Key="result.ocr_language.english">English</sys:String>
   <sys:String x:Key="result.ocr_language.simplified_chinese">Simplified Chinese</sys:String>
@@ -23,6 +24,8 @@
   <sys:String x:Key="result.source.cancelled">Cancelled</sys:String>
   <sys:String x:Key="result.source.failed">Failed</sys:String>
   <sys:String x:Key="result.source.not_configured">Not configured</sys:String>
+  <sys:String x:Key="result.source.local_dictionary">Local dictionary</sys:String>
+  <sys:String x:Key="result.automation.pronounce.help">Pronounce this dictionary entry with the installed system voice.</sys:String>
   <sys:String x:Key="result.automation.input.name">Source text</sys:String>
   <sys:String x:Key="result.automation.input.help">Enter text to translate.</sys:String>
   <sys:String x:Key="result.automation.ocr_language.name">OCR language</sys:String>
@@ -39,9 +42,9 @@
   <sys:String x:Key="settings.description.credential">When a provider uses a credential, it is stored only in protected storage for the current Windows user and is never shown or refilled after saving. Volcengine requires both an AccessKey ID and Secret Access Key. Google Translate web does not use a credential. A Bing Cookie is optional.</sys:String>
   <sys:String x:Key="settings.heading.sources">Results to show</sys:String>
   <sys:String x:Key="settings.description.sources">Enable one or more configured translation providers. Each enabled source is queried concurrently and shown separately.</sys:String>
-  <sys:String x:Key="settings.source.ecdict">ECDICT local dictionary (CSV or SQLite)</sys:String>
-  <sys:String x:Key="settings.label.ecdict_file">ECDICT data file</sys:String>
-  <sys:String x:Key="settings.button.browse_ecdict">Browse...</sys:String>
+  <sys:String x:Key="settings.source.local_dictionary">Local dictionary</sys:String>
+  <sys:String x:Key="settings.label.local_dictionary_file">Dictionary file (supported CSV or SQLite)</sys:String>
+  <sys:String x:Key="settings.button.browse_local_dictionary">Browse...</sys:String>
   <sys:String x:Key="settings.button.save_sources">Save result sources</sys:String>
   <sys:String x:Key="settings.status.sources_saved">Result sources saved.</sys:String>
   <sys:String x:Key="settings.status.sources_save_failed">Provider settings were saved, but the selected result sources could not be saved.</sys:String>
@@ -156,8 +159,10 @@
   <sys:String x:Key="dictionary.status.not_found">No matching dictionary entry was found.</sys:String>
   <sys:String x:Key="dictionary.status.invalid_request">The selected text cannot be used for a dictionary lookup.</sys:String>
   <sys:String x:Key="dictionary.status.unavailable">The local dictionary file is unavailable.</sys:String>
-  <sys:String x:Key="dictionary.status.invalid_data">The selected file is not a supported ECDICT CSV or SQLite database.</sys:String>
+  <sys:String x:Key="dictionary.status.invalid_data">The selected file is not a supported local dictionary CSV or SQLite database.</sys:String>
   <sys:String x:Key="dictionary.status.cancelled">Dictionary lookup cancelled.</sys:String>
+  <sys:String x:Key="pronunciation.status.unavailable">System pronunciation is unavailable.</sys:String>
+  <sys:String x:Key="pronunciation.status.failed">The dictionary entry could not be pronounced.</sys:String>
   <sys:String x:Key="translation.settings.provider_not_found">Configure a translation provider in Settings first.</sys:String>
   <sys:String x:Key="translation.settings.configuration_not_found">Save translation settings first.</sys:String>
   <sys:String x:Key="translation.settings.profile_not_found">The default provider has no matching profile.</sys:String>

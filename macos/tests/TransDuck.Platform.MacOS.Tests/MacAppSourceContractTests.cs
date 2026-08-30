@@ -31,7 +31,7 @@ public sealed class MacAppSourceContractTests
         var settings = ReadRepositoryFile(
             "macos", "src", "TransDuck.App", "Views", "SettingsWindow.axaml");
 
-        Assert.Contains("new EcdictDictionaryProvider", source, StringComparison.Ordinal);
+        Assert.Contains("new LocalDictionaryProvider", source, StringComparison.Ordinal);
         Assert.Contains("new MacSystemDictionaryProvider", source, StringComparison.Ordinal);
         Assert.Contains("RunTranslationSourceAsync", source, StringComparison.Ordinal);
         Assert.Contains("RunDictionarySourceAsync", source, StringComparison.Ordinal);
@@ -50,8 +50,14 @@ public sealed class MacAppSourceContractTests
             StringComparison.Ordinal);
         Assert.DoesNotContain("All available results completed.", source, StringComparison.Ordinal);
         Assert.Contains("MacSystemDictionaryCheckBox", settings, StringComparison.Ordinal);
-        Assert.Contains("EcdictEnabledCheckBox", settings, StringComparison.Ordinal);
+        Assert.Contains("LocalDictionaryEnabledCheckBox", settings, StringComparison.Ordinal);
         Assert.Contains("HandleSaveQuerySourcesClick", settings, StringComparison.Ordinal);
+        Assert.Contains("new MacSystemSpeechPlayer", source, StringComparison.Ordinal);
+        Assert.Contains("result.Entry?.Term", source, StringComparison.Ordinal);
+        var mainWindow = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml");
+        Assert.Contains("PronunciationTerm", mainWindow, StringComparison.Ordinal);
+        Assert.Contains("HandlePronounceClick", mainWindow, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -92,6 +98,7 @@ public sealed class MacAppSourceContractTests
         var program = ReadRepositoryFile("macos", "src", "TransDuck.App", "Program.cs");
         Assert.Contains("RunSmokeTest()", program, StringComparison.Ordinal);
         Assert.Contains("new MacSystemDictionaryProvider()", program, StringComparison.Ordinal);
+        Assert.Contains("WaitAsync(TimeSpan.FromSeconds(15))", program, StringComparison.Ordinal);
         Assert.Contains("DictionaryLookupStatus.Found or DictionaryLookupStatus.NotFound", program,
             StringComparison.Ordinal);
         Assert.Contains("osx-x64", package + verify, StringComparison.Ordinal);

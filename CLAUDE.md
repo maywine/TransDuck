@@ -18,9 +18,14 @@
   results without letting one provider failure erase another provider's output.
 - Preserve completed source cards across retries and retry only the retryable failed
   sources; do not repeat successful provider calls or duplicate their history entries.
-- Support user-supplied ECDICT UTF-8 CSV and SQLite files on both platforms without
-  redistributing the dictionary data. CSV query caches belong below the platform app-data
+- Present the file-backed source as "Local dictionary", including in internal model and
+  provider names. Accept UTF-8 CSV files with `word`, `phonetic`, `definition`,
+  `translation`, and `pos` columns, or SQLite `stardict` tables with those columns plus
+  `sw`; ECDICT is a compatible external data source, not the product-facing provider name.
+  Do not redistribute dictionary data. CSV query caches belong below the platform app-data
   root and must never modify or lock the source file after a lookup completes.
+- Pronounce matched dictionary terms with the operating system's installed speech voices.
+  Pronunciation stays local and must not fetch or play dictionary-provided audio URLs.
 - On macOS, system dictionary lookup uses the user's active Dictionary Services sources.
   Dictionary text stays local; diagnostics must not include lookup terms, definitions, or
   dictionary file paths.

@@ -71,7 +71,8 @@ Non-secret settings, history, and diagnostics are stored under:
 API keys, Volcengine AK/SK, and an optional Bing Cookie are generic-password
 items in the current user's macOS Keychain. They are not written to ordinary
 JSON, diagnostics, or the app directory. Translation text is sent to every online
-provider enabled in Settings. ECDICT and the macOS system Dictionary remain local.
+provider enabled in Settings. Local dictionary files with the supported schema,
+system-voice pronunciation, and the macOS system Dictionary remain local.
 See [Local dictionaries and multiple translation results](dictionaries-and-multiple-results.md).
 
 **Start TransDuck when I log in** manages

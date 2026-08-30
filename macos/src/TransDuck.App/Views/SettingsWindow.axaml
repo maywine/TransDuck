@@ -26,11 +26,11 @@
           <CheckBox x:Name="VolcengineSourceCheckBox" Tag="volcengine"
                     Content="Volcengine Translate" Margin="0,0,14,6" />
         </WrapPanel>
-        <CheckBox x:Name="EcdictEnabledCheckBox"
-                  Content="ECDICT local dictionary (CSV or SQLite)" />
+        <CheckBox x:Name="LocalDictionaryEnabledCheckBox"
+                  Content="Local dictionary" />
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-          <TextBox x:Name="EcdictPathTextBox" PlaceholderText="Select ecdict.csv or a stardict SQLite database" />
-          <Button Grid.Column="1" Content="Browse..." Click="HandleBrowseEcdictClick" />
+          <TextBox x:Name="LocalDictionaryPathTextBox" PlaceholderText="Select a supported CSV or SQLite dictionary file" />
+          <Button Grid.Column="1" Content="Browse..." Click="HandleBrowseLocalDictionaryClick" />
         </Grid>
         <CheckBox x:Name="MacSystemDictionaryCheckBox"
                   Content="macOS system Dictionary (active dictionaries)" />

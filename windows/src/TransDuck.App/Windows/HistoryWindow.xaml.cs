@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using TransDuck.App.Services;
 using TransDuck.Core.Contracts.V1;
+using TransDuck.Core.Lookup;
 using TransDuck.Core.Persistence;
 
 namespace TransDuck.App.Windows;
@@ -212,10 +213,14 @@ public partial class HistoryWindow : Window
     private static string DescribeListItem(HistoryEntry entry) => AppStrings.Format(
         "history.list.item",
         entry.CreatedAt.LocalDateTime,
-        entry.Request.Provider.ProviderId,
+        DescribeProvider(entry.Request.Provider.ProviderId),
         DescribeTerminalState(entry.Result.TerminalState),
         DescribeQueryKind(entry.Request.QueryKind),
         Summarize(entry.Request.Text));
+
+    private static string DescribeProvider(string providerId) => LocalDictionaryIds.IsFile(providerId)
+        ? AppStrings.Get("result.source.local_dictionary")
+        : providerId;
 
     private static string DescribeResult(QueryResult result) => result.TerminalState switch
     {

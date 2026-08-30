@@ -10,6 +10,7 @@
   <sys:String x:Key="result.button.cancel">取消</sys:String>
   <sys:String x:Key="result.button.copy">复制结果</sys:String>
   <sys:String x:Key="result.button.retry">重试失败来源</sys:String>
+  <sys:String x:Key="result.button.pronounce">发音</sys:String>
   <sys:String x:Key="result.button.hide">隐藏</sys:String>
   <sys:String x:Key="result.ocr_language.english">英语</sys:String>
   <sys:String x:Key="result.ocr_language.simplified_chinese">简体中文</sys:String>
@@ -23,6 +24,8 @@
   <sys:String x:Key="result.source.cancelled">已取消</sys:String>
   <sys:String x:Key="result.source.failed">失败</sys:String>
   <sys:String x:Key="result.source.not_configured">未配置</sys:String>
+  <sys:String x:Key="result.source.local_dictionary">本地词典</sys:String>
+  <sys:String x:Key="result.automation.pronounce.help">使用系统已安装的语音朗读此词典词条。</sys:String>
   <sys:String x:Key="result.automation.input.name">源文本</sys:String>
   <sys:String x:Key="result.automation.input.help">输入需要翻译的文本。</sys:String>
   <sys:String x:Key="result.automation.ocr_language.name">OCR 语言</sys:String>
@@ -39,9 +42,9 @@
   <sys:String x:Key="settings.description.credential">提供商需要凭据时，凭据只存储在当前 Windows 用户的受保护存储中，保存后不会显示或回填。火山翻译需要同时填写 AccessKey ID 和 Secret Access Key；Google 翻译网页接口不使用凭据；Bing Cookie 为可选项。</sys:String>
   <sys:String x:Key="settings.heading.sources">显示的结果来源</sys:String>
   <sys:String x:Key="settings.description.sources">可同时启用多个已配置的翻译服务。查询会并发执行，并分别显示每个来源的结果。</sys:String>
-  <sys:String x:Key="settings.source.ecdict">ECDICT 本地词典（CSV 或 SQLite）</sys:String>
-  <sys:String x:Key="settings.label.ecdict_file">ECDICT 数据文件</sys:String>
-  <sys:String x:Key="settings.button.browse_ecdict">浏览...</sys:String>
+  <sys:String x:Key="settings.source.local_dictionary">本地词典</sys:String>
+  <sys:String x:Key="settings.label.local_dictionary_file">词典文件（受支持结构的 CSV 或 SQLite）</sys:String>
+  <sys:String x:Key="settings.button.browse_local_dictionary">浏览...</sys:String>
   <sys:String x:Key="settings.button.save_sources">保存结果来源</sys:String>
   <sys:String x:Key="settings.status.sources_saved">结果来源已保存。</sys:String>
   <sys:String x:Key="settings.status.sources_save_failed">提供商设置已保存，但结果来源选择保存失败。</sys:String>
@@ -156,8 +159,10 @@
   <sys:String x:Key="dictionary.status.not_found">本地词典中未找到匹配词条。</sys:String>
   <sys:String x:Key="dictionary.status.invalid_request">所选文本不适合进行词典查询。</sys:String>
   <sys:String x:Key="dictionary.status.unavailable">本地词典文件不可用。</sys:String>
-  <sys:String x:Key="dictionary.status.invalid_data">所选文件不是受支持的 ECDICT CSV 或 SQLite 数据库。</sys:String>
+  <sys:String x:Key="dictionary.status.invalid_data">所选文件不是受支持的本地词典 CSV 或 SQLite 数据库。</sys:String>
   <sys:String x:Key="dictionary.status.cancelled">词典查询已取消。</sys:String>
+  <sys:String x:Key="pronunciation.status.unavailable">系统发音不可用。</sys:String>
+  <sys:String x:Key="pronunciation.status.failed">无法播放该词条的发音。</sys:String>
   <sys:String x:Key="translation.settings.provider_not_found">请先在设置中配置翻译服务。</sys:String>
   <sys:String x:Key="translation.settings.configuration_not_found">请先保存翻译设置。</sys:String>
   <sys:String x:Key="translation.settings.profile_not_found">默认翻译服务没有对应配置。</sys:String>

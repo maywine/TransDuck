@@ -60,7 +60,8 @@ Settings. API keys, Volcengine AK/SK, and an optional Bing Cookie are encrypted
 for the current user with Windows DPAPI; they are not written to ordinary
 configuration files or the portable application directory.
 
-Windows also supports a user-supplied ECDICT CSV or SQLite dictionary. See
+Windows also supports a user-supplied CSV or SQLite local dictionary with the
+supported schema, plus pronunciation through an installed system voice. See
 [Local dictionaries and multiple translation results](dictionaries-and-multiple-results.md).
 
 ## Configure a proxy

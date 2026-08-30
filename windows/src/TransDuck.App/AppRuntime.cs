@@ -22,6 +22,7 @@ using TransDuck.Infrastructure.Lookup;
 using TransDuck.Platform.Windows.Persistence;
 using TransDuck.Infrastructure.Proxy;
 using TransDuck.Platform.Windows.Selection;
+using TransDuck.Platform.Windows.Speech;
 using TransDuck.Platform.Windows.Startup;
 using TransDuck.Infrastructure.Translation;
 using TransDuck.Platform.Windows.Tray;
@@ -60,7 +61,8 @@ internal sealed class AppRuntime : IDisposable
     private readonly HotkeySettingsController _hotkeySettingsController;
     private readonly StartupSettingsController _startupSettingsController;
     private readonly HistoryController _historyController;
-    private readonly EcdictDictionaryProvider _ecdictDictionaryProvider;
+    private readonly LocalDictionaryProvider _localDictionaryProvider;
+    private readonly ISystemSpeechPlayer _speechPlayer = new WindowsSystemSpeechPlayer();
     private readonly ContextMenu _trayMenu;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly object _lifecycleGate = new();
@@ -101,7 +103,7 @@ internal sealed class AppRuntime : IDisposable
             _credentialStore,
             _diagnosticSink);
         _querySourceSettingsController = new QuerySourceSettingsController(_querySourceSettingsStore);
-        _ecdictDictionaryProvider = new EcdictDictionaryProvider(
+        _localDictionaryProvider = new LocalDictionaryProvider(
             Path.Combine(dataPaths.RootDirectory, "dictionary-cache"));
         _proxySettingsController = new ProxySettingsController(
             _proxySettingsStore,
@@ -135,6 +137,8 @@ internal sealed class AppRuntime : IDisposable
         _resultWindow.CancellationRequested += HandleCancellationRequested;
         _resultWindow.ResultCopyRequested += HandleResultCopyRequested;
         _resultWindow.RetryRequested += HandleRetryRequested;
+        _resultWindow.PronunciationRequested += HandlePronunciationRequested;
+        _resultWindow.PronunciationStopRequested += HandlePronunciationStopRequested;
         _hotkeySettingsController.StateChanged += HandleHotkeyStateChanged;
         SystemEvents.PowerModeChanged += HandlePowerModeChanged;
     }
@@ -213,6 +217,7 @@ internal sealed class AppRuntime : IDisposable
         }
 
         RunNonFatal(_lifetimeCancellation.Cancel);
+        RunNonFatal(_speechPlayer.Stop);
         RunNonFatal(DetachEvents);
         RunNonFatal(() => CancelCurrentOperation(showStatus: false));
         RunNonFatal(CloseSettingsWindow);
@@ -244,6 +249,8 @@ internal sealed class AppRuntime : IDisposable
         _resultWindow.CancellationRequested -= HandleCancellationRequested;
         _resultWindow.ResultCopyRequested -= HandleResultCopyRequested;
         _resultWindow.RetryRequested -= HandleRetryRequested;
+        _resultWindow.PronunciationRequested -= HandlePronunciationRequested;
+        _resultWindow.PronunciationStopRequested -= HandlePronunciationStopRequested;
         _hotkeySettingsController.StateChanged -= HandleHotkeyStateChanged;
     }
 
@@ -333,6 +340,7 @@ internal sealed class AppRuntime : IDisposable
         DisposeNonFatal(_configurationStore);
         DisposeNonFatal(_credentialStore);
         DisposeNonFatal(_historyStore);
+        DisposeNonFatal(_speechPlayer);
         DisposeNonFatal(_proxySettingsController);
         DisposeNonFatal(_proxySettingsStore);
         DisposeNonFatal(_proxyHttpClientPool);
@@ -400,6 +408,12 @@ internal sealed class AppRuntime : IDisposable
     private void HandleRetryRequested(object? sender, EventArgs eventArgs) =>
         PostToUi(RetryCurrentTranslation);
 
+    private void HandlePronunciationRequested(object? sender, string text) =>
+        PostToUi(() => _ = StartTrackedOperation(() => PronounceAsync(text)));
+
+    private void HandlePronunciationStopRequested(object? sender, EventArgs eventArgs) =>
+        _speechPlayer.Stop();
+
     private void HandleHotkeyStateChanged(object? sender, EventArgs eventArgs) =>
         PostToUi(UpdateHotkeyPresentation);
 
@@ -420,6 +434,20 @@ internal sealed class AppRuntime : IDisposable
         {
             _resultWindow.SetStatus(AppStrings.Get("runtime.copy.failed"));
         }
+    }
+
+    private async Task PronounceAsync(string text)
+    {
+        var result = await _speechPlayer.SpeakAsync(text, _lifetimeCancellation.Token);
+        if (IsDisposed || IsStopping ||
+            result.Status is SpeechPlaybackStatus.Completed or SpeechPlaybackStatus.Cancelled)
+        {
+            return;
+        }
+
+        PostToUi(() => _resultWindow.SetStatus(result.Status == SpeechPlaybackStatus.Unavailable
+            ? AppStrings.Get("pronunciation.status.unavailable")
+            : AppStrings.Get("pronunciation.status.failed")));
     }
 
     private async Task ReadSelectionAsync()
@@ -508,18 +536,18 @@ internal sealed class AppRuntime : IDisposable
                 .Where(provider => sourceFilter is null ||
                     sourceFilter.Contains(CanonicalProviderKey(provider)))
                 .ToArray();
-            var includeEcdict = selectedSources.Ecdict.Enabled &&
-                (sourceFilter is null || sourceFilter.Contains(LocalDictionaryIds.Ecdict));
+            var includeLocalDictionary = selectedSources.LocalDictionary.Enabled &&
+                (sourceFilter is null || sourceFilter.Contains(LocalDictionaryIds.File));
             var presentations = providerSources
                 .Select(provider => new QuerySourcePresentation(
                     CanonicalProviderKey(provider),
                     DescribeProvider(provider)))
                 .ToList();
-            if (includeEcdict)
+            if (includeLocalDictionary)
             {
                 presentations.Add(new QuerySourcePresentation(
-                    LocalDictionaryIds.Ecdict,
-                    _ecdictDictionaryProvider.Registration.DisplayName));
+                    LocalDictionaryIds.File,
+                    DescribeDictionaryProvider(_localDictionaryProvider.Registration)));
             }
 
             PostCurrentOperationToUi(operation, () =>
@@ -537,11 +565,11 @@ internal sealed class AppRuntime : IDisposable
                     operation,
                     cancellationToken))
                 .ToList();
-            if (includeEcdict)
+            if (includeLocalDictionary)
             {
                 runs.Add(RunDictionarySourceAsync(
-                    _ecdictDictionaryProvider,
-                    selectedSources.Ecdict.DataFilePath,
+                    _localDictionaryProvider,
+                    selectedSources.LocalDictionary.DataFilePath,
                     text,
                     providerSettings.Configuration,
                     operation,
@@ -730,7 +758,7 @@ internal sealed class AppRuntime : IDisposable
         CancellationToken cancellationToken)
     {
         var key = provider.Registration.ProviderId;
-        var displayName = provider.Registration.DisplayName;
+        var displayName = DescribeDictionaryProvider(provider.Registration);
         try
         {
             PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceStatus(
@@ -742,7 +770,8 @@ internal sealed class AppRuntime : IDisposable
                 key,
                 displayName,
                 output,
-                DescribeDictionarySourceStatus(result.Status)));
+                DescribeDictionarySourceStatus(result.Status),
+                result.Entry?.Term));
             if (result.Succeeded)
             {
                 await AppendDictionaryHistoryAsync(text, provider.Registration, result.Entry!, configuration);
@@ -1343,6 +1372,11 @@ internal sealed class AppRuntime : IDisposable
         };
         return provider.InstanceId is null ? name : name + " (" + provider.InstanceId + ")";
     }
+
+    private static string DescribeDictionaryProvider(DictionaryProviderRegistration registration) =>
+        string.Equals(registration.ProviderId, LocalDictionaryIds.File, StringComparison.Ordinal)
+            ? AppStrings.Get("result.source.local_dictionary")
+            : registration.DisplayName;
 
     private static string DescribeSourceTerminal(TranslationStreamEventKind kind) => kind switch
     {

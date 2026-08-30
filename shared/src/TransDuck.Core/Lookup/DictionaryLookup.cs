@@ -4,9 +4,14 @@ namespace TransDuck.Core.Lookup;
 
 public static class LocalDictionaryIds
 {
-    public const string Ecdict = "ecdict";
+    public const string File = "local-dictionary";
 
     public const string MacSystem = "macos-system-dictionary";
+
+    // History written before the provider rename keeps its original stable source ID.
+    public static bool IsFile(string providerId) =>
+        string.Equals(providerId, File, StringComparison.Ordinal) ||
+        string.Equals(providerId, "ecdict", StringComparison.Ordinal);
 }
 
 public sealed record DictionaryProviderRegistration(

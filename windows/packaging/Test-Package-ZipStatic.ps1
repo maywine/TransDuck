@@ -64,7 +64,8 @@ try {
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Core.dll') -and
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Infrastructure.dll') -and
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Platform.Windows.dll') -and
-        $auditSource.Contains('TransDuck-Windows-x64/Tesseract.dll')
+        $auditSource.Contains('TransDuck-Windows-x64/Tesseract.dll') -and
+        $auditSource.Contains('TransDuck-Windows-x64/System.Speech.dll')
     $report.ApplicationAndDotNetLicensesPinned = $packageSource.Contains("licenseSource = Join-Path `$repositoryRoot 'LICENSE'") -and
         $packageSource.Contains("dotnetLicenseSource = Join-Path `$dotnetRoot 'LICENSE.txt'") -and
         $packageSource.Contains("dotnetNoticesSource = Join-Path `$dotnetRoot 'ThirdPartyNotices.txt'") -and

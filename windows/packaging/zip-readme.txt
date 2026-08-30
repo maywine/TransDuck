@@ -18,14 +18,15 @@ English
    a direct connection. A custom proxy must be http://host:port with no credentials.
    Localhost and loopback requests always connect directly.
 7. Settings can enable multiple translation services and show each result separately.
-   A user-supplied ECDICT CSV or SQLite file can be used locally; dictionary data is
-   not included in this ZIP.
+   A user-supplied CSV or SQLite local dictionary with the supported schema can be
+   queried and pronounced with an installed system voice; dictionary data is not
+   included in this ZIP.
 8. The application icon is embedded in TransDuck.exe; no external Assets directory
    required.
 9. TransDuck is licensed under the MIT License in LICENSE.txt. Microsoft .NET
    terms are in licenses/Microsoft-DotNet-Library-License.txt and its notices
-   file; Tesseract, Leptonica, Microsoft.Data.Sqlite, SQLitePCLRaw, and SQLite
-   terms are also included under licenses/ and THIRD-PARTY-NOTICES.md.
+   file; Tesseract, Leptonica, Microsoft.Data.Sqlite, SQLitePCLRaw, SQLite, and
+   System.Speech terms are also included under licenses/ and THIRD-PARTY-NOTICES.md.
 
 中文
 1. 请完整解压 TransDuck-Windows-x64 目录。不要在 ZIP 内运行，也不要只移动部分文件：
@@ -40,12 +41,13 @@ English
 6. 翻译请求可使用 Windows 系统代理、自定义 HTTP 代理或直连。自定义代理必须是无凭据的
    http://host:port。localhost 和 loopback 请求始终直连。
 7. Settings 可同时启用多个翻译服务，并分别显示各自结果；也可选择用户自行取得的
-   ECDICT CSV 或 SQLite 文件进行本地查询，本 ZIP 不包含词库数据。
+   采用受支持结构的 CSV 或 SQLite 本地词典，并用已安装的系统语音播放词条发音。本 ZIP
+   不包含词库数据。
 8. 应用图标已内嵌在 TransDuck.exe 中，无需外部 Assets 目录。
 9. TransDuck 使用 LICENSE.txt 中的 MIT License。Microsoft .NET 条款位于
    licenses/Microsoft-DotNet-Library-License.txt 及其 notices 文件；Tesseract、
-   Leptonica、Microsoft.Data.Sqlite、SQLitePCLRaw 与 SQLite 的许可和声明也位于
-   licenses/ 与 THIRD-PARTY-NOTICES.md。
+   Leptonica、Microsoft.Data.Sqlite、SQLitePCLRaw、SQLite 与 System.Speech 的许可和
+   声明也位于 licenses/ 与 THIRD-PARTY-NOTICES.md。
 
 Offline OCR / 离线 OCR
 The ZIP includes the x64 Tesseract/Leptonica runtime and eng/chi_sim tessdata

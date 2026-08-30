@@ -157,19 +157,19 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void BrowseEcdictButtonClick(object sender, RoutedEventArgs eventArgs)
+    private void BrowseLocalDictionaryButtonClick(object sender, RoutedEventArgs eventArgs)
     {
         var dialog = new OpenFileDialog
         {
-            Title = AppStrings.Get("settings.label.ecdict_file"),
+            Title = AppStrings.Get("settings.label.local_dictionary_file"),
             CheckFileExists = true,
             Multiselect = false,
-            Filter = "ECDICT data (*.csv;*.db;*.sqlite;*.sqlite3)|*.csv;*.db;*.sqlite;*.sqlite3|All files (*.*)|*.*",
+            Filter = "Local dictionary (*.csv;*.db;*.sqlite;*.sqlite3)|*.csv;*.db;*.sqlite;*.sqlite3|All files (*.*)|*.*",
         };
         if (dialog.ShowDialog(this) == true)
         {
-            EcdictPathTextBox.Text = dialog.FileName;
-            EcdictEnabledCheckBox.IsChecked = true;
+            LocalDictionaryPathTextBox.Text = dialog.FileName;
+            LocalDictionaryEnabledCheckBox.IsChecked = true;
         }
     }
 
@@ -649,9 +649,9 @@ public partial class SettingsWindow : Window
             providers.Add(profile.Provider);
         }
 
-        var ecdictEnabled = EcdictEnabledCheckBox.IsChecked == true;
-        var ecdictPath = NullIfWhiteSpace(EcdictPathTextBox.Text);
-        if (ecdictEnabled && (ecdictPath is null || !Path.IsPathFullyQualified(ecdictPath) || !File.Exists(ecdictPath)))
+        var localDictionaryEnabled = LocalDictionaryEnabledCheckBox.IsChecked == true;
+        var localDictionaryPath = NullIfWhiteSpace(LocalDictionaryPathTextBox.Text);
+        if (localDictionaryEnabled && (localDictionaryPath is null || !Path.IsPathFullyQualified(localDictionaryPath) || !File.Exists(localDictionaryPath)))
         {
             return false;
         }
@@ -659,7 +659,7 @@ public partial class SettingsWindow : Window
         var candidate = new QuerySourceSettings(
             QuerySourceSettingsMigration.CurrentVersion,
             providers,
-            new EcdictDictionarySettings(ecdictEnabled, ecdictPath),
+            new LocalDictionarySettings(localDictionaryEnabled, localDictionaryPath),
             MacSystemDictionaryEnabled: false);
         try
         {
@@ -781,8 +781,8 @@ public partial class SettingsWindow : Window
             checkBox.IsChecked = checkBox.Tag is string providerId && enabledProviderIds.Contains(providerId);
         }
 
-        EcdictEnabledCheckBox.IsChecked = settings.Ecdict.Enabled;
-        EcdictPathTextBox.Text = settings.Ecdict.DataFilePath ?? string.Empty;
+        LocalDictionaryEnabledCheckBox.IsChecked = settings.LocalDictionary.Enabled;
+        LocalDictionaryPathTextBox.Text = settings.LocalDictionary.DataFilePath ?? string.Empty;
     }
 
     private void ApplyProfile(ProviderProfileSettings? profile, Configuration? configuration)
@@ -871,9 +871,9 @@ public partial class SettingsWindow : Window
             checkBox.IsEnabled = isEnabled;
         }
 
-        EcdictEnabledCheckBox.IsEnabled = isEnabled;
-        EcdictPathTextBox.IsEnabled = isEnabled;
-        BrowseEcdictButton.IsEnabled = isEnabled;
+        LocalDictionaryEnabledCheckBox.IsEnabled = isEnabled;
+        LocalDictionaryPathTextBox.IsEnabled = isEnabled;
+        BrowseLocalDictionaryButton.IsEnabled = isEnabled;
         SaveQuerySourcesButton.IsEnabled = isEnabled;
         SaveProviderSettingsButton.IsEnabled = isEnabled;
         SetCredentialControlsEnabled(isEnabled && SelectedProviderUsesCredential());

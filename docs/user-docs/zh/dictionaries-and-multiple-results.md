@@ -13,27 +13,31 @@ Settings 中“当前编辑的服务”和“启用的结果来源”是两项�
 同一段输入会分别发送给每个已启用的在线服务。凭据仍由 Windows DPAPI 或 macOS
 Keychain 保护，但服务商必须收到原文才能翻译；不应接收该文本的服务请保持关闭。
 
-## 使用 ECDICT 本地词典
+## 使用本地词典
 
-Windows 和 macOS 均支持 [ECDICT 项目](https://github.com/skywind3000/ECDICT)
-提供的 UTF-8 CSV 文件，以及由该项目生成的 SQLite 数据库。TransDuck 安装包不包含
-词库数据，应用也不会自行下载词库。
+Windows 和 macOS 均支持用户提供的 UTF-8 CSV 或 SQLite 词典文件。CSV 必须包含
+`word`、`phonetic`、`definition`、`translation` 和 `pos` 列；SQLite 必须包含
+`stardict` 表及 `word`、`sw`、`phonetic`、`definition`、`translation`、`pos`
+字段。[ECDICT 项目](https://github.com/skywind3000/ECDICT)发布的 CSV 和 SQLite
+文件与这些结构兼容。TransDuck 安装包不包含词库数据，应用也不会自行下载词库。
 
-1. 从可信来源取得 `ecdict.csv`、`ecdict.mini.csv` 或 ECDICT SQLite 数据库；压缩包
-   需要先完整解压。
-2. 打开 Settings，选择 ECDICT 数据文件。
-3. 勾选 **ECDICT 本地词典**，然后点击 **保存结果来源**。
+1. 从可信来源取得受支持的 CSV 或 SQLite 文件；压缩包需要先完整解压。
+2. 打开 Settings，选择词典文件。
+3. 勾选 **本地词典**，然后点击 **保存结果来源**。
 
-如果只启用 ECDICT，不需要配置任何在线翻译服务。
+如果只启用本地词典，不需要配置任何在线翻译服务。
 
-SQLite 文件必须采用 ECDICT 的 `stardict` 表结构。选择 CSV 时，首次查询会在
+选择 CSV 时，首次查询会在
 TransDuck 的应用数据目录下生成 SQLite 查询缓存，因此大词库第一次可能需要更长时间；
 之后会直接复用缓存。源文件的大小、修改时间或内容校验值发生变化时都会自动重建；即使
 替换文件时保留了大小和时间戳，也不会继续使用旧释义。每次 CSV 查询都会先校验内容，
 因此超大文件可能增加短暂的本地读取耗时。TransDuck 不会修改所选源文件，并会在查询后
 释放文件占用。
 
-ECDICT 是英汉单词和词组词典，不是通用的句子翻译服务。如果完整选中文本没有对应词条，
+匹配到词条后，结果会显示文件中提供的音标，并提供 **发音** 按钮。发音使用操作系统
+已安装的本地语音，不读取词典中的音频 URL，也不会为发音访问网络。
+
+本地词典按完整单词或词组匹配，不是通用的句子翻译服务。如果完整选中文本没有对应词条，
 结果卡片会显示“未找到词条”。
 
 ## 使用 macOS 系统词典
@@ -43,7 +47,7 @@ macOS Dictionary Services 返回的第一个纯文本释义会显示在独立结
 释义范围取决于 macOS Dictionary app 中启用的词典来源。
 macOS 系统词典也可以作为唯一启用的结果来源保存。
 
-ECDICT 与 macOS 系统词典都只在本机查询。查询词、释义和词典文件路径不会写入诊断；
+本地词典文件与 macOS 系统词典都只在本机查询。查询词、释义和词典文件路径不会写入诊断；
 已完成的结果仍可按照历史保留设置出现在 TransDuck 历史记录中。
 
 另见：[Windows 安装说明](install-windows.md)和 [macOS 安装说明](install-macos.md)。

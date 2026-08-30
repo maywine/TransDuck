@@ -174,17 +174,17 @@ internal partial class SettingsWindow : Window
 
     private void HandleReloadClick(object? sender, RoutedEventArgs eventArgs) => _ = LoadAsync();
 
-    private async void HandleBrowseEcdictClick(object? sender, RoutedEventArgs eventArgs)
+    private async void HandleBrowseLocalDictionaryClick(object? sender, RoutedEventArgs eventArgs)
     {
         try
         {
             var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Choose an ECDICT CSV or SQLite database",
+                Title = "Choose a supported local dictionary CSV or SQLite file",
                 AllowMultiple = false,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("ECDICT data")
+                    new FilePickerFileType("Local dictionary data")
                     {
                         Patterns = ["*.csv", "*.db", "*.sqlite", "*.sqlite3"],
                     },
@@ -193,13 +193,13 @@ internal partial class SettingsWindow : Window
             });
             if (files.Count > 0)
             {
-                EcdictPathTextBox.Text = files[0].Path.LocalPath;
-                EcdictEnabledCheckBox.IsChecked = true;
+                LocalDictionaryPathTextBox.Text = files[0].Path.LocalPath;
+                LocalDictionaryEnabledCheckBox.IsChecked = true;
             }
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {
-            StatusTextBlock.Text = "The ECDICT data file could not be selected.";
+            StatusTextBlock.Text = "The local dictionary file could not be selected.";
         }
     }
 
@@ -336,21 +336,21 @@ internal partial class SettingsWindow : Window
             providers.Add(profile.Provider);
         }
 
-        var ecdictEnabled = EcdictEnabledCheckBox.IsChecked == true;
-        var ecdictPath = string.IsNullOrWhiteSpace(EcdictPathTextBox.Text)
+        var localDictionaryEnabled = LocalDictionaryEnabledCheckBox.IsChecked == true;
+        var localDictionaryPath = string.IsNullOrWhiteSpace(LocalDictionaryPathTextBox.Text)
             ? null
-            : EcdictPathTextBox.Text.Trim();
-        if (ecdictEnabled &&
-            (ecdictPath is null || !Path.IsPathFullyQualified(ecdictPath) || !File.Exists(ecdictPath)))
+            : LocalDictionaryPathTextBox.Text.Trim();
+        if (localDictionaryEnabled &&
+            (localDictionaryPath is null || !Path.IsPathFullyQualified(localDictionaryPath) || !File.Exists(localDictionaryPath)))
         {
-            error = "Choose an existing ECDICT CSV or SQLite data file.";
+            error = "Choose an existing local dictionary CSV or SQLite file.";
             return false;
         }
 
         var candidate = new QuerySourceSettings(
             QuerySourceSettingsMigration.CurrentVersion,
             providers,
-            new EcdictDictionarySettings(ecdictEnabled, ecdictPath),
+            new LocalDictionarySettings(localDictionaryEnabled, localDictionaryPath),
             MacSystemDictionaryCheckBox.IsChecked == true);
         try
         {
@@ -375,8 +375,8 @@ internal partial class SettingsWindow : Window
             checkBox.IsChecked = checkBox.Tag is string providerId && enabledProviderIds.Contains(providerId);
         }
 
-        EcdictEnabledCheckBox.IsChecked = settings.Ecdict.Enabled;
-        EcdictPathTextBox.Text = settings.Ecdict.DataFilePath ?? string.Empty;
+        LocalDictionaryEnabledCheckBox.IsChecked = settings.LocalDictionary.Enabled;
+        LocalDictionaryPathTextBox.Text = settings.LocalDictionary.DataFilePath ?? string.Empty;
         MacSystemDictionaryCheckBox.IsChecked = settings.MacSystemDictionaryEnabled;
     }
 

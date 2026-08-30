@@ -25,7 +25,8 @@ $script:RequiredPayloadFiles = @(
     'tessdata/eng.traineddata', 'tessdata/chi_sim.traineddata',
     'tessdata/model-manifest.json', 'tessdata/LICENSE',
     'licenses/Apache-2.0.txt', 'licenses/Leptonica-BSD-2-Clause.txt',
-    'licenses/Microsoft.Data.Sqlite-MIT.txt', 'licenses/SQLite-Public-Domain.txt',
+    'licenses/Microsoft.Data.Sqlite-MIT.txt', 'licenses/System.Speech-MIT.txt',
+    'licenses/SQLite-Public-Domain.txt',
     'licenses/Microsoft-DotNet-Library-License.txt',
     'licenses/Microsoft-DotNet-Third-Party-Notices.txt',
     'LICENSE.txt', 'THIRD-PARTY-NOTICES.md', 'README.txt'

@@ -58,7 +58,7 @@ internal static class Program
             var result = new MacSystemDictionaryProvider().LookupAsync(
                 "dictionary",
                 dataFilePath: null,
-                CancellationToken.None).GetAwaiter().GetResult();
+                CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(15)).GetAwaiter().GetResult();
             return result.Status is DictionaryLookupStatus.Found or DictionaryLookupStatus.NotFound
                 ? 0
                 : 1;
