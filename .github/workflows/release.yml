@@ -252,6 +252,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_REPOSITORY: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.version.outputs.release_tag }}
+          RELEASE_NOTES: Verified portable packages for Windows x64, macOS x64, and macOS arm64.
         run: |
           set -euo pipefail
           assets=(
@@ -266,11 +267,12 @@ jobs:
             gh release create "$RELEASE_TAG" "${assets[@]}" \
               --repo "$RELEASE_REPOSITORY" \
               --verify-tag \
-              --generate-notes \
+              --notes "$RELEASE_NOTES" \
               --title "$RELEASE_TAG"
           fi
           gh release edit "$RELEASE_TAG" \
             --repo "$RELEASE_REPOSITORY" \
+            --notes "$RELEASE_NOTES" \
             --draft=false \
             --prerelease=false \
             --latest
@@ -279,3 +281,7 @@ jobs:
             --json tagName,isDraft,isPrerelease \
             --jq '[.tagName, (.isDraft|tostring), (.isPrerelease|tostring)] | join("|")')" \
             = "$RELEASE_TAG|false|false"
+          test "$(gh release view "$RELEASE_TAG" \
+            --repo "$RELEASE_REPOSITORY" \
+            --json body \
+            --jq .body)" = "$RELEASE_NOTES"

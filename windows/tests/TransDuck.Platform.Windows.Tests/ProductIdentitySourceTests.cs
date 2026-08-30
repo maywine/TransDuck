@@ -65,6 +65,17 @@ public sealed class ProductIdentitySourceTests
         Assert.Equal("false", properties["IncludeSourceRevisionInInformationalVersion"]);
     }
 
+    [Fact]
+    public void ReleaseWorkflow_UsesGenericNotesWithoutGeneratedRepositoryLinks()
+    {
+        var workflow = ReadRepositoryFile(".github", "workflows", "release.yml");
+
+        Assert.Contains("RELEASE_NOTES: Verified portable packages", workflow, StringComparison.Ordinal);
+        Assert.Contains("--notes \"$RELEASE_NOTES\"", workflow, StringComparison.Ordinal);
+        Assert.Contains("--json body", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("--generate-notes", workflow, StringComparison.Ordinal);
+    }
+
     private static string ReadRepositoryFile(params string[] relativePath)
         => File.ReadAllText(ReadRepositoryPath(relativePath));
 
