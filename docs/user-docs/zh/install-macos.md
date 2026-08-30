@@ -69,6 +69,7 @@ TransDuck 会拒绝覆盖或删除。移动应用后，重新打开 Settings 并
 通过登录启动时，TransDuck 只常驻菜单栏，不主动打开主窗口。
 
 更新时请先从菜单栏退出 TransDuck，再完整替换 `TransDuck.app`。删除应用不会自动删除
-Application Support 数据或 Keychain 凭据。
+Application Support 数据或 Keychain 凭据。重新启动后，请确认主窗口或 Settings 中显示的
+版本与所安装的发布版本一致。
 
 另见：[TransDuck README](../../../README.md)。

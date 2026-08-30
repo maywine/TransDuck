@@ -30,6 +30,19 @@ public sealed class ResultFloatingWindowMarkupTests
     }
 
     [Fact]
+    public void ResultFloatingWindow_DeclaresVersionAutomation()
+    {
+        var document = XDocument.Load(FindResultFloatingWindowPath());
+        var version = FindAutomationElement(document, "ProductVersionTextBlock");
+
+        Assert.Equal("TextBlock", version.Name.LocalName);
+        Assert.Equal("{Binding Text, RelativeSource={RelativeSource Self}}", version.Attributes()
+            .SingleOrDefault(attribute => attribute.Name.LocalName == "AutomationProperties.Name")?.Value);
+        Assert.Equal("{DynamicResource result.automation.product_version.help}", version.Attributes()
+            .SingleOrDefault(attribute => attribute.Name.LocalName == "AutomationProperties.HelpText")?.Value);
+    }
+
+    [Fact]
     public void ResultFloatingWindow_DeclaresDisabledRetryAndCollapsedErrorCodeControls()
     {
         var document = XDocument.Load(FindResultFloatingWindowPath());

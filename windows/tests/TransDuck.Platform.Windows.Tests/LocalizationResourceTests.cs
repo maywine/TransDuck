@@ -93,7 +93,11 @@ public sealed class LocalizationResourceTests
         AssertResourceReference(FindAutomationElement(result, "RetryButton"), "Content", "result.button.retry");
         AssertResourceReference(FindAutomationElement(result, "PronounceButton"), "Content",
             "result.button.pronounce");
+        AssertResourceReference(FindAutomationElement(result, "ProductVersionTextBlock"),
+            "AutomationProperties.HelpText", "result.automation.product_version.help");
         AssertResourceReference(settings.Root!, "Title", "settings.window.title");
+        AssertResourceReference(FindAutomationElement(settings, "ProductVersionTextBlock"),
+            "AutomationProperties.HelpText", "settings.automation.product_version.help");
         AssertResourceReference(FindAutomationElement(settings, "SaveHotkeyButton"), "Content", "settings.button.save_hotkey");
         AssertResourceReference(FindAutomationElement(settings, "LaunchAtStartupCheckBox"), "Content", "settings.startup.enabled");
         AssertResourceReference(FindAutomationElement(settings, "LaunchAtStartupCheckBox"), "AutomationProperties.Name", "settings.automation.startup_enabled.name");
@@ -197,6 +201,26 @@ public sealed class LocalizationResourceTests
             "provider.name.google",
             "provider.name.volcengine",
             "provider.status.credential_not_required",
+        };
+
+        foreach (var key in expectedKeys)
+        {
+            Assert.True(english.TryGetValue(key, out var englishValue));
+            Assert.True(chinese.TryGetValue(key, out var chineseValue));
+            Assert.False(string.IsNullOrWhiteSpace(englishValue));
+            Assert.False(string.IsNullOrWhiteSpace(chineseValue));
+        }
+    }
+
+    [Fact]
+    public void ProductVersionResources_AreDeclaredInBothLocales()
+    {
+        var english = ReadResourceDictionary("Strings.en-US.xaml");
+        var chinese = ReadResourceDictionary("Strings.zh-CN.xaml");
+        var expectedKeys = new[]
+        {
+            "result.automation.product_version.help",
+            "settings.automation.product_version.help",
         };
 
         foreach (var key in expectedKeys)

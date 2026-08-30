@@ -37,6 +37,18 @@ public sealed class ResultFloatingWindowSourceTests
         Assert.DoesNotContain("ToDisplayText().Split", runtime + window, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void VersionText_UsesTheSharedAssemblyDisplayWithoutHardcoding()
+    {
+        var result = ReadSource("TransDuck.App", "Windows", "ResultFloatingWindow.xaml.cs");
+        var settings = ReadSource("TransDuck.App", "Windows", "SettingsWindow.xaml.cs");
+        const string versionDisplay = "TransDuck.Core.ProductVersionDisplay.FromAssembly(typeof(App).Assembly)";
+
+        Assert.Contains(versionDisplay, result, StringComparison.Ordinal);
+        Assert.Contains(versionDisplay, settings, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"\bv\d+\.\d+(?:\.\d+){0,2}\b", result + settings);
+    }
+
     private static string Slice(string source, string startMarker, string endMarker)
     {
         var start = source.IndexOf(startMarker, StringComparison.Ordinal);

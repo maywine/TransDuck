@@ -8,7 +8,11 @@
   <Grid Margin="20" RowDefinitions="*,Auto" RowSpacing="12">
     <ScrollViewer>
       <StackPanel Spacing="10">
-        <TextBlock Text="Translation provider" FontSize="18" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="Translation provider" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Grid.Column="1" x:Name="VersionTextBlock" Opacity="0.6"
+                     VerticalAlignment="Center" />
+        </Grid>
         <TextBlock Text="Results to show" FontWeight="SemiBold" />
         <TextBlock Text="Enable multiple configured services to query them concurrently and display each result separately."
                    TextWrapping="Wrap" Opacity="0.7" />

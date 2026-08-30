@@ -83,6 +83,7 @@ At login, TransDuck starts in the menu bar without opening its main window.
 
 To update, quit TransDuck from its menu-bar menu and replace `TransDuck.app` as
 a whole. Removing the app does not automatically remove Application Support data
-or Keychain credentials.
+or Keychain credentials. After restarting, confirm that the version shown in the
+main window or Settings matches the release you installed.
 
 See also: [TransDuck README](../../../README_EN.md).

@@ -26,6 +26,8 @@
   root and must never modify or lock the source file after a lookup completes.
 - Pronounce matched dictionary terms with the operating system's installed speech voices.
   Pronunciation stays local and must not fetch or play dictionary-provided audio URLs.
+- Display the current product version in each platform's primary and settings windows,
+  derived from assembly informational metadata rather than hard-coded UI text.
 - On macOS, system dictionary lookup uses the user's active Dictionary Services sources.
   Dictionary text stays local; diagnostics must not include lookup terms, definitions, or
   dictionary file paths.
