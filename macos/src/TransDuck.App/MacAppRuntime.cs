@@ -1,12 +1,15 @@
 using System.Diagnostics;
 using System.Text;
 using TransDuck.Core.Contracts.V1;
+using TransDuck.Core.Lookup;
 using TransDuck.Core.Persistence;
 using TransDuck.Core.Translation;
 using TransDuck.Infrastructure.Persistence;
+using TransDuck.Infrastructure.Lookup;
 using TransDuck.Infrastructure.Proxy;
 using TransDuck.Infrastructure.Translation;
 using TransDuck.Platform.MacOS.Capture;
+using TransDuck.Platform.MacOS.Dictionary;
 using TransDuck.Platform.MacOS.Hotkeys;
 using TransDuck.Platform.MacOS.Ocr;
 using TransDuck.Platform.MacOS.Persistence;
@@ -21,6 +24,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     private readonly MacDataPaths _dataPaths = new();
     private readonly JsonConfigurationStore _configurationStore;
     private readonly JsonProviderSettingsStore _providerSettingsStore;
+    private readonly JsonQuerySourceSettingsStore _querySourceSettingsStore;
     private readonly JsonProxySettingsStore _proxySettingsStore;
     private readonly JsonMacHotkeySettingsStore _hotkeySettingsStore;
     private readonly MacKeychainCredentialStore _credentialStore = new();
@@ -33,12 +37,21 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     private readonly VisionOcrService _ocrService = new();
     private readonly LaunchAgentStartupService _startupService = new();
     private readonly MacGlobalHotkeyService _hotkeyService = new(new SharpHookKeyboardBackend());
+    private readonly EcdictDictionaryProvider _ecdictDictionaryProvider;
+    private readonly MacSystemDictionaryProvider _systemDictionaryProvider = new MacSystemDictionaryProvider();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly object _stateGate = new();
     private readonly object _operationGate = new();
     private readonly object _trackedOperationsGate = new();
     private readonly HashSet<Task> _trackedOperations = [];
-    private MacRuntimeState _state = new(string.Empty, string.Empty, "Starting TransDuck...", false, false);
+    private MacRuntimeState _state = new(
+        string.Empty,
+        string.Empty,
+        "Starting TransDuck...",
+        false,
+        false,
+        [],
+        Revision: 0);
     private CancellationTokenSource? _operationCancellation;
     private RetrySnapshot? _retry;
     private long _operationGeneration;
@@ -54,10 +67,13 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
         _configurationStore = new JsonConfigurationStore(_dataPaths);
         _providerSettingsStore = new JsonProviderSettingsStore(_dataPaths);
+        _querySourceSettingsStore = new JsonQuerySourceSettingsStore(_dataPaths);
         _proxySettingsStore = new JsonProxySettingsStore(_dataPaths);
         _hotkeySettingsStore = new JsonMacHotkeySettingsStore(_dataPaths);
         _historyStore = new JsonLinesHistoryStore(_dataPaths);
         _diagnosticSink = new JsonLinesDiagnosticSink(_dataPaths);
+        _ecdictDictionaryProvider = new EcdictDictionaryProvider(
+            Path.Combine(_dataPaths.RootDirectory, "dictionary-cache"));
         var leaseSource = new ProxyTranslationHttpClientLeaseSource(_httpClientPool);
         _providers.Register(new OpenAiCompatibleProvider(leaseSource));
         _providers.Register(new DeepLProvider(leaseSource));
@@ -127,6 +143,16 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         status: "TransDuck could not finish startup initialization.",
         isBusy: false);
 
+    internal async Task<DictionaryLookupStatus> SmokeTestSystemDictionaryAsync(
+        CancellationToken cancellationToken)
+    {
+        var result = await _systemDictionaryProvider.LookupAsync(
+            "dictionary",
+            dataFilePath: null,
+            cancellationToken);
+        return result.Status;
+    }
+
     public Task InitializeAsync() => TrackOperation(InitializeCoreAsync);
 
     private async Task InitializeCoreAsync()
@@ -167,9 +193,23 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
         var configuration = await _configurationStore.ReadAsync(cancellationToken);
         var profiles = await _providerSettingsStore.ReadAsync(cancellationToken);
-        if (!configuration.Succeeded || !profiles.Succeeded || profiles.Value!.Profiles.Count == 0)
+        var querySources = await _querySourceSettingsStore.ReadAsync(cancellationToken);
+        var effectiveSources = querySources.Succeeded
+            ? querySources.Value!
+            : configuration.Succeeded
+                ? QuerySourceSettings.CreateDefault(configuration.Value!.DefaultProvider)
+                : null;
+        var configuredProviderKeys = profiles.Succeeded
+            ? profiles.Value!.Profiles.Select(static profile => profile.CanonicalProviderKey)
+                .ToHashSet(StringComparer.Ordinal)
+            : [];
+        var hasUsableSource = effectiveSources is not null &&
+            (effectiveSources.Ecdict.Enabled || effectiveSources.MacSystemDictionaryEnabled ||
+             effectiveSources.EnabledTranslationProviders.Any(provider =>
+                 configuredProviderKeys.Contains(CanonicalProviderKey(provider))));
+        if (!hasUsableSource)
         {
-            status.Add("open Settings to configure a translation provider");
+            status.Add("open Settings to configure a translation or dictionary source");
         }
 
         PublishState(status: string.Join("; ", status) + ".");
@@ -252,7 +292,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             _operationCancellation = null;
         }
 
-        PublishState(status: "Operation cancelled.", isBusy: false);
+        MarkActiveSourcesCancelled();
     }
 
     public Task RetryAsync()
@@ -263,7 +303,9 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             retry = _retry;
         }
 
-        return retry is null ? Task.CompletedTask : TranslateAsync(retry.Text, retry.QueryKind);
+        return retry is null
+            ? Task.CompletedTask
+            : TranslateAsync(retry.Text, retry.QueryKind, retry.SourceKeys);
     }
 
     public Task<MacSettingsSnapshot> LoadSettingsAsync(CancellationToken cancellationToken) =>
@@ -273,19 +315,25 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     {
         var providerRead = await _providerSettingsStore.ReadAsync(cancellationToken);
         var configurationRead = await _configurationStore.ReadAsync(cancellationToken);
+        var querySourceRead = await _querySourceSettingsStore.ReadAsync(cancellationToken);
         var proxyRead = await _proxySettingsStore.ReadAsync(cancellationToken);
         var hotkeyRead = await _hotkeySettingsStore.ReadAsync(cancellationToken);
         var configuration = configurationRead.Succeeded
             ? configurationRead.Value!
             : DefaultConfiguration();
+        var querySources = querySourceRead.Succeeded
+            ? querySourceRead.Value!
+            : QuerySourceSettings.CreateDefault(configuration.DefaultProvider);
         return new MacSettingsSnapshot(
             configuration,
             providerRead.Succeeded ? providerRead.Value!.Profiles : [],
             proxyRead.Succeeded ? proxyRead.Value! : _httpClientPool.CurrentSettings,
             hotkeyRead.Succeeded ? hotkeyRead.Value! : _hotkeyService.Settings,
             _startupService.GetStatus(),
+            querySources,
             providerRead.Status,
             configurationRead.Status,
+            querySourceRead.Status,
             proxyRead.Status,
             hotkeyRead.Status);
     }
@@ -310,6 +358,30 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             cancellationToken);
         read.Value?.Dispose();
         return read.Status;
+    }
+
+    public Task<MacSettingsSaveResult> SaveQuerySourcesAsync(
+        QuerySourceSettings settings,
+        CancellationToken cancellationToken) =>
+        TrackOperation(() => SaveQuerySourcesCoreAsync(settings, cancellationToken));
+
+    private async Task<MacSettingsSaveResult> SaveQuerySourcesCoreAsync(
+        QuerySourceSettings settings,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            settings.Validate();
+        }
+        catch (ContractValidationException)
+        {
+            return new MacSettingsSaveResult(false, "The selected result sources are invalid.");
+        }
+
+        var write = await _querySourceSettingsStore.WriteAsync(settings, cancellationToken);
+        return write.Succeeded
+            ? new MacSettingsSaveResult(true, "Result sources saved.")
+            : new MacSettingsSaveResult(false, "The selected result sources could not be saved.");
     }
 
     public Task<MacSettingsSaveResult> SaveSettingsAsync(
@@ -354,6 +426,14 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         if (!configurationWrite.Succeeded)
         {
             return new MacSettingsSaveResult(false, "General settings could not be saved.");
+        }
+
+        var querySourceWrite = await _querySourceSettingsStore.WriteAsync(
+            input.QuerySourceSettings,
+            cancellationToken);
+        if (!querySourceWrite.Succeeded)
+        {
+            return new MacSettingsSaveResult(false, "The selected result sources could not be saved.");
         }
 
         var credentialResult = await SaveCredentialAsync(input, cancellationToken);
@@ -461,6 +541,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         DisposeNonFatal(_hotkeySettingsStore);
         DisposeNonFatal(_proxySettingsStore);
         DisposeNonFatal(_providerSettingsStore);
+        DisposeNonFatal(_querySourceSettingsStore);
         DisposeNonFatal(_configurationStore);
         DisposeNonFatal(_credentialStore);
         DisposeNonFatal(_historyStore);
@@ -469,17 +550,21 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         DisposeNonFatal(_lifetimeCancellation);
     }
 
-    private async Task TranslateAsync(string text, QueryKind queryKind)
+    private async Task TranslateAsync(
+        string text,
+        QueryKind queryKind,
+        IReadOnlySet<string>? sourceFilter = null)
     {
         var (generation, cancellationToken) = BeginOperation();
-        await TranslateAsync(text, queryKind, generation, cancellationToken);
+        await TranslateAsync(text, queryKind, generation, cancellationToken, sourceFilter);
     }
 
     private async Task TranslateAsync(
         string text,
         QueryKind queryKind,
         long generation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlySet<string>? sourceFilter = null)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -490,32 +575,213 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         PublishCurrentState(
             generation,
             input: text,
-            output: string.Empty,
-            status: "Loading provider settings...",
+            output: sourceFilter is null ? string.Empty : null,
+            status: "Loading result sources...",
             isBusy: true,
-            canRetry: false);
-        var settings = await LoadTranslationSettingsAsync(cancellationToken);
+            canRetry: false,
+            results: sourceFilter is null ? [] : null);
+        var configurationRead = await _configurationStore.ReadAsync(cancellationToken);
+        var configuration = configurationRead.Succeeded
+            ? configurationRead.Value!
+            : DefaultConfiguration();
+        var providerRead = await _providerSettingsStore.ReadAsync(cancellationToken);
+        var querySourceRead = await _querySourceSettingsStore.ReadAsync(cancellationToken);
         if (!IsCurrent(generation))
         {
-            settings.Credential?.Dispose();
             return;
         }
 
+        if (querySourceRead.Status is not (PersistenceStatus.Succeeded or PersistenceStatus.NotFound))
+        {
+            PublishCurrentState(
+                generation,
+                status: "The selected result sources are unavailable. Open Settings and save them again.",
+                isBusy: false);
+            return;
+        }
+
+        var sourceSettings = querySourceRead.Succeeded
+            ? querySourceRead.Value!
+            : QuerySourceSettings.CreateDefault(configuration.DefaultProvider);
+        var providerSources = sourceSettings.EnabledTranslationProviders
+            .Where(provider => sourceFilter is null ||
+                sourceFilter.Contains(CanonicalProviderKey(provider)))
+            .ToArray();
+        var includeEcdict = sourceSettings.Ecdict.Enabled &&
+            (sourceFilter is null || sourceFilter.Contains(LocalDictionaryIds.Ecdict));
+        var includeMacSystem = sourceSettings.MacSystemDictionaryEnabled &&
+            (sourceFilter is null || sourceFilter.Contains(LocalDictionaryIds.MacSystem));
+        var presentations = providerSources
+            .Select(provider => new MacQuerySourceResult(
+                CanonicalProviderKey(provider),
+                DescribeProvider(provider),
+                string.Empty,
+                "Waiting"))
+            .ToList();
+        if (includeEcdict)
+        {
+            presentations.Add(new MacQuerySourceResult(
+                LocalDictionaryIds.Ecdict,
+                _ecdictDictionaryProvider.Registration.DisplayName,
+                string.Empty,
+                "Waiting"));
+        }
+
+        if (includeMacSystem)
+        {
+            presentations.Add(new MacQuerySourceResult(
+                LocalDictionaryIds.MacSystem,
+                _systemDictionaryProvider.Registration.DisplayName,
+                string.Empty,
+                "Waiting"));
+        }
+
+        var preparedResults = sourceFilter is null
+            ? presentations
+            : PrepareRetryResults(presentations);
+        PublishCurrentState(
+            generation,
+            output: CombineResults(preparedResults),
+            status: "Receiving results...",
+            isBusy: true,
+            results: preparedResults);
+        var providerDocument = providerRead.Succeeded ? providerRead.Value : null;
+        var runs = providerSources
+            .Select(provider => RunTranslationSourceAsync(
+                provider,
+                providerDocument,
+                configuration,
+                text,
+                queryKind,
+                generation,
+                cancellationToken))
+            .ToList();
+        if (includeEcdict)
+        {
+            runs.Add(RunDictionarySourceAsync(
+                _ecdictDictionaryProvider,
+                sourceSettings.Ecdict.DataFilePath,
+                text,
+                configuration,
+                generation,
+                cancellationToken));
+        }
+
+        if (includeMacSystem)
+        {
+            runs.Add(RunDictionarySourceAsync(
+                _systemDictionaryProvider,
+                dataFilePath: null,
+                text,
+                configuration,
+                generation,
+                cancellationToken));
+        }
+
+        var terminals = await Task.WhenAll(runs);
+        if (!IsCurrent(generation))
+        {
+            return;
+        }
+
+        var retryableKeys = terminals
+            .Where(static terminal => terminal.Retryable)
+            .Select(static terminal => terminal.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        lock (_stateGate)
+        {
+            _retry = retryableKeys.Count > 0
+                ? new RetrySnapshot(text, queryKind, retryableKeys)
+                : null;
+        }
+        PublishCurrentState(
+            generation,
+            status: terminals.Any(static terminal => terminal.Succeeded)
+                ? string.Empty
+                : "No enabled source returned a result.",
+            isBusy: false,
+            canRetry: retryableKeys.Count > 0);
+    }
+
+    private async Task<MacSourceTerminal> RunTranslationSourceAsync(
+        ProviderDescriptor selectedProvider,
+        ProviderSettingsDocument? providerDocument,
+        Configuration configuration,
+        string text,
+        QueryKind queryKind,
+        long generation,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await RunTranslationSourceCoreAsync(
+                selectedProvider,
+                providerDocument,
+                configuration,
+                text,
+                queryKind,
+                generation,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return MacSourceTerminal.Cancelled(CanonicalProviderKey(selectedProvider));
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            PublishCurrentSourceResult(
+                generation,
+                CanonicalProviderKey(selectedProvider),
+                DescribeProvider(selectedProvider),
+                DescribeQueryError(QueryErrorCode.Internal),
+                "Failed");
+            return MacSourceTerminal.Failed(
+                CanonicalProviderKey(selectedProvider),
+                QueryErrorCode.Internal,
+                retryable: false);
+        }
+    }
+
+    private async Task<MacSourceTerminal> RunTranslationSourceCoreAsync(
+        ProviderDescriptor selectedProvider,
+        ProviderSettingsDocument? providerDocument,
+        Configuration configuration,
+        string text,
+        QueryKind queryKind,
+        long generation,
+        CancellationToken cancellationToken)
+    {
+        var key = CanonicalProviderKey(selectedProvider);
+        var displayName = DescribeProvider(selectedProvider);
+        var settings = await LoadTranslationSettingsAsync(
+            selectedProvider,
+            providerDocument,
+            configuration,
+            cancellationToken);
         var credential = settings.Credential;
         if (!settings.Succeeded)
         {
             credential?.Dispose();
-            PublishCurrentState(generation, status: settings.Error!, isBusy: false);
-            return;
+            PublishCurrentSourceResult(
+                generation,
+                key,
+                displayName,
+                settings.Error!,
+                "Not configured");
+            return MacSourceTerminal.Failed(key, QueryErrorCode.InvalidRequest, retryable: false);
         }
 
         var profile = settings.Profile!;
-        var configuration = settings.Configuration!;
         if (!_providers.TryResolve(profile.Provider, out var provider) || provider is null)
         {
             credential?.Dispose();
-            PublishCurrentState(generation, status: "The selected provider is unavailable.", isBusy: false);
-            return;
+            PublishCurrentSourceResult(
+                generation,
+                key,
+                displayName,
+                "The selected provider is unavailable.",
+                "Failed");
+            return MacSourceTerminal.Failed(key, QueryErrorCode.ProviderUnavailable, retryable: false);
         }
 
         string? storedCredential;
@@ -524,26 +790,25 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             storedCredential = credential?.Reveal();
         }
 
-        // Provider requests retain only the minimum transient strings after Keychain-backed bytes are zeroed.
         TranslationCredentials credentials;
-        if (string.Equals(
-                profile.Provider.ProviderId,
-                TranslationProviderIds.Volcengine,
-                StringComparison.Ordinal))
+        if (string.Equals(profile.Provider.ProviderId, TranslationProviderIds.Volcengine, StringComparison.Ordinal))
         {
             if (!VolcengineCredentialCodec.TryDecode(storedCredential, out credentials))
             {
-                PublishCurrentState(
+                PublishCurrentSourceResult(
                     generation,
-                    status: "The saved Volcengine credential is invalid.",
-                    isBusy: false);
-                return;
+                    key,
+                    displayName,
+                    "The saved Volcengine credential is invalid.",
+                    "Failed");
+                return MacSourceTerminal.Failed(key, QueryErrorCode.Authentication, retryable: false);
             }
         }
         else
         {
             credentials = new TranslationCredentials(storedCredential);
         }
+
         var requestId = Guid.NewGuid().ToString("N");
         var request = new TranslationProviderRequest(
             profile.Provider,
@@ -554,140 +819,53 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             profile.TargetLanguage,
             credentials,
             TimeSpan.FromSeconds(profile.TimeoutSeconds));
-        var output = new StringBuilder();
         var stopwatch = Stopwatch.StartNew();
-        TranslationStreamEventKind terminalKind = TranslationStreamEventKind.Failed;
-        QueryErrorCode? terminalError = QueryErrorCode.Internal;
-        var retryable = false;
-        var terminalReceived = false;
-        try
-        {
-            PublishCurrentState(generation, status: "Receiving translation...", isBusy: true);
-            await WriteDiagnosticAsync(
-                DiagnosticEventId.TranslationStarted,
-                DiagnosticOutcome.Succeeded,
-                profile.Provider.ProviderId,
-                requestId,
-                null,
-                null);
-            await foreach (var streamEvent in provider.TranslateAsync(request, cancellationToken)
-                               .WithCancellation(cancellationToken))
-            {
-                if (!IsCurrent(generation))
-                {
-                    return;
-                }
-
-                streamEvent.Validate();
-                switch (streamEvent.Kind)
-                {
-                    case TranslationStreamEventKind.Delta:
-                        output.Append(streamEvent.Text);
-                        PublishCurrentState(generation, output: output.ToString());
-                        break;
-                    case TranslationStreamEventKind.Completed:
-                        if (output.Length == 0)
-                        {
-                            terminalKind = TranslationStreamEventKind.Failed;
-                            terminalError = QueryErrorCode.Internal;
-                            PublishCurrentState(
-                                generation,
-                                status: DescribeQueryError(terminalError.Value),
-                                isBusy: false,
-                                canRetry: false);
-                        }
-                        else
-                        {
-                            terminalKind = streamEvent.Kind;
-                            terminalError = null;
-                            PublishCurrentState(
-                                generation,
-                                output: output.ToString(),
-                                status: "Translation completed.",
-                                isBusy: false,
-                                canRetry: false);
-                        }
-                        break;
-                    case TranslationStreamEventKind.Cancelled:
-                        terminalKind = streamEvent.Kind;
-                        terminalError = null;
-                        PublishCurrentState(generation, status: "Translation cancelled.", isBusy: false);
-                        break;
-                    case TranslationStreamEventKind.Failed:
-                        terminalKind = streamEvent.Kind;
-                        terminalError = streamEvent.ErrorCode ?? QueryErrorCode.Internal;
-                        retryable = streamEvent.Retryable;
-                        PublishCurrentState(
-                            generation,
-                            status: DescribeQueryError(terminalError.Value),
-                            isBusy: false,
-                            canRetry: retryable);
-                        break;
-                }
-
-                if (streamEvent.IsTerminal)
-                {
-                    terminalReceived = true;
-                    break;
-                }
-            }
-
-            if (!terminalReceived && IsCurrent(generation))
-            {
-                terminalError = QueryErrorCode.ProviderUnavailable;
-                retryable = true;
-                PublishCurrentState(
-                    generation,
-                    status: DescribeQueryError(terminalError.Value),
-                    isBusy: false,
-                    canRetry: true);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            terminalKind = TranslationStreamEventKind.Cancelled;
-            terminalError = null;
-            PublishCurrentState(generation, status: "Translation cancelled.", isBusy: false);
-        }
-        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
-        {
-            terminalKind = TranslationStreamEventKind.Failed;
-            terminalError = QueryErrorCode.Internal;
-            PublishCurrentState(generation, status: DescribeQueryError(QueryErrorCode.Internal), isBusy: false);
-        }
-        finally
-        {
-            stopwatch.Stop();
-        }
-
-        if (!IsCurrent(generation))
-        {
-            return;
-        }
-
-        lock (_stateGate)
-        {
-            _retry = retryable ? new RetrySnapshot(text, queryKind) : null;
-        }
-
+        await WriteDiagnosticAsync(
+            DiagnosticEventId.TranslationStarted,
+            DiagnosticOutcome.Succeeded,
+            profile.Provider.ProviderId,
+            requestId,
+            null,
+            null);
+        PublishCurrentSourceResult(generation, key, displayName, string.Empty, "Receiving");
+        var result = await TranslationProviderRunner.RunAsync(
+            provider,
+            request,
+            output => PublishCurrentSourceResult(
+                generation,
+                key,
+                displayName,
+                output,
+                "Receiving"),
+            cancellationToken);
+        stopwatch.Stop();
+        var output = string.IsNullOrWhiteSpace(result.Text) && result.ErrorCode is { } error
+            ? DescribeQueryError(error)
+            : result.Text;
+        PublishCurrentSourceResult(
+            generation,
+            key,
+            displayName,
+            output,
+            DescribeSourceTerminal(result.TerminalKind));
         await AppendHistoryAsync(
             requestId,
             text,
             queryKind,
             profile,
             configuration,
-            terminalKind,
-            output.ToString(),
-            terminalError,
-            retryable);
+            result.TerminalKind,
+            result.Text,
+            result.ErrorCode,
+            result.Retryable);
         await WriteDiagnosticAsync(
-            terminalKind switch
+            result.TerminalKind switch
             {
                 TranslationStreamEventKind.Completed => DiagnosticEventId.TranslationCompleted,
                 TranslationStreamEventKind.Cancelled => DiagnosticEventId.TranslationCancelled,
                 _ => DiagnosticEventId.TranslationFailed,
             },
-            terminalKind switch
+            result.TerminalKind switch
             {
                 TranslationStreamEventKind.Completed => DiagnosticOutcome.Succeeded,
                 TranslationStreamEventKind.Cancelled => DiagnosticOutcome.Cancelled,
@@ -695,31 +873,113 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             },
             profile.Provider.ProviderId,
             requestId,
-            ToDiagnosticError(terminalError),
+            ToDiagnosticError(result.ErrorCode),
             stopwatch.ElapsedMilliseconds);
+        return result.TerminalKind == TranslationStreamEventKind.Completed
+            ? MacSourceTerminal.Completed(key)
+            : result.TerminalKind == TranslationStreamEventKind.Cancelled
+                ? MacSourceTerminal.Cancelled(key)
+                : MacSourceTerminal.Failed(
+                    key,
+                    result.ErrorCode,
+                    result.Retryable && result.ErrorCode is { } code && IsRetryableError(code));
+    }
+
+    private async Task<MacSourceTerminal> RunDictionarySourceAsync(
+        IDictionaryProvider provider,
+        string? dataFilePath,
+        string text,
+        Configuration configuration,
+        long generation,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await RunDictionarySourceCoreAsync(
+                provider,
+                dataFilePath,
+                text,
+                configuration,
+                generation,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return MacSourceTerminal.Cancelled(provider.Registration.ProviderId);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            PublishCurrentSourceResult(
+                generation,
+                provider.Registration.ProviderId,
+                provider.Registration.DisplayName,
+                "The dictionary source is unavailable.",
+                "Failed");
+            return MacSourceTerminal.Failed(
+                provider.Registration.ProviderId,
+                QueryErrorCode.Internal,
+                retryable: false);
+        }
+    }
+
+    private async Task<MacSourceTerminal> RunDictionarySourceCoreAsync(
+        IDictionaryProvider provider,
+        string? dataFilePath,
+        string text,
+        Configuration configuration,
+        long generation,
+        CancellationToken cancellationToken)
+    {
+        PublishCurrentSourceResult(
+            generation,
+            provider.Registration.ProviderId,
+            provider.Registration.DisplayName,
+            string.Empty,
+            "Looking up");
+        var result = await provider.LookupAsync(text, dataFilePath, cancellationToken);
+        PublishCurrentSourceResult(
+            generation,
+            provider.Registration.ProviderId,
+            provider.Registration.DisplayName,
+            result.Entry?.ToDisplayText() ?? DescribeDictionaryStatus(result.Status),
+            DescribeDictionarySourceStatus(result.Status));
+        if (result.Succeeded)
+        {
+            await AppendDictionaryHistoryAsync(text, provider.Registration, result.Entry!, configuration);
+            return MacSourceTerminal.Completed(provider.Registration.ProviderId);
+        }
+
+        if (result.Status == DictionaryLookupStatus.NotFound)
+        {
+            return MacSourceTerminal.Completed(provider.Registration.ProviderId);
+        }
+
+        return result.Status switch
+        {
+            DictionaryLookupStatus.Cancelled => MacSourceTerminal.Cancelled(provider.Registration.ProviderId),
+            DictionaryLookupStatus.Unavailable => MacSourceTerminal.Failed(
+                provider.Registration.ProviderId,
+                QueryErrorCode.ProviderUnavailable,
+                retryable: true),
+            _ => MacSourceTerminal.Failed(provider.Registration.ProviderId, null, retryable: false),
+        };
     }
 
     private async Task<TranslationSettingsResult> LoadTranslationSettingsAsync(
+        ProviderDescriptor selectedProvider,
+        ProviderSettingsDocument? providerDocument,
+        Configuration configuration,
         CancellationToken cancellationToken)
     {
-        var providerRead = await _providerSettingsStore.ReadAsync(cancellationToken);
-        if (!providerRead.Succeeded)
+        if (providerDocument is null)
         {
-            return TranslationSettingsResult.Failed("Open Settings and configure a translation provider.");
+            return TranslationSettingsResult.Failed("Open Settings and configure this translation provider.");
         }
 
-        var configurationRead = await _configurationStore.ReadAsync(cancellationToken);
-        if (!configurationRead.Succeeded)
-        {
-            return TranslationSettingsResult.Failed("General provider settings are unavailable.");
-        }
-
-        var configuration = configurationRead.Value!;
-        var key = configuration.DefaultProvider.InstanceId is null
-            ? configuration.DefaultProvider.ProviderId
-            : configuration.DefaultProvider.ProviderId + ":" + configuration.DefaultProvider.InstanceId;
-        var profile = providerRead.Value!.Profiles.FirstOrDefault(candidate =>
-            string.Equals(candidate.CanonicalProviderKey, key, StringComparison.Ordinal));
+        var profile = providerDocument.Profiles.FirstOrDefault(candidate => string.Equals(
+            candidate.CanonicalProviderKey,
+            CanonicalProviderKey(selectedProvider),
+            StringComparison.Ordinal));
         if (profile is null)
         {
             return TranslationSettingsResult.Failed("The selected provider profile is unavailable.");
@@ -825,6 +1085,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 input.TargetLanguage.Trim(),
                 input.TimeoutSeconds);
             profile.Validate();
+            input.QuerySourceSettings.Validate();
             input.ProxySettings.Validate();
             input.HotkeySettings.Validate();
             input.HistoryRetention.Validate();
@@ -909,6 +1170,50 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         }
     }
 
+    private async Task AppendDictionaryHistoryAsync(
+        string text,
+        DictionaryProviderRegistration registration,
+        DictionaryLookupEntry entry,
+        Configuration configuration)
+    {
+        try
+        {
+            var requestId = Guid.NewGuid().ToString("N");
+            var provider = new ProviderDescriptor(registration.ProviderId);
+            var definitions = new[] { entry.Translation, entry.Definition }
+                .Where(static value => !string.IsNullOrWhiteSpace(value))
+                .Select(static value => value!.Trim())
+                .ToArray();
+            var request = new QueryRequest(
+                1,
+                requestId,
+                QueryKind.Dictionary,
+                text,
+                SourceLanguage: null,
+                TargetLanguage: "und",
+                provider);
+            var result = new QueryResult(
+                1,
+                requestId,
+                QueryKind.Dictionary,
+                provider,
+                QueryTerminalState.Completed,
+                SourceLanguage: null,
+                TargetLanguage: "und",
+                new QueryResultPayload(
+                    entry.ToDisplayText(),
+                    [new DictionaryEntryResult(entry.Term, definitions)]));
+            await _historyStore.AppendAsync(
+                new HistoryEntry(1, Guid.NewGuid().ToString("N"), DateTimeOffset.UtcNow, request, result),
+                configuration.HistoryRetention,
+                CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            // Dictionary history cannot change a completed local lookup.
+        }
+    }
+
     private async Task WriteDiagnosticAsync(
         DiagnosticEventId eventId,
         DiagnosticOutcome outcome,
@@ -939,6 +1244,11 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
     private (long Generation, CancellationToken Token) BeginOperation()
     {
+        lock (_stateGate)
+        {
+            _retry = null;
+        }
+
         lock (_operationGate)
         {
             _operationCancellation?.Cancel();
@@ -962,11 +1272,12 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         string? output = null,
         string? status = null,
         bool? isBusy = null,
-        bool? canRetry = null)
+        bool? canRetry = null,
+        IReadOnlyList<MacQuerySourceResult>? results = null)
     {
         if (IsCurrent(generation))
         {
-            PublishState(input, output, status, isBusy, canRetry);
+            PublishState(input, output, status, isBusy, canRetry, results);
         }
     }
 
@@ -975,7 +1286,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         string? output = null,
         string? status = null,
         bool? isBusy = null,
-        bool? canRetry = null)
+        bool? canRetry = null,
+        IReadOnlyList<MacQuerySourceResult>? results = null)
     {
         if (Volatile.Read(ref _disposeRequested) != 0)
         {
@@ -992,6 +1304,115 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 Status = status ?? _state.Status,
                 IsBusy = isBusy ?? _state.IsBusy,
                 CanRetry = canRetry ?? _state.CanRetry,
+                Results = results ?? _state.Results,
+                Revision = _state.Revision + 1,
+            };
+            state = _state;
+        }
+
+        StateChanged?.Invoke(this, state);
+    }
+
+    private void PublishCurrentSourceResult(
+        long generation,
+        string key,
+        string displayName,
+        string text,
+        string status)
+    {
+        if (!IsCurrent(generation) || Volatile.Read(ref _disposeRequested) != 0)
+        {
+            return;
+        }
+
+        MacRuntimeState state;
+        lock (_stateGate)
+        {
+            if (!IsCurrent(generation))
+            {
+                return;
+            }
+
+            var results = _state.Results.ToList();
+            var index = results.FindIndex(candidate => string.Equals(candidate.Key, key, StringComparison.Ordinal));
+            var result = new MacQuerySourceResult(key, displayName, text, status);
+            if (index >= 0)
+            {
+                results[index] = result;
+            }
+            else
+            {
+                results.Add(result);
+            }
+
+            var combinedOutput = CombineResults(results);
+            _state = _state with
+            {
+                Results = results,
+                Output = combinedOutput,
+                Revision = _state.Revision + 1,
+            };
+            state = _state;
+        }
+
+        StateChanged?.Invoke(this, state);
+    }
+
+    private IReadOnlyList<MacQuerySourceResult> PrepareRetryResults(
+        IReadOnlyList<MacQuerySourceResult> retryPresentations)
+    {
+        lock (_stateGate)
+        {
+            var replacements = retryPresentations.ToDictionary(
+                static result => result.Key,
+                StringComparer.Ordinal);
+            var results = new List<MacQuerySourceResult>(_state.Results.Count + replacements.Count);
+            foreach (var result in _state.Results)
+            {
+                if (replacements.Remove(result.Key, out var replacement))
+                {
+                    results.Add(replacement);
+                }
+                else
+                {
+                    results.Add(result);
+                }
+            }
+
+            results.AddRange(replacements.Values);
+            return results;
+        }
+    }
+
+    private static string CombineResults(IEnumerable<MacQuerySourceResult> results) => string.Join(
+        Environment.NewLine + Environment.NewLine,
+        results
+            .Where(static result => !string.IsNullOrWhiteSpace(result.Text))
+            .Select(static result => result.DisplayName + Environment.NewLine + result.Text));
+
+    private void MarkActiveSourcesCancelled()
+    {
+        if (Volatile.Read(ref _disposeRequested) != 0)
+        {
+            return;
+        }
+
+        MacRuntimeState state;
+        lock (_stateGate)
+        {
+            var results = _state.Results
+                .Select(static result => result.Status is "Waiting" or "Receiving" or "Looking up"
+                    ? result with { Status = "Cancelled" }
+                    : result)
+                .ToArray();
+            _retry = null;
+            _state = _state with
+            {
+                Results = results,
+                Status = "Operation cancelled.",
+                IsBusy = false,
+                CanRetry = false,
+                Revision = _state.Revision + 1,
             };
             state = _state;
         }
@@ -1146,6 +1567,73 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         QueryErrorCode.Internal => DiagnosticErrorCode.TranslationInternal,
         _ => null,
     };
+
+    private static string CanonicalProviderKey(ProviderDescriptor provider) => provider.InstanceId is null
+        ? provider.ProviderId
+        : provider.ProviderId + ":" + provider.InstanceId;
+
+    private static string DescribeProvider(ProviderDescriptor provider)
+    {
+        var name = provider.ProviderId switch
+        {
+            TranslationProviderIds.OpenAiCompatible => "OpenAI-compatible",
+            TranslationProviderIds.DeepL => "DeepL",
+            TranslationProviderIds.Ollama => "Ollama",
+            TranslationProviderIds.Bing => "Bing (unofficial web)",
+            TranslationProviderIds.Google => "Google (unofficial web)",
+            TranslationProviderIds.Volcengine => "Volcengine Translate",
+            _ => provider.ProviderId,
+        };
+        return provider.InstanceId is null ? name : name + " (" + provider.InstanceId + ")";
+    }
+
+    private static string DescribeSourceTerminal(TranslationStreamEventKind kind) => kind switch
+    {
+        TranslationStreamEventKind.Completed => string.Empty,
+        TranslationStreamEventKind.Cancelled => "Cancelled",
+        _ => "Failed",
+    };
+
+    private static string DescribeDictionarySourceStatus(DictionaryLookupStatus status) => status switch
+    {
+        DictionaryLookupStatus.Found => string.Empty,
+        DictionaryLookupStatus.NotFound => "No entry",
+        DictionaryLookupStatus.Cancelled => "Cancelled",
+        _ => "Failed",
+    };
+
+    private static string DescribeDictionaryStatus(DictionaryLookupStatus status) => status switch
+    {
+        DictionaryLookupStatus.NotFound => "No matching dictionary entry was found.",
+        DictionaryLookupStatus.InvalidRequest => "The selected text cannot be used for a dictionary lookup.",
+        DictionaryLookupStatus.Unavailable => "The dictionary source is unavailable.",
+        DictionaryLookupStatus.InvalidData => "The selected file is not a supported ECDICT CSV or SQLite database.",
+        DictionaryLookupStatus.Cancelled => "Dictionary lookup cancelled.",
+        _ => "The dictionary source is unavailable.",
+    };
+
+    private static bool IsRetryableError(QueryErrorCode errorCode) => errorCode is
+        QueryErrorCode.Timeout or
+        QueryErrorCode.Network or
+        QueryErrorCode.RateLimited or
+        QueryErrorCode.ProviderUnavailable;
+
+    private sealed record MacSourceTerminal(
+        string Key,
+        bool Succeeded,
+        QueryErrorCode? ErrorCode,
+        bool Retryable)
+    {
+        public static MacSourceTerminal Completed(string key) => new(key, true, null, false);
+
+        public static MacSourceTerminal Cancelled(string key) => new(key, false, null, false);
+
+        public static MacSourceTerminal Failed(
+            string key,
+            QueryErrorCode? errorCode,
+            bool retryable) =>
+            new(key, false, errorCode, retryable);
+    }
 
     private sealed record TranslationSettingsResult(
         ProviderProfileSettings? Profile,

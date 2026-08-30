@@ -51,6 +51,21 @@ public sealed class ResultFloatingWindowMarkupTests
         Assert.Equal("{Binding Text, RelativeSource={RelativeSource Self}}", statusName);
     }
 
+    [Fact]
+    public void ResultFloatingWindow_UsesASeparateCardForEachQuerySource()
+    {
+        var document = XDocument.Load(FindResultFloatingWindowPath());
+        var results = FindAutomationElement(document, "ResultItemsControl");
+
+        Assert.Equal("ItemsControl", results.Name.LocalName);
+        Assert.Contains(results.Descendants(), element =>
+            element.Name.LocalName == "TextBlock" &&
+            string.Equals(element.Attribute("Text")?.Value, "{Binding DisplayName}", StringComparison.Ordinal));
+        Assert.Contains(results.Descendants(), element =>
+            element.Name.LocalName == "TextBlock" &&
+            string.Equals(element.Attribute("Text")?.Value, "{Binding Status}", StringComparison.Ordinal));
+    }
+
     private static string FindResultFloatingWindowPath()
     {
         foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })

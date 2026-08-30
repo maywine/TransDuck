@@ -1,6 +1,8 @@
 using TransDuck.Core.Persistence;
 using System.Diagnostics;
 using TransDuck.Platform.MacOS.Capture;
+using TransDuck.Core.Lookup;
+using TransDuck.Platform.MacOS.Dictionary;
 using TransDuck.Platform.MacOS.Ocr;
 using TransDuck.Platform.MacOS.Persistence;
 using TransDuck.Platform.MacOS.Selection;
@@ -91,6 +93,17 @@ public sealed class NativeMacSmokeTests
     public void SharpHookNativeLibrary_LoadsAndChecksAccessibilityWithoutPromptOnMacOS()
     {
         _ = UioHookProvider.Instance.IsAxApiEnabled(promptUserIfDisabled: false);
+    }
+
+    [MacOSFact]
+    public async Task DictionaryServices_LoadsAndQueriesActiveSystemDictionariesOnMacOS()
+    {
+        var result = await new MacSystemDictionaryProvider().LookupAsync(
+            "dictionary",
+            dataFilePath: null,
+            CancellationToken.None);
+
+        Assert.True(result.Status is DictionaryLookupStatus.Found or DictionaryLookupStatus.NotFound);
     }
 
     [MacOSFact]

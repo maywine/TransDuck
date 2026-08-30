@@ -16,8 +16,10 @@ Silicon arm64 Macs. The Windows release baseline is a single display.
   Windows or `Command+Option+D` on macOS.
 - Capture a screen region and recognize Simplified Chinese or English locally
   before translating it.
-- Choose Bing, Google, OpenAI-compatible, DeepL, Ollama, or Volcengine Translate
-  in Settings.
+- Enable one or more of Bing, Google, OpenAI-compatible, DeepL, Ollama, or
+  Volcengine Translate and view each service's result separately.
+- Use a user-supplied ECDICT CSV/SQLite dictionary on Windows or macOS; macOS can
+  also query the active system dictionaries.
 - Use the system proxy, a custom HTTP proxy, or a direct connection.
 - Enable per-user login startup and keep the app available from the Windows
   notification area or macOS menu bar after closing its window.
@@ -40,6 +42,9 @@ See the [Windows guide](docs/user-docs/en/install-windows.md), the
 [Chinese Windows](docs/user-docs/zh/install-windows.md) and
 [Chinese macOS](docs/user-docs/zh/install-macos.md) guides.
 
+See [Local dictionaries and multiple translation results](docs/user-docs/en/dictionaries-and-multiple-results.md)
+for source configuration and privacy details.
+
 ## Providers and data protection
 
 TransDuck supports OpenAI-compatible, DeepL, Ollama, Volcengine Translate, and
@@ -48,7 +53,8 @@ interfaces rather than Azure Translator or Google Cloud Translation, so web
 service or protocol changes can affect availability. Google web translation
 needs no credential; a Bing Cookie is optional.
 
-Selected text is sent to the provider currently chosen in Settings. API keys,
+Selected text is sent separately to every enabled online provider. If only local
+dictionaries are enabled, no online translation provider receives it. API keys,
 Volcengine AK/SK, and an optional Bing Cookie are not written to ordinary
 configuration files. Windows protects them with current-user DPAPI; macOS stores
 them in the current user's Keychain. Other settings, translation history, and

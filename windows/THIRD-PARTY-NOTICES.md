@@ -24,6 +24,15 @@
 - `leptonica-1.82.0.dll` is covered by the Leptonica BSD-2-Clause license; the payload includes
   [`third_party/licenses/Leptonica-BSD-2-Clause.txt`](third_party/licenses/Leptonica-BSD-2-Clause.txt).
 
+## Microsoft.Data.Sqlite, SQLitePCLRaw, and SQLite
+
+- [`Microsoft.Data.Sqlite` 10.0.11](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.11)
+  is used under the MIT License. See `Microsoft.Data.Sqlite-MIT.txt`.
+- SQLitePCLRaw 2.1.12 is used under Apache-2.0. Its managed provider and bundled
+  `e_sqlite3` native-loader package are covered by `Apache-2.0.txt`.
+- The bundled SQLite library is dedicated to the public domain. See
+  `SQLite-Public-Domain.txt`.
+
 ## tessdata_best language models
 
 - Upstream: [tesseract-ocr/tessdata_best](https://github.com/tesseract-ocr/tessdata_best)

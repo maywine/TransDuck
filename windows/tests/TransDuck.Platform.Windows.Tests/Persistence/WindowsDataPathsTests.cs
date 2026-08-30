@@ -29,6 +29,7 @@ public sealed class WindowsDataPathsTests
         Assert.False(Directory.Exists(injectedRoot));
         Assert.Equal(Path.Combine(paths.RootDirectory, "configuration.v1.json"), paths.ConfigurationFilePath);
         Assert.Equal(Path.Combine(paths.RootDirectory, "provider-settings.v1.json"), paths.ProviderSettingsFilePath);
+        Assert.Equal(Path.Combine(paths.RootDirectory, "query-sources.v1.json"), paths.QuerySourceSettingsFilePath);
         Assert.Equal(Path.Combine(paths.RootDirectory, "hotkey-settings.v1.json"), paths.HotkeySettingsFilePath);
         Assert.Equal(Path.Combine(paths.RootDirectory, "credentials"), paths.CredentialsDirectoryPath);
         Assert.Equal(Path.Combine(paths.RootDirectory, "history.v1.jsonl"), paths.HistoryFilePath);

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -8,6 +9,7 @@ using Microsoft.Win32;
 using TransDuck.App.Services;
 using TransDuck.App.Windows;
 using TransDuck.Core.Contracts.V1;
+using TransDuck.Core.Lookup;
 using TransDuck.Core.Persistence;
 using TransDuck.Core.Translation;
 using TransDuck.Platform.Windows.Capture;
@@ -16,6 +18,7 @@ using TransDuck.Platform.Windows.Hotkeys;
 using TransDuck.Platform.Windows.Interop;
 using TransDuck.Platform.Windows.Ocr;
 using TransDuck.Infrastructure.Persistence;
+using TransDuck.Infrastructure.Lookup;
 using TransDuck.Platform.Windows.Persistence;
 using TransDuck.Infrastructure.Proxy;
 using TransDuck.Platform.Windows.Selection;
@@ -42,6 +45,7 @@ internal sealed class AppRuntime : IDisposable
     private readonly TranslationSessionController _translationController;
     private readonly JsonConfigurationStore _configurationStore;
     private readonly JsonProviderSettingsStore _providerSettingsStore;
+    private readonly JsonQuerySourceSettingsStore _querySourceSettingsStore;
     private readonly JsonHotkeySettingsStore _hotkeySettingsStore;
     private readonly JsonProxySettingsStore _proxySettingsStore;
     private readonly DpapiCredentialStore _credentialStore;
@@ -51,10 +55,12 @@ internal sealed class AppRuntime : IDisposable
     private readonly ProxyHttpClientPool _proxyHttpClientPool;
     private readonly ProxyTranslationHttpClientLeaseSource _translationClientLeaseSource;
     private readonly ProviderSettingsController _providerSettingsController;
+    private readonly QuerySourceSettingsController _querySourceSettingsController;
     private readonly ProxySettingsController _proxySettingsController;
     private readonly HotkeySettingsController _hotkeySettingsController;
     private readonly StartupSettingsController _startupSettingsController;
     private readonly HistoryController _historyController;
+    private readonly EcdictDictionaryProvider _ecdictDictionaryProvider;
     private readonly ContextMenu _trayMenu;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly object _lifecycleGate = new();
@@ -79,6 +85,7 @@ internal sealed class AppRuntime : IDisposable
         var dataPaths = new WindowsDataPaths();
         _configurationStore = new JsonConfigurationStore(dataPaths);
         _providerSettingsStore = new JsonProviderSettingsStore(dataPaths);
+        _querySourceSettingsStore = new JsonQuerySourceSettingsStore(dataPaths);
         _hotkeySettingsStore = new JsonHotkeySettingsStore(dataPaths);
         _proxySettingsStore = new JsonProxySettingsStore(dataPaths);
         _credentialStore = new DpapiCredentialStore(dataPaths);
@@ -93,6 +100,9 @@ internal sealed class AppRuntime : IDisposable
             _configurationStore,
             _credentialStore,
             _diagnosticSink);
+        _querySourceSettingsController = new QuerySourceSettingsController(_querySourceSettingsStore);
+        _ecdictDictionaryProvider = new EcdictDictionaryProvider(
+            Path.Combine(dataPaths.RootDirectory, "dictionary-cache"));
         _proxySettingsController = new ProxySettingsController(
             _proxySettingsStore,
             _proxyHttpClientPool,
@@ -319,6 +329,7 @@ internal sealed class AppRuntime : IDisposable
         DisposeNonFatal(_ocrService);
         DisposeNonFatal(_hotkeySettingsStore);
         DisposeNonFatal(_providerSettingsStore);
+        DisposeNonFatal(_querySourceSettingsStore);
         DisposeNonFatal(_configurationStore);
         DisposeNonFatal(_credentialStore);
         DisposeNonFatal(_historyStore);
@@ -450,16 +461,19 @@ internal sealed class AppRuntime : IDisposable
         }
     }
 
-    private Task TranslateAsync(string text)
+    private Task TranslateAsync(
+        string text,
+        IReadOnlySet<string>? sourceFilter = null)
     {
         var (operation, cancellationToken) = BeginOperation();
-        return TranslateAsync(text, operation, cancellationToken);
+        return TranslateAsync(text, operation, cancellationToken, sourceFilter);
     }
 
     private async Task TranslateAsync(
         string text,
         long operation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlySet<string>? sourceFilter = null)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -467,70 +481,172 @@ internal sealed class AppRuntime : IDisposable
             return;
         }
 
-        var requestId = Guid.NewGuid().ToString("N");
-        var stopwatch = Stopwatch.StartNew();
-        ProviderProfileSettings? profile = null;
-        Configuration? configuration = null;
-        var providerRequestStarted = false;
         try
         {
-            using var settings = await _providerSettingsController.LoadForTranslationAsync(cancellationToken);
+            var providerSettings = await _providerSettingsController.LoadAsync(cancellationToken);
             if (!IsCurrentOperation(operation))
             {
                 return;
             }
 
-            if (!settings.Succeeded)
+            var sourceSettings = await _querySourceSettingsController.LoadAsync(
+                providerSettings.Configuration.DefaultProvider,
+                cancellationToken);
+            if (!IsCurrentOperation(operation))
             {
-                stopwatch.Stop();
-                SetStatusForCurrentOperation(
-                    operation,
-                    AppStatusText.DescribeTranslationSettingsFailure(settings.Status));
-                await WriteDiagnosticAsync(
-                    DiagnosticEventId.TranslationFailed,
-                    ToDiagnosticOutcome(settings.StorageStatus),
-                    null,
-                    requestId,
-                    ToDiagnosticError(settings.StorageStatus),
-                    stopwatch.ElapsedMilliseconds);
                 return;
             }
 
-            profile = settings.Profile!;
-            configuration = settings.Configuration!;
+            if (!sourceSettings.Succeeded)
+            {
+                SetStatusForCurrentOperation(operation, AppStrings.Get("translation.sources.unavailable"));
+                return;
+            }
+
+            var selectedSources = sourceSettings.Settings;
+            var providerSources = selectedSources.EnabledTranslationProviders
+                .Where(provider => sourceFilter is null ||
+                    sourceFilter.Contains(CanonicalProviderKey(provider)))
+                .ToArray();
+            var includeEcdict = selectedSources.Ecdict.Enabled &&
+                (sourceFilter is null || sourceFilter.Contains(LocalDictionaryIds.Ecdict));
+            var presentations = providerSources
+                .Select(provider => new QuerySourcePresentation(
+                    CanonicalProviderKey(provider),
+                    DescribeProvider(provider)))
+                .ToList();
+            if (includeEcdict)
+            {
+                presentations.Add(new QuerySourcePresentation(
+                    LocalDictionaryIds.Ecdict,
+                    _ecdictDictionaryProvider.Registration.DisplayName));
+            }
+
+            PostCurrentOperationToUi(operation, () =>
+            {
+                _resultWindow.BeginResults(
+                    presentations,
+                    preserveExisting: sourceFilter is not null);
+                _resultWindow.SetStatus(AppStrings.Get("translation.status.receiving"));
+            });
+
+            var runs = providerSources
+                .Select(provider => RunTranslationSourceAsync(
+                    provider,
+                    text,
+                    operation,
+                    cancellationToken))
+                .ToList();
+            if (includeEcdict)
+            {
+                runs.Add(RunDictionarySourceAsync(
+                    _ecdictDictionaryProvider,
+                    selectedSources.Ecdict.DataFilePath,
+                    text,
+                    providerSettings.Configuration,
+                    operation,
+                    cancellationToken));
+            }
+
+            var terminals = await Task.WhenAll(runs);
+            if (!IsCurrentOperation(operation))
+            {
+                return;
+            }
+
+            var retryable = terminals.Where(static terminal => terminal.Retryable).ToArray();
+            PostCurrentOperationToUi(operation, () =>
+            {
+                if (retryable.Length > 0)
+                {
+                    ApplyBatchRetryState(
+                        operation,
+                        text,
+                        retryable.Select(static terminal => terminal.Key)
+                            .ToHashSet(StringComparer.Ordinal),
+                        retryable[0].ErrorCode ?? QueryErrorCode.ProviderUnavailable);
+                }
+                else
+                {
+                    ClearRetryState();
+                }
+
+                _resultWindow.SetStatus(terminals.Any(static terminal => terminal.Succeeded)
+                    ? string.Empty
+                    : AppStrings.Get("translation.status.failed"));
+            });
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            SetStatusForCurrentOperation(operation, AppStrings.Get("translation.status.cancelled"));
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            SetStatusForCurrentOperation(operation, AppStrings.Get("translation.status.failed"));
+        }
+    }
+
+    private async Task<QuerySourceTerminal> RunTranslationSourceAsync(
+        ProviderDescriptor selectedProvider,
+        string text,
+        long operation,
+        CancellationToken cancellationToken)
+    {
+        var key = CanonicalProviderKey(selectedProvider);
+        var displayName = DescribeProvider(selectedProvider);
+        var requestId = Guid.NewGuid().ToString("N");
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            using var settings = await _providerSettingsController.LoadForTranslationAsync(
+                selectedProvider,
+                cancellationToken);
+            if (!settings.Succeeded)
+            {
+                PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceResult(
+                    key,
+                    displayName,
+                    AppStatusText.DescribeTranslationSettingsFailure(settings.Status),
+                    AppStrings.Get("result.source.not_configured")));
+                return QuerySourceTerminal.Failed(key, QueryErrorCode.InvalidRequest, retryable: false);
+            }
+
+            var profile = settings.Profile!;
+            var configuration = settings.Configuration!;
             if (!_translationProviderRegistry.TryResolve(profile.Provider, out var provider) || provider is null)
             {
-                stopwatch.Stop();
-                SetStatusForCurrentOperation(operation, AppStrings.Get("translation.provider.unavailable"));
-                await WriteDiagnosticAsync(
-                    DiagnosticEventId.TranslationFailed,
-                    DiagnosticOutcome.Failed,
-                    profile.Provider.ProviderId,
-                    requestId,
-                    DiagnosticErrorCode.TranslationProviderUnavailable,
-                    stopwatch.ElapsedMilliseconds);
-                PostCurrentOperationToUi(operation, () => ApplyTerminalRetryState(
-                    operation,
-                    text,
-                    TranslationSessionResult.Failed(
-                        string.Empty,
-                        QueryErrorCode.ProviderUnavailable,
-                        retryable: false)));
-                return;
+                PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceResult(
+                    key,
+                    displayName,
+                    AppStrings.Get("translation.provider.unavailable"),
+                    AppStrings.Get("result.source.failed")));
+                return QuerySourceTerminal.Failed(key, QueryErrorCode.ProviderUnavailable, retryable: false);
             }
 
             var storedCredential = settings.Credential?.Reveal();
-            var credentials = string.Equals(
+            TranslationCredentials credentials;
+            var isVolcengine = string.Equals(
                 profile.Provider.ProviderId,
                 TranslationProviderIds.Volcengine,
-                StringComparison.Ordinal)
-                ? VolcengineCredentialCodec.TryDecode(storedCredential, out var volcengineCredentials)
-                    ? volcengineCredentials
-                    : new TranslationCredentials(null)
-                : new TranslationCredentials(storedCredential);
-            // The request owns only transient strings; release DPAPI-backed bytes before streaming.
-            settings.Dispose();
+                StringComparison.Ordinal);
+            if (isVolcengine)
+            {
+                if (!VolcengineCredentialCodec.TryDecode(storedCredential, out credentials))
+                {
+                    PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceResult(
+                        key,
+                        displayName,
+                        AppStatusText.DescribeTranslationFailure(QueryErrorCode.Authentication),
+                        AppStrings.Get("result.source.failed")));
+                    return QuerySourceTerminal.Failed(key, QueryErrorCode.Authentication, retryable: false);
+                }
+            }
+            else
+            {
+                credentials = new TranslationCredentials(storedCredential);
+            }
 
+            settings.Dispose();
             var request = new TranslationProviderRequest(
                 profile.Provider,
                 profile.Endpoint,
@@ -540,7 +656,6 @@ internal sealed class AppRuntime : IDisposable
                 profile.TargetLanguage,
                 credentials,
                 TimeSpan.FromSeconds(profile.TimeoutSeconds));
-            _resultWindow.ClearResult();
             await WriteDiagnosticAsync(
                 DiagnosticEventId.TranslationStarted,
                 DiagnosticOutcome.Succeeded,
@@ -548,26 +663,24 @@ internal sealed class AppRuntime : IDisposable
                 requestId,
                 null,
                 null);
-            if (!IsCurrentOperation(operation))
-            {
-                stopwatch.Stop();
-                await WriteDiagnosticAsync(
-                    DiagnosticEventId.TranslationCancelled,
-                    DiagnosticOutcome.Cancelled,
-                    profile.Provider.ProviderId,
-                    requestId,
-                    null,
-                    stopwatch.ElapsedMilliseconds);
-                return;
-            }
-
-            providerRequestStarted = true;
-            var terminal = await _translationController.RunAsync(
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceStatus(
+                key,
+                AppStrings.Get("result.source.receiving")));
+            var result = await TranslationProviderRunner.RunAsync(
                 provider,
                 request,
-                value => PostCurrentOperationToUi(operation, () => _resultWindow.SetResult(value)),
-                value => PostCurrentOperationToUi(operation, () => _resultWindow.SetStatus(value)));
+                value => PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceResult(
+                    key,
+                    displayName,
+                    value,
+                    AppStrings.Get("result.source.receiving"))),
+                cancellationToken);
             stopwatch.Stop();
+            var terminal = new TranslationSessionResult(
+                result.TerminalKind,
+                result.Text,
+                result.ErrorCode,
+                result.Retryable);
             await RecordTranslationTerminalAsync(
                 requestId,
                 text,
@@ -575,63 +688,94 @@ internal sealed class AppRuntime : IDisposable
                 configuration,
                 terminal,
                 stopwatch.ElapsedMilliseconds);
-            PostCurrentOperationToUi(operation, () => ApplyTerminalRetryState(operation, text, terminal));
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceResult(
+                key,
+                displayName,
+                string.IsNullOrWhiteSpace(result.Text) && result.ErrorCode is { } error
+                    ? AppStatusText.DescribeTranslationFailure(error)
+                    : result.Text,
+                DescribeSourceTerminal(result.TerminalKind)));
+            return result.TerminalKind == TranslationStreamEventKind.Completed
+                ? QuerySourceTerminal.Completed(key)
+                : QuerySourceTerminal.Failed(
+                    key,
+                    result.ErrorCode,
+                    result.Retryable && result.ErrorCode is { } errorCode && IsRetryableError(errorCode));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            stopwatch.Stop();
-            if (providerRequestStarted && profile is not null && configuration is not null)
-            {
-                var terminal = TranslationSessionResult.Cancelled(string.Empty);
-                await RecordTranslationTerminalAsync(
-                    requestId,
-                    text,
-                    profile,
-                    configuration,
-                    terminal,
-                    stopwatch.ElapsedMilliseconds);
-                PostCurrentOperationToUi(operation, () => ApplyTerminalRetryState(operation, text, terminal));
-            }
-
-            SetStatusForCurrentOperation(operation, AppStrings.Get("translation.status.cancelled"));
+            return QuerySourceTerminal.Cancelled(key);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceResult(
+                key,
+                displayName,
+                AppStatusText.DescribeTranslationFailure(QueryErrorCode.Internal),
+                AppStrings.Get("result.source.failed")));
+            return QuerySourceTerminal.Failed(key, QueryErrorCode.Internal, retryable: false);
+        }
+        finally
+        {
             stopwatch.Stop();
-            if (providerRequestStarted && profile is not null && configuration is not null)
+        }
+    }
+
+    private async Task<QuerySourceTerminal> RunDictionarySourceAsync(
+        IDictionaryProvider provider,
+        string? dataFilePath,
+        string text,
+        Configuration configuration,
+        long operation,
+        CancellationToken cancellationToken)
+    {
+        var key = provider.Registration.ProviderId;
+        var displayName = provider.Registration.DisplayName;
+        try
+        {
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceStatus(
+                key,
+                AppStrings.Get("result.source.receiving")));
+            var result = await provider.LookupAsync(text, dataFilePath, cancellationToken);
+            var output = result.Entry?.ToDisplayText() ?? DescribeDictionaryStatus(result.Status);
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceResult(
+                key,
+                displayName,
+                output,
+                DescribeDictionarySourceStatus(result.Status)));
+            if (result.Succeeded)
             {
-                var terminal = TranslationSessionResult.Failed(
-                    string.Empty,
-                    QueryErrorCode.Internal,
-                    retryable: false);
-                await RecordTranslationTerminalAsync(
-                    requestId,
-                    text,
-                    profile,
-                    configuration,
-                    terminal,
-                    stopwatch.ElapsedMilliseconds);
-                PostCurrentOperationToUi(operation, () => ApplyTerminalRetryState(operation, text, terminal));
-            }
-            else
-            {
-                await WriteDiagnosticAsync(
-                    DiagnosticEventId.TranslationFailed,
-                    DiagnosticOutcome.Failed,
-                    profile?.Provider.ProviderId,
-                    requestId,
-                    DiagnosticErrorCode.TranslationInternal,
-                    stopwatch.ElapsedMilliseconds);
-                PostCurrentOperationToUi(operation, () => ApplyTerminalRetryState(
-                    operation,
-                    text,
-                    TranslationSessionResult.Failed(
-                        string.Empty,
-                        QueryErrorCode.Internal,
-                        retryable: false)));
+                await AppendDictionaryHistoryAsync(text, provider.Registration, result.Entry!, configuration);
+                return QuerySourceTerminal.Completed(key);
             }
 
-            SetStatusForCurrentOperation(operation, AppStrings.Get("translation.status.failed"));
+            if (result.Status == DictionaryLookupStatus.NotFound)
+            {
+                return QuerySourceTerminal.Completed(key);
+            }
+
+            return result.Status switch
+            {
+                DictionaryLookupStatus.Cancelled => QuerySourceTerminal.Cancelled(key),
+                DictionaryLookupStatus.Unavailable => QuerySourceTerminal.Failed(
+                    key,
+                    QueryErrorCode.ProviderUnavailable,
+                    retryable: true),
+                _ => QuerySourceTerminal.Failed(key, null, retryable: false),
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return QuerySourceTerminal.Cancelled(key);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetSourceResult(
+                key,
+                displayName,
+                AppStrings.Get("dictionary.status.unavailable"),
+                AppStrings.Get("result.source.failed")));
+            return QuerySourceTerminal.Failed(key, QueryErrorCode.Internal, retryable: false);
         }
     }
 
@@ -760,6 +904,63 @@ internal sealed class AppRuntime : IDisposable
         }
     }
 
+    private async Task AppendDictionaryHistoryAsync(
+        string text,
+        DictionaryProviderRegistration registration,
+        DictionaryLookupEntry entry,
+        Configuration configuration)
+    {
+        var requestId = Guid.NewGuid().ToString("N");
+        var provider = new ProviderDescriptor(registration.ProviderId);
+        var definitions = new[] { entry.Translation, entry.Definition }
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Select(static value => value!.Trim())
+            .ToArray();
+        try
+        {
+            var request = new QueryRequest(
+                1,
+                requestId,
+                QueryKind.Dictionary,
+                text,
+                SourceLanguage: null,
+                TargetLanguage: "und",
+                provider);
+            var result = new QueryResult(
+                1,
+                requestId,
+                QueryKind.Dictionary,
+                provider,
+                QueryTerminalState.Completed,
+                SourceLanguage: null,
+                TargetLanguage: "und",
+                new QueryResultPayload(
+                    entry.ToDisplayText(),
+                    [new DictionaryEntryResult(entry.Term, definitions)]));
+            var append = await _historyStore.AppendAsync(
+                new HistoryEntry(1, Guid.NewGuid().ToString("N"), DateTimeOffset.UtcNow, request, result),
+                configuration.HistoryRetention,
+                CancellationToken.None);
+            await WriteDiagnosticAsync(
+                DiagnosticEventId.HistoryAppend,
+                append.Succeeded ? DiagnosticOutcome.Succeeded : DiagnosticOutcome.Failed,
+                registration.ProviderId,
+                requestId,
+                append.Succeeded ? null : ToDiagnosticError(append.Status),
+                null);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            await WriteDiagnosticAsync(
+                DiagnosticEventId.HistoryAppend,
+                DiagnosticOutcome.Failed,
+                registration.ProviderId,
+                requestId,
+                DiagnosticErrorCode.IoFailure,
+                null);
+        }
+    }
+
     private async Task WriteDiagnosticAsync(
         DiagnosticEventId eventId,
         DiagnosticOutcome outcome,
@@ -880,6 +1081,7 @@ internal sealed class AppRuntime : IDisposable
                 PostCurrentOperationToUi(operation, () =>
                 {
                     _resultWindow.Present(ocrResult.Text);
+                    _resultWindow.ClearResult();
                     _resultWindow.SetResult(ocrResult.Text ?? string.Empty);
                     _resultWindow.SetStatus(AppStatusText.DescribeOcrStatus(ocrResult.Status));
                 });
@@ -952,7 +1154,11 @@ internal sealed class AppRuntime : IDisposable
         _operationCancellation?.Cancel();
         if (showStatus && !IsDisposed && !IsStopping)
         {
-            _resultWindow.SetStatus(AppStrings.Get("runtime.operation.cancelled"));
+            PostToUi(() =>
+            {
+                _resultWindow.MarkActiveSourcesCancelled();
+                _resultWindow.SetStatus(AppStrings.Get("runtime.operation.cancelled"));
+            });
         }
     }
 
@@ -1001,6 +1207,7 @@ internal sealed class AppRuntime : IDisposable
         {
             var settingsWindow = new SettingsWindow(
                 _providerSettingsController,
+                _querySourceSettingsController,
                 _proxySettingsController,
                 _hotkeySettingsController,
                 _startupSettingsController);
@@ -1068,30 +1275,32 @@ internal sealed class AppRuntime : IDisposable
         }
 
         ClearRetryState();
-        _ = StartTrackedOperation(() => TranslateAsync(snapshot.SourceText));
+        _ = StartTrackedOperation(() => TranslateAsync(snapshot.SourceText, snapshot.SourceKeys));
     }
 
-    private void ApplyTerminalRetryState(
+    private void ApplyBatchRetryState(
         long operation,
         string sourceText,
-        TranslationSessionResult terminal)
+        IReadOnlySet<string> sourceKeys,
+        QueryErrorCode errorCode)
     {
         if (!IsCurrentOperation(operation))
         {
             return;
         }
 
-        if (terminal.TerminalKind != TranslationStreamEventKind.Failed)
+        if (sourceKeys.Count == 0)
         {
             ClearRetryState();
             return;
         }
 
-        var errorCode = terminal.ErrorCode ?? QueryErrorCode.Internal;
         _resultWindow.ShowTranslationErrorCode(AppStatusText.DescribeTranslationErrorCode(errorCode));
-        if (terminal.Retryable && IsRetryableError(errorCode))
+        if (IsRetryableError(errorCode))
         {
-            _retrySnapshot = new TranslationRetrySnapshot(sourceText);
+            _retrySnapshot = new TranslationRetrySnapshot(
+                sourceText,
+                sourceKeys.ToHashSet(StringComparer.Ordinal));
             _resultWindow.SetRetryEnabled(true);
             return;
         }
@@ -1116,7 +1325,70 @@ internal sealed class AppRuntime : IDisposable
         QueryErrorCode.RateLimited or
         QueryErrorCode.ProviderUnavailable;
 
-    private sealed record TranslationRetrySnapshot(string SourceText);
+    private static string CanonicalProviderKey(ProviderDescriptor provider) => provider.InstanceId is null
+        ? provider.ProviderId
+        : provider.ProviderId + ":" + provider.InstanceId;
+
+    private static string DescribeProvider(ProviderDescriptor provider)
+    {
+        var name = provider.ProviderId switch
+        {
+            TranslationProviderIds.OpenAiCompatible => "OpenAI-compatible",
+            TranslationProviderIds.DeepL => "DeepL",
+            TranslationProviderIds.Ollama => "Ollama",
+            TranslationProviderIds.Bing => AppStrings.Get("provider.name.bing"),
+            TranslationProviderIds.Google => AppStrings.Get("provider.name.google"),
+            TranslationProviderIds.Volcengine => AppStrings.Get("provider.name.volcengine"),
+            _ => provider.ProviderId,
+        };
+        return provider.InstanceId is null ? name : name + " (" + provider.InstanceId + ")";
+    }
+
+    private static string DescribeSourceTerminal(TranslationStreamEventKind kind) => kind switch
+    {
+        TranslationStreamEventKind.Completed => string.Empty,
+        TranslationStreamEventKind.Cancelled => AppStrings.Get("result.source.cancelled"),
+        _ => AppStrings.Get("result.source.failed"),
+    };
+
+    private static string DescribeDictionarySourceStatus(DictionaryLookupStatus status) => status switch
+    {
+        DictionaryLookupStatus.Found => string.Empty,
+        DictionaryLookupStatus.NotFound => AppStrings.Get("result.source.not_found"),
+        DictionaryLookupStatus.Cancelled => AppStrings.Get("result.source.cancelled"),
+        _ => AppStrings.Get("result.source.failed"),
+    };
+
+    private static string DescribeDictionaryStatus(DictionaryLookupStatus status) => status switch
+    {
+        DictionaryLookupStatus.NotFound => AppStrings.Get("dictionary.status.not_found"),
+        DictionaryLookupStatus.InvalidRequest => AppStrings.Get("dictionary.status.invalid_request"),
+        DictionaryLookupStatus.Unavailable => AppStrings.Get("dictionary.status.unavailable"),
+        DictionaryLookupStatus.InvalidData => AppStrings.Get("dictionary.status.invalid_data"),
+        DictionaryLookupStatus.Cancelled => AppStrings.Get("dictionary.status.cancelled"),
+        _ => AppStrings.Get("dictionary.status.unavailable"),
+    };
+
+    private sealed record TranslationRetrySnapshot(
+        string SourceText,
+        IReadOnlySet<string> SourceKeys);
+
+    private sealed record QuerySourceTerminal(
+        string Key,
+        bool Succeeded,
+        QueryErrorCode? ErrorCode,
+        bool Retryable)
+    {
+        public static QuerySourceTerminal Completed(string key) => new(key, true, null, false);
+
+        public static QuerySourceTerminal Cancelled(string key) => new(key, false, null, false);
+
+        public static QuerySourceTerminal Failed(
+            string key,
+            QueryErrorCode? errorCode,
+            bool retryable) =>
+            new(key, false, errorCode, retryable);
+    }
 
     private void PostCurrentOperationToUi(long operation, Action action) =>
         PostToUi(() =>

@@ -25,6 +25,7 @@ public sealed class MacDataPathsTests
 
         Assert.Equal(Path.Combine(Path.GetFullPath(root), "configuration.v1.json"), paths.ConfigurationFilePath);
         Assert.Equal(Path.Combine(Path.GetFullPath(root), "provider-settings.v1.json"), paths.ProviderSettingsFilePath);
+        Assert.Equal(Path.Combine(Path.GetFullPath(root), "query-sources.v1.json"), paths.QuerySourceSettingsFilePath);
         Assert.Equal(Path.Combine(Path.GetFullPath(root), "proxy-settings.v1.json"), paths.ProxySettingsFilePath);
         Assert.Equal(Path.Combine(Path.GetFullPath(root), "hotkey-settings.v1.json"), paths.HotkeySettingsFilePath);
         Assert.Equal(Path.Combine(Path.GetFullPath(root), "history.v1.jsonl"), paths.HistoryFilePath);

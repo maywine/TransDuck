@@ -37,7 +37,7 @@ TransDuck 只读取当前焦点控件公开的 `AXSelectedText`。部分应用�
 从窗口或菜单栏选择英文或简体中文 OCR，然后用系统界面框选屏幕区域。首次截图时，
 macOS 可能要求 Screen Recording 权限。TransDuck 使用系统 Vision framework 在本机
 识别文字。授权后如果系统仍提示权限不足，请退出并重新打开 TransDuck。任务结束或取消
-后会删除临时 PNG，再把识别文本发送给当前翻译服务。
+后会删除临时 PNG，再查询所有已启用的翻译和词典来源。
 
 ## 翻译服务与代理
 
@@ -58,8 +58,9 @@ Cookie 和 Ollama API Key 可选。
 ```
 
 API Key、火山引擎 AK/SK 和可选 Bing Cookie 作为 generic password 保存在当前用户的
-macOS Keychain，不写入普通 JSON、日志或应用目录。翻译文本会发送给 Settings 中选定的
-服务商。
+macOS Keychain，不写入普通 JSON、日志或应用目录。翻译文本会分别发送给 Settings 中
+已启用的在线服务；ECDICT 和 macOS 系统词典查询保持本地。详见
+[本地词典与多翻译结果](dictionaries-and-multiple-results.md)。
 
 “Start TransDuck when I log in” 会管理当前用户的
 `~/Library/LaunchAgents/com.transduck.app.plist`。若该路径已有无法确认归属的文件，

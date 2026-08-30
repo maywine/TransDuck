@@ -29,8 +29,10 @@ $report = [ordered]@{
     ApplicationAndDotNetLicensesPinned = $false
     DefaultNoOverwriteAndAtomicForce = $false
     UniqueStagingAndFinallyCleanup = $false
+    IsolatedBuildArtifactsCleanup = $false
     PublishExclusionsPinned = $false
     ProxySettingsPayloadForbiddenPinned = $false
+    QuerySourceSettingsPayloadForbiddenPinned = $false
     RequiredRuntimeAndOcrClosurePinned = $false
     DeterministicEntrySafetyPinned = $false
     OrdinalSorterInputPreserved = $false
@@ -73,6 +75,10 @@ try {
         $packageSource.Contains('[IO.File]::Replace') -and $packageSource.Contains('[IO.File]::Move')
     $report.UniqueStagingAndFinallyCleanup = $packageSource.Contains('.transduck-zip-staging-') -and
         $packageSource.Contains('finally') -and $packageSource.Contains('Remove-OwnedStaging')
+    $report.IsolatedBuildArtifactsCleanup = $packageSource.Contains('.transduck-build-artifacts-') -and
+        $packageSource.Contains('[IO.Path]::GetTempPath()') -and
+        $packageSource.Contains('Remove-OwnedBuildArtifacts') -and
+        $packageSource.Contains("`$failureCode = 'build_artifacts_cleanup_failed'")
     $report.PublishExclusionsPinned = $packageSource.Contains("'x86'") -and $packageSource.Contains("'assets'") -and
         $packageSource.Contains('paddle') -and $packageSource.Contains('pdb') -and
         $packageSource.Contains('appxmanifest') -and $packageSource.Contains('credentials')
@@ -94,10 +100,13 @@ try {
     }
     $report.ProxySettingsPayloadForbiddenPinned = $packageExclusions.Contains('proxy-settings') -and
         $auditForbiddenEntries.Contains('proxy-settings')
+    $report.QuerySourceSettingsPayloadForbiddenPinned = $packageExclusions.Contains('query-sources') -and
+        $auditForbiddenEntries.Contains('query-sources')
     $report.RequiredRuntimeAndOcrClosurePinned = $packageSource.Contains('D3DCompiler_47_cor3.dll') -and
         $packageSource.Contains('PenImc_cor3.dll') -and
         $packageSource.Contains('PresentationNative_cor3.dll') -and
         $packageSource.Contains('vcruntime140_cor3.dll') -and $packageSource.Contains('wpfgfx_cor3.dll') -and
+        $packageSource.Contains('e_sqlite3.dll') -and $auditSource.Contains('SQLiteNativeX64') -and
         $packageSource.Contains('x64/tesseract50.dll') -and $packageSource.Contains('x64/leptonica-1.82.0.dll') -and
         $packageSource.Contains('tessdata/eng.traineddata') -and $packageSource.Contains('tessdata/chi_sim.traineddata') -and
         $packageSource.Contains('THIRD-PARTY-NOTICES.md')
@@ -128,6 +137,7 @@ try {
         $auditSource.Contains('Add-Type -AssemblyName System.IO.Compression')
     $report.PackagingErrorsClosed = $packageSource.Contains('$failureCode = ''zip_packaging_failed''') -and
         $packageSource.Contains('$failureCode = ''staging_cleanup_failed''') -and
+        $packageSource.Contains('$failureCode = ''build_artifacts_cleanup_failed''') -and
         $packageSource.Contains('[Console]::Error.WriteLine($failureCode)')
     $report.AtomicReplacementBackupCleanup = $packageSource.Contains('.transduck-zip-replace-backup-') -and
         $packageSource.Contains('[IO.File]::Replace($temporaryZip, $archivePath, $replacementBackup)') -and
@@ -138,8 +148,8 @@ try {
         'ReleaseWinX64SelfContainedPinned', 'SingleFileManagedPayloadPinned',
         'ApplicationAndDotNetLicensesPinned',
         'DefaultNoOverwriteAndAtomicForce',
-        'UniqueStagingAndFinallyCleanup', 'PublishExclusionsPinned',
-        'ProxySettingsPayloadForbiddenPinned',
+        'UniqueStagingAndFinallyCleanup', 'IsolatedBuildArtifactsCleanup', 'PublishExclusionsPinned',
+        'ProxySettingsPayloadForbiddenPinned', 'QuerySourceSettingsPayloadForbiddenPinned',
         'RequiredRuntimeAndOcrClosurePinned', 'DeterministicEntrySafetyPinned',
         'OrdinalSorterInputPreserved',
         'TemporaryZipAuditedBeforeReplace', 'AuditCoversPeTreeAndStaging', 'PeInspectionAvoidsZipSeek',

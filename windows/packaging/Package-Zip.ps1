@@ -18,12 +18,14 @@ $script:PayloadDirectoryName = 'TransDuck-Windows-x64'
 $script:FixedZipTimestamp = [DateTimeOffset]::new(2000, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
 $script:RequiredPayloadFiles = @(
     'TransDuck.exe',
+    'e_sqlite3.dll',
     'D3DCompiler_47_cor3.dll', 'PenImc_cor3.dll',
     'PresentationNative_cor3.dll', 'vcruntime140_cor3.dll', 'wpfgfx_cor3.dll',
     'x64/tesseract50.dll', 'x64/leptonica-1.82.0.dll',
     'tessdata/eng.traineddata', 'tessdata/chi_sim.traineddata',
     'tessdata/model-manifest.json', 'tessdata/LICENSE',
     'licenses/Apache-2.0.txt', 'licenses/Leptonica-BSD-2-Clause.txt',
+    'licenses/Microsoft.Data.Sqlite-MIT.txt', 'licenses/SQLite-Public-Domain.txt',
     'licenses/Microsoft-DotNet-Library-License.txt',
     'licenses/Microsoft-DotNet-Third-Party-Notices.txt',
     'LICENSE.txt', 'THIRD-PARTY-NOTICES.md', 'README.txt'
@@ -70,7 +72,7 @@ function Test-ExcludedPayloadPath([string]$RelativePath) {
         return $true
     }
     if ($leaf -match '(?i)^(appxmanifest\.xml|.*\.(pdb|cs|csproj|sln|xaml|ps1|psm1|msix|appx|appxbundle|pfx|p12|pem|key|cer|crt|der|p7b|pvk|ppk|jks))$' -or
-        $leaf -match '(?i)^(configuration|provider-settings|hotkey-settings|proxy-settings|history|diagnostics)(\.|$)' -or
+        $leaf -match '(?i)^(configuration|provider-settings|query-sources|hotkey-settings|proxy-settings|history|diagnostics)(\.|$)' -or
         $leaf -match '(?i)(private.?key|certificate|\.credential$)') {
         return $true
     }
@@ -224,16 +226,38 @@ function Remove-OwnedStaging([string]$StagingRoot) {
         foreach ($entry in @(Get-ChildItem -LiteralPath $Directory -Force -ErrorAction Stop)) {
             if (Test-ReparsePoint $entry.FullName) { throw 'staging_cleanup_refused' }
             if ($entry.PSIsContainer) { Remove-SafeDirectory $entry.FullName }
-            else { [IO.File]::Delete($entry.FullName) }
+            else {
+                try { [IO.File]::Delete($entry.FullName) }
+                catch [IO.FileNotFoundException] { }
+                catch [IO.DirectoryNotFoundException] { }
+            }
         }
-        [IO.Directory]::Delete($Directory, $false)
+        try { [IO.Directory]::Delete($Directory, $false) }
+        catch [IO.DirectoryNotFoundException] { }
     }
     Remove-SafeDirectory $StagingRoot
+}
+
+function Remove-OwnedBuildArtifacts([string]$BuildArtifactsRoot) {
+    if (-not (Test-Path -LiteralPath $BuildArtifactsRoot)) { return }
+    $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+    $full = [IO.Path]::GetFullPath($BuildArtifactsRoot)
+    $leaf = [IO.Path]::GetFileName($full)
+    if (-not $full.StartsWith($temporaryRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        $leaf -notmatch '^\.transduck-build-artifacts-[a-f0-9]{32}$' -or
+        (Test-ReparsePoint $full)) {
+        throw 'build_artifacts_cleanup_refused'
+    }
+    foreach ($entry in @(Get-ChildItem -LiteralPath $full -Recurse -Force -ErrorAction Stop)) {
+        if (Test-ReparsePoint $entry.FullName) { throw 'build_artifacts_cleanup_refused' }
+    }
+    [IO.Directory]::Delete($full, $true)
 }
 
 $outputRoot = [IO.Path]::GetFullPath($OutputDirectory)
 $archivePath = Join-Path $outputRoot $script:ArchiveFileName
 $stagingRoot = $null
+$buildArtifactsRoot = $null
 $result = $null
 $failureCode = $null
 $replacementBackup = $null
@@ -256,7 +280,8 @@ try {
     $stagingRoot = Join-Path $outputRoot ('.transduck-zip-staging-' + [guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($stagingRoot) | Out-Null
     $publishRoot = Join-Path $stagingRoot 'publish'
-    $buildArtifactsRoot = Join-Path $stagingRoot 'build-artifacts'
+    $buildArtifactsRoot = Join-Path ([IO.Path]::GetTempPath()) ('.transduck-build-artifacts-' + [guid]::NewGuid().ToString('N'))
+    [IO.Directory]::CreateDirectory($buildArtifactsRoot) | Out-Null
     $payloadRoot = Join-Path $stagingRoot $script:PayloadDirectoryName
     $temporaryZip = Join-Path $stagingRoot $script:ArchiveFileName
     $dotnet = Resolve-DotnetPath $DotnetPath
@@ -310,6 +335,10 @@ finally {
     if ($null -ne $stagingRoot) {
         try { Remove-OwnedStaging $stagingRoot }
         catch { $failureCode = 'staging_cleanup_failed' }
+    }
+    if ($null -ne $buildArtifactsRoot) {
+        try { Remove-OwnedBuildArtifacts $buildArtifactsRoot }
+        catch { $failureCode = 'build_artifacts_cleanup_failed' }
     }
     if ($null -ne $replacementBackup -and (Test-Path -LiteralPath $replacementBackup)) {
         try {

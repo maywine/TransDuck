@@ -14,7 +14,10 @@ arm64 Mac。Windows 当前发布验证基线为单显示器环境。
 - 选中单词、句子或段落后，按默认快捷键进行自动翻译：Windows 为
   `Ctrl+Alt+D`，macOS 为 `Command+Option+D`。
 - 截取屏幕区域，先在本机识别简体中文或英文，再翻译识别结果。
-- 在设置中选择 Bing、Google、OpenAI-compatible、DeepL、Ollama 或火山翻译。
+- 可同时启用 Bing、Google、OpenAI-compatible、DeepL、Ollama 或火山翻译，并分别
+  查看各服务返回的结果。
+- Windows 与 macOS 均支持用户提供的 ECDICT CSV/SQLite 本地词典；macOS 还可查询
+  系统已启用的词典。
 - 使用系统代理、自定义 HTTP 代理或直连。
 - 为当前用户启用登录时启动，并在窗口关闭后继续从任务栏通知区或 macOS 菜单栏使用。
 
@@ -34,6 +37,9 @@ Windows 包需要完整解压后运行 `TransDuck.exe`。macOS 包需要完整�
 [English Windows guide](docs/user-docs/en/install-windows.md) 和
 [English macOS guide](docs/user-docs/en/install-macos.md)。
 
+本地词典和多结果配置见
+[本地词典与多翻译结果](docs/user-docs/zh/dictionaries-and-multiple-results.md)。
+
 ## 翻译服务与数据安全
 
 TransDuck 支持 OpenAI-compatible、DeepL、Ollama、火山翻译，以及内置的 Bing 和
@@ -41,7 +47,8 @@ Google 网页翻译。Bing 和 Google 使用非官方网页接口，不属于 Az
 Google Cloud Translation；网页服务或协议变化可能影响其可用性。Google 网页翻译无需
 凭据，Bing Cookie 为可选项。
 
-翻译时，选中文本会发送给当前选定的服务商。API Key、火山引擎 AK/SK 与可选的
+翻译时，选中文本会分别发送给每个已启用的在线服务商；只启用本地词典时不会发送到
+在线翻译服务。API Key、火山引擎 AK/SK 与可选的
 Bing Cookie 不写入普通配置文件。Windows 使用当前用户的 DPAPI，macOS 使用当前用户的
 Keychain。其他设置、翻译历史和诊断数据分别位于
 `%LocalAppData%\TransDuck` 和 `~/Library/Application Support/TransDuck`，不写入

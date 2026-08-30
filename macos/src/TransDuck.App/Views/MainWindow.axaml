@@ -32,11 +32,28 @@
       </ComboBox>
       <Button x:Name="OcrButton" Content="Capture OCR" Click="HandleOcrClick" />
       <Button x:Name="CancelButton" Content="Cancel" Click="HandleCancelClick" IsEnabled="False" />
-      <Button x:Name="RetryButton" Content="Retry" Click="HandleRetryClick" IsEnabled="False" />
+      <Button x:Name="RetryButton" Content="Retry failed sources"
+              Click="HandleRetryClick" IsEnabled="False" />
     </StackPanel>
 
-    <TextBox Grid.Row="4" x:Name="OutputTextBox" AcceptsReturn="True"
-             IsReadOnly="True" TextWrapping="Wrap" PlaceholderText="Translation result" />
+    <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+      <ItemsControl x:Name="ResultsItemsControl">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Margin="0,0,0,10" Padding="12" CornerRadius="6"
+                    Background="#F4F7FA" BorderBrush="#D6E0E8" BorderThickness="1">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                  <TextBlock Grid.Column="1" Opacity="0.7" Text="{Binding Status}" />
+                </Grid>
+                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
 
     <Grid Grid.Row="5" ColumnDefinitions="*,Auto" ColumnSpacing="10">
       <TextBlock x:Name="StatusTextBlock" Text="Starting TransDuck..."

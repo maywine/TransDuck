@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using TransDuck.Core.Lookup;
 using TransDuck.MacOS.App.Views;
 
 namespace TransDuck.MacOS.App;
@@ -35,7 +36,7 @@ public partial class App : Application
 
             if (!Program.StartInBackground)
             {
-            desktop.MainWindow = _mainWindow;
+                desktop.MainWindow = _mainWindow;
             }
             desktop.Exit += HandleDesktopExit;
             desktop.ShutdownRequested += HandleShutdownRequested;
@@ -66,7 +67,12 @@ public partial class App : Application
             await initialization;
             if (Program.SmokeTestMode)
             {
-                await StopAsync(exitCode: 0);
+                var dictionaryStatus = await runtime.SmokeTestSystemDictionaryAsync(
+                    CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(15));
+                await StopAsync(exitCode: dictionaryStatus is
+                    DictionaryLookupStatus.Found or DictionaryLookupStatus.NotFound
+                    ? 0
+                    : 1);
             }
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)

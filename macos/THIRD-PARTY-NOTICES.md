@@ -26,6 +26,13 @@ License. See `MicroCom-MIT.txt`.
 
 SharpHook 8.0.0 is used under the MIT License. See `SharpHook-MIT.txt`.
 
+## Microsoft.Data.Sqlite, SQLitePCLRaw, and SQLite
+
+Microsoft.Data.Sqlite 10.0.11 is used under the MIT License. See
+`Microsoft.Data.Sqlite-MIT.txt`. SQLitePCLRaw 2.1.12 is used under Apache-2.0;
+see `SQLitePCLRaw-Apache-2.0.txt`. The bundled SQLite library is dedicated to
+the public domain; see `SQLite-Public-Domain.txt`.
+
 ## libuiohook
 
 SharpHook redistributes an unmodified `libuiohook.dylib` built from libuiohook.
@@ -42,5 +49,5 @@ for relinking and debugging.
 ## Apple system frameworks
 
 The application calls macOS-provided ApplicationServices, CoreFoundation,
-Foundation, Security, and Vision frameworks. These frameworks are not included
-in the TransDuck distribution.
+CoreServices Dictionary Services, Foundation, Security, and Vision frameworks.
+These frameworks are not included in the TransDuck distribution.

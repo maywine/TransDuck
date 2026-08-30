@@ -12,6 +12,7 @@ $script:PayloadDirectoryName = 'TransDuck-Windows-x64'
 $script:FixedZipTimestamp = [DateTimeOffset]::new(2000, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
 $script:RequiredEntries = @(
     'TransDuck-Windows-x64/TransDuck.exe',
+    'TransDuck-Windows-x64/e_sqlite3.dll',
     'TransDuck-Windows-x64/D3DCompiler_47_cor3.dll',
     'TransDuck-Windows-x64/PenImc_cor3.dll',
     'TransDuck-Windows-x64/PresentationNative_cor3.dll',
@@ -25,6 +26,8 @@ $script:RequiredEntries = @(
     'TransDuck-Windows-x64/tessdata/LICENSE',
     'TransDuck-Windows-x64/licenses/Apache-2.0.txt',
     'TransDuck-Windows-x64/licenses/Leptonica-BSD-2-Clause.txt',
+    'TransDuck-Windows-x64/licenses/Microsoft.Data.Sqlite-MIT.txt',
+    'TransDuck-Windows-x64/licenses/SQLite-Public-Domain.txt',
     'TransDuck-Windows-x64/licenses/Microsoft-DotNet-Library-License.txt',
     'TransDuck-Windows-x64/licenses/Microsoft-DotNet-Third-Party-Notices.txt',
     'TransDuck-Windows-x64/LICENSE.txt',
@@ -71,7 +74,7 @@ function Test-ForbiddenEntry([string]$Name) {
     return $Name -match '(?i)(^|/)(x86|assets|tests?|credentials)(/|$)' -or
         $Name -match '(?i)paddle' -or
         $leaf -match '(?i)^(appxmanifest\.xml|.*\.(pdb|cs|csproj|sln|xaml|ps1|psm1|msix|appx|appxbundle|pfx|p12|pem|key|cer|crt|der|p7b|pvk|ppk|jks))$' -or
-        $leaf -match '(?i)^(configuration|provider-settings|hotkey-settings|proxy-settings|history|diagnostics)(\.|$)' -or
+        $leaf -match '(?i)^(configuration|provider-settings|query-sources|hotkey-settings|proxy-settings|history|diagnostics)(\.|$)' -or
         $leaf -match '(?i)(private.?key|certificate|\.credential$)'
 }
 
@@ -154,6 +157,7 @@ $report = [ordered]@{
     WpfNativeRuntimeX64 = $false
     TesseractNativeX64 = $false
     LeptonicaNativeX64 = $false
+    SQLiteNativeX64 = $false
     StagingDirectoryCount = -1
     StagingDirectoriesAbsent = $false
     ZipSha256 = $null
@@ -212,6 +216,7 @@ try {
         ).Count -eq 0
         $report.TesseractNativeX64 = Test-PeX64 $byName['TransDuck-Windows-x64/x64/tesseract50.dll']
         $report.LeptonicaNativeX64 = Test-PeX64 $byName['TransDuck-Windows-x64/x64/leptonica-1.82.0.dll']
+        $report.SQLiteNativeX64 = Test-PeX64 $byName['TransDuck-Windows-x64/e_sqlite3.dll']
         $orderedEntries = Sort-EntriesOrdinal $entries
         $report.TreeSha256 = Get-ZipTreeHash $orderedEntries
     }
@@ -222,7 +227,8 @@ try {
         'EntriesUnique', 'EntriesSafe', 'EntriesSortedOrdinal', 'EntriesFixedTimestamp',
         'TopLevelDirectoryValid', 'RequiredEntriesPresent', 'ForbiddenEntriesAbsent',
         'BundledManagedEntriesAbsent', 'MainExecutableX64', 'WpfNativeRuntimeX64',
-        'TesseractNativeX64', 'LeptonicaNativeX64', 'StagingDirectoriesAbsent'
+        'TesseractNativeX64', 'LeptonicaNativeX64', 'SQLiteNativeX64',
+        'StagingDirectoriesAbsent'
     )) {
         if (-not $report.$name) { $report.Failures += 'zip_audit_failed' }
     }

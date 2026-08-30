@@ -101,7 +101,7 @@ internal sealed class TranslationSessionController
                         appendText(text.ToString());
                         break;
                     case TranslationStreamEventKind.Completed:
-                        setStatus(AppStrings.Get("translation.status.completed"));
+                        setStatus(string.Empty);
                         return TranslationSessionResult.Completed(text.ToString());
                     case TranslationStreamEventKind.Cancelled:
                         setStatus(AppStrings.Get("translation.status.cancelled"));

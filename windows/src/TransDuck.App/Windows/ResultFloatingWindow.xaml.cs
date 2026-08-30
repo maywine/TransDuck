@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -12,10 +14,12 @@ namespace TransDuck.App.Windows;
 public partial class ResultFloatingWindow : Window
 {
     private bool _allowClose;
+    private readonly ObservableCollection<QuerySourceResultViewModel> _results = [];
 
     public ResultFloatingWindow()
     {
         InitializeComponent();
+        ResultItemsControl.ItemsSource = _results;
         StatusTextBlock.Text = AppStrings.Get("result.hint.default");
     }
 
@@ -45,7 +49,84 @@ public partial class ResultFloatingWindow : Window
         InputTextBox.Focus();
     }
 
-    public void SetResult(string text) => ResultTextBox.Text = text;
+    public void SetResult(string text) => SetSourceResult(
+        "result",
+        AppStrings.Get("result.source.result"),
+        text,
+        string.Empty);
+
+    public void BeginResults(
+        IEnumerable<QuerySourcePresentation> sources,
+        bool preserveExisting = false)
+    {
+        if (!preserveExisting)
+        {
+            _results.Clear();
+        }
+
+        foreach (var source in sources)
+        {
+            var existing = _results.FirstOrDefault(candidate =>
+                string.Equals(candidate.Key, source.Key, StringComparison.Ordinal));
+            if (existing is null)
+            {
+                _results.Add(new QuerySourceResultViewModel(
+                    source.Key,
+                    source.DisplayName,
+                    string.Empty,
+                    AppStrings.Get("result.source.waiting")));
+            }
+            else
+            {
+                existing.DisplayName = source.DisplayName;
+                existing.Text = string.Empty;
+                existing.Status = AppStrings.Get("result.source.waiting");
+            }
+        }
+    }
+
+    public void SetSourceResult(
+        string key,
+        string displayName,
+        string text,
+        string status)
+    {
+        var result = _results.FirstOrDefault(candidate =>
+            string.Equals(candidate.Key, key, StringComparison.Ordinal));
+        if (result is null)
+        {
+            result = new QuerySourceResultViewModel(key, displayName, text, status);
+            _results.Add(result);
+            return;
+        }
+
+        result.DisplayName = displayName;
+        result.Text = text;
+        result.Status = status;
+    }
+
+    public void SetSourceStatus(string key, string status)
+    {
+        var result = _results.FirstOrDefault(candidate =>
+            string.Equals(candidate.Key, key, StringComparison.Ordinal));
+        if (result is not null)
+        {
+            result.Status = status;
+        }
+    }
+
+    public void MarkActiveSourcesCancelled()
+    {
+        var waiting = AppStrings.Get("result.source.waiting");
+        var receiving = AppStrings.Get("result.source.receiving");
+        var cancelled = AppStrings.Get("result.source.cancelled");
+        foreach (var result in _results.Where(result =>
+                     string.Equals(result.Status, waiting, StringComparison.Ordinal) ||
+                     string.Equals(result.Status, receiving, StringComparison.Ordinal)))
+        {
+            result.Status = cancelled;
+        }
+    }
 
     public void SetStatus(string text) => StatusTextBlock.Text = text;
 
@@ -68,7 +149,7 @@ public partial class ResultFloatingWindow : Window
         TranslationErrorCodeTextBlock.Visibility = Visibility.Collapsed;
     }
 
-    public void ClearResult() => ResultTextBox.Clear();
+    public void ClearResult() => _results.Clear();
 
     public void AllowFinalClose() => _allowClose = true;
 
@@ -105,7 +186,7 @@ public partial class ResultFloatingWindow : Window
         CancellationRequested?.Invoke(this, EventArgs.Empty);
 
     private void CopyResultButtonClick(object sender, RoutedEventArgs eventArgs) =>
-        ResultCopyRequested?.Invoke(this, ResultTextBox.Text);
+        ResultCopyRequested?.Invoke(this, GetCombinedResult());
 
     private void RetryButtonClick(object sender, RoutedEventArgs eventArgs) =>
         RetryRequested?.Invoke(this, EventArgs.Empty);
@@ -118,5 +199,65 @@ public partial class ResultFloatingWindow : Window
         {
             DragMove();
         }
+    }
+
+    private string GetCombinedResult() => string.Join(
+        Environment.NewLine + Environment.NewLine,
+        _results
+            .Where(static result => !string.IsNullOrWhiteSpace(result.Text))
+            .Select(static result => $"{result.DisplayName}{Environment.NewLine}{result.Text}"));
+}
+
+public sealed record QuerySourcePresentation(string Key, string DisplayName);
+
+public sealed class QuerySourceResultViewModel : INotifyPropertyChanged
+{
+    private string _displayName;
+    private string _text;
+    private string _status;
+
+    public QuerySourceResultViewModel(
+        string key,
+        string displayName,
+        string text,
+        string status)
+    {
+        Key = key;
+        _displayName = displayName;
+        _text = text;
+        _status = status;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string Key { get; }
+
+    public string DisplayName
+    {
+        get => _displayName;
+        set => SetField(ref _displayName, value);
+    }
+
+    public string Text
+    {
+        get => _text;
+        set => SetField(ref _text, value);
+    }
+
+    public string Status
+    {
+        get => _status;
+        set => SetField(ref _status, value);
+    }
+
+    private void SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
+    {
+        if (string.Equals(field, value, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 maywine. All rights reserved.
 
 using TransDuck.Core.Contracts.V1;
+using TransDuck.Core.Lookup;
 using TransDuck.Core.Translation;
 
 namespace TransDuck.Core.Persistence;
@@ -47,6 +48,18 @@ public interface IConfigurationStore
 
     /// <summary>Writes a supported configuration atomically.</summary>
     Task<PersistenceResult> WriteAsync(Configuration configuration, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Reads and atomically writes the selected translation and dictionary sources.
+/// </summary>
+public interface IQuerySourceSettingsStore
+{
+    Task<PersistenceReadResult<QuerySourceSettings>> ReadAsync(CancellationToken cancellationToken);
+
+    Task<PersistenceResult> WriteAsync(
+        QuerySourceSettings settings,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>

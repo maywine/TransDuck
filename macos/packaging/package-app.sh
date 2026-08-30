@@ -51,6 +51,8 @@ cp "$repository_root/assets/brand-source-icon/TransDuck.icns" "$resources_direct
 cp "$repository_root/LICENSE" "$resources_directory/LICENSE"
 cp "$repository_root/macos/THIRD-PARTY-NOTICES.md" "$resources_directory/THIRD-PARTY-NOTICES.md"
 cp -R -p "$repository_root/macos/third_party/licenses/." "$resources_directory/licenses/"
+cp "$repository_root/windows/third_party/licenses/Apache-2.0.txt" \
+  "$resources_directory/licenses/SQLitePCLRaw-Apache-2.0.txt"
 
 if [[ $(uname -s) == Darwin ]]; then
   /usr/bin/plutil -lint "$contents_directory/Info.plist"

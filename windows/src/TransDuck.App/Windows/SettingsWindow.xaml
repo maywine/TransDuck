@@ -11,6 +11,46 @@
       <TextBlock Margin="0,6,0,14" TextWrapping="Wrap"
                  Text="{DynamicResource settings.description.credential}" />
 
+      <TextBlock FontSize="16" FontWeight="SemiBold" Text="{DynamicResource settings.heading.sources}" />
+      <TextBlock Margin="0,6,0,8" TextWrapping="Wrap"
+                 Text="{DynamicResource settings.description.sources}" />
+      <UniformGrid Columns="2" Margin="0,0,0,8">
+        <CheckBox x:Name="OpenAiSourceCheckBox" Tag="openai-compatible" Margin="0,0,8,6"
+                  Content="OpenAI-compatible" AutomationProperties.AutomationId="OpenAiSourceCheckBox" />
+        <CheckBox x:Name="DeepLSourceCheckBox" Tag="deepl" Margin="0,0,8,6" Content="DeepL"
+                  AutomationProperties.AutomationId="DeepLSourceCheckBox" />
+        <CheckBox x:Name="OllamaSourceCheckBox" Tag="ollama" Margin="0,0,8,6" Content="Ollama"
+                  AutomationProperties.AutomationId="OllamaSourceCheckBox" />
+        <CheckBox x:Name="BingSourceCheckBox" Tag="bing" Margin="0,0,8,6"
+                  Content="{DynamicResource provider.name.bing}"
+                  AutomationProperties.AutomationId="BingSourceCheckBox" />
+        <CheckBox x:Name="GoogleSourceCheckBox" Tag="google" Margin="0,0,8,6"
+                  Content="{DynamicResource provider.name.google}"
+                  AutomationProperties.AutomationId="GoogleSourceCheckBox" />
+        <CheckBox x:Name="VolcengineSourceCheckBox" Tag="volcengine" Margin="0,0,8,6"
+                  Content="{DynamicResource provider.name.volcengine}"
+                  AutomationProperties.AutomationId="VolcengineSourceCheckBox" />
+      </UniformGrid>
+      <CheckBox x:Name="EcdictEnabledCheckBox" Margin="0,0,0,6"
+                Content="{DynamicResource settings.source.ecdict}"
+                AutomationProperties.AutomationId="EcdictEnabledCheckBox" />
+      <TextBlock Text="{DynamicResource settings.label.ecdict_file}" />
+      <DockPanel Margin="0,4,0,14">
+        <Button x:Name="BrowseEcdictButton" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="12,4"
+                Content="{DynamicResource settings.button.browse_ecdict}"
+                Click="BrowseEcdictButtonClick"
+                AutomationProperties.AutomationId="BrowseEcdictButton" />
+        <TextBox x:Name="EcdictPathTextBox"
+                 AutomationProperties.AutomationId="EcdictPathTextBox" />
+      </DockPanel>
+      <Button x:Name="SaveQuerySourcesButton" Margin="0,0,0,14" Padding="14,5"
+              HorizontalAlignment="Left"
+              Content="{DynamicResource settings.button.save_sources}"
+              Click="SaveQuerySourcesButtonClick"
+              AutomationProperties.AutomationId="SaveQuerySourcesButton" />
+
+      <Separator Margin="0,0,0,14" />
+
       <TextBlock Text="{DynamicResource settings.label.provider}" />
       <ComboBox x:Name="ProviderComboBox"
                 Margin="0,4,0,10"
