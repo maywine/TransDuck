@@ -59,7 +59,8 @@ Cookie 和 Ollama API Key 可选。
 
 API Key、火山引擎 AK/SK 和可选 Bing Cookie 作为 generic password 保存在当前用户的
 macOS Keychain，不写入普通 JSON、日志或应用目录。翻译文本会分别发送给 Settings 中
-已启用的在线服务；ECDICT 和 macOS 系统词典查询保持本地。详见
+已启用的在线服务；采用受支持结构的本地词典文件、系统语音发音和 macOS 系统词典查询
+保持本地。详见
 [本地词典与多翻译结果](dictionaries-and-multiple-results.md)。
 
 “Start TransDuck when I log in” 会管理当前用户的

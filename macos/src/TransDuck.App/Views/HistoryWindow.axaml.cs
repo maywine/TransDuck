@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using TransDuck.Core.Contracts.V1;
+using TransDuck.Core.Lookup;
 using TransDuck.Core.Persistence;
 
 namespace TransDuck.MacOS.App.Views;
@@ -67,7 +68,10 @@ internal partial class HistoryWindow : Window
             QueryTerminalState.Failed => "[failed: " + entry.Result.Error?.Code + "]",
             _ => "[unknown]",
         };
-        return $"{entry.CreatedAt.ToLocalTime():g}  {entry.Request.Provider.ProviderId}\n" +
+        var provider = LocalDictionaryIds.IsFile(entry.Request.Provider.ProviderId)
+            ? "Local dictionary"
+            : entry.Request.Provider.ProviderId;
+        return $"{entry.CreatedAt.ToLocalTime():g}  {provider}\n" +
             $"{entry.Request.Text}\n\n{result}";
     }
 

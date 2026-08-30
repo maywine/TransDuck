@@ -33,6 +33,10 @@ public partial class ResultFloatingWindow : Window
 
     public event EventHandler? RetryRequested;
 
+    public event EventHandler<string>? PronunciationRequested;
+
+    public event EventHandler? PronunciationStopRequested;
+
     public void Present(string? text = null)
     {
         if (text is not null)
@@ -74,13 +78,15 @@ public partial class ResultFloatingWindow : Window
                     source.Key,
                     source.DisplayName,
                     string.Empty,
-                    AppStrings.Get("result.source.waiting")));
+                    AppStrings.Get("result.source.waiting"),
+                    pronunciationTerm: null));
             }
             else
             {
                 existing.DisplayName = source.DisplayName;
                 existing.Text = string.Empty;
                 existing.Status = AppStrings.Get("result.source.waiting");
+                existing.PronunciationTerm = null;
             }
         }
     }
@@ -89,13 +95,14 @@ public partial class ResultFloatingWindow : Window
         string key,
         string displayName,
         string text,
-        string status)
+        string status,
+        string? pronunciationTerm = null)
     {
         var result = _results.FirstOrDefault(candidate =>
             string.Equals(candidate.Key, key, StringComparison.Ordinal));
         if (result is null)
         {
-            result = new QuerySourceResultViewModel(key, displayName, text, status);
+            result = new QuerySourceResultViewModel(key, displayName, text, status, pronunciationTerm);
             _results.Add(result);
             return;
         }
@@ -103,6 +110,7 @@ public partial class ResultFloatingWindow : Window
         result.DisplayName = displayName;
         result.Text = text;
         result.Status = status;
+        result.PronunciationTerm = pronunciationTerm;
     }
 
     public void SetSourceStatus(string key, string status)
@@ -158,6 +166,7 @@ public partial class ResultFloatingWindow : Window
         if (!_allowClose)
         {
             eventArgs.Cancel = true;
+            PronunciationStopRequested?.Invoke(this, EventArgs.Empty);
             Hide();
         }
 
@@ -169,6 +178,7 @@ public partial class ResultFloatingWindow : Window
         base.OnDeactivated(eventArgs);
         if (!_allowClose && IsVisible)
         {
+            PronunciationStopRequested?.Invoke(this, EventArgs.Empty);
             Hide();
         }
     }
@@ -191,7 +201,19 @@ public partial class ResultFloatingWindow : Window
     private void RetryButtonClick(object sender, RoutedEventArgs eventArgs) =>
         RetryRequested?.Invoke(this, EventArgs.Empty);
 
-    private void HideButtonClick(object sender, RoutedEventArgs eventArgs) => Hide();
+    private void PronounceButtonClick(object sender, RoutedEventArgs eventArgs)
+    {
+        if (sender is FrameworkElement { Tag: string term } && !string.IsNullOrWhiteSpace(term))
+        {
+            PronunciationRequested?.Invoke(this, term);
+        }
+    }
+
+    private void HideButtonClick(object sender, RoutedEventArgs eventArgs)
+    {
+        PronunciationStopRequested?.Invoke(this, EventArgs.Empty);
+        Hide();
+    }
 
     private void TitleBarMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
     {
@@ -215,17 +237,20 @@ public sealed class QuerySourceResultViewModel : INotifyPropertyChanged
     private string _displayName;
     private string _text;
     private string _status;
+    private string? _pronunciationTerm;
 
     public QuerySourceResultViewModel(
         string key,
         string displayName,
         string text,
-        string status)
+        string status,
+        string? pronunciationTerm)
     {
         Key = key;
         _displayName = displayName;
         _text = text;
         _status = status;
+        _pronunciationTerm = pronunciationTerm;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -249,6 +274,26 @@ public sealed class QuerySourceResultViewModel : INotifyPropertyChanged
         get => _status;
         set => SetField(ref _status, value);
     }
+
+    public string? PronunciationTerm
+    {
+        get => _pronunciationTerm;
+        set
+        {
+            if (string.Equals(_pronunciationTerm, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _pronunciationTerm = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PronunciationTerm)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PronunciationVisibility)));
+        }
+    }
+
+    public Visibility PronunciationVisibility => string.IsNullOrWhiteSpace(PronunciationTerm)
+        ? Visibility.Collapsed
+        : Visibility.Visible;
 
     private void SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
     {

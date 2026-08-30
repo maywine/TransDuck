@@ -36,7 +36,11 @@ internal sealed record MacQuerySourceResult(
     string Key,
     string DisplayName,
     string Text,
-    string Status);
+    string Status,
+    string? PronunciationTerm = null)
+{
+    public bool CanPronounce => !string.IsNullOrWhiteSpace(PronunciationTerm);
+}
 
 internal sealed record MacSettingsSnapshot(
     Configuration Configuration,

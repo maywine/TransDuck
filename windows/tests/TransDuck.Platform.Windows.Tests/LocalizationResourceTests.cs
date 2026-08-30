@@ -91,6 +91,8 @@ public sealed class LocalizationResourceTests
         Assert.Equal("Resources/Strings.en-US.xaml", fallback.Attribute("Source")?.Value);
         AssertResourceReference(result.Root!, "Title", "result.window.title");
         AssertResourceReference(FindAutomationElement(result, "RetryButton"), "Content", "result.button.retry");
+        AssertResourceReference(FindAutomationElement(result, "PronounceButton"), "Content",
+            "result.button.pronounce");
         AssertResourceReference(settings.Root!, "Title", "settings.window.title");
         AssertResourceReference(FindAutomationElement(settings, "SaveHotkeyButton"), "Content", "settings.button.save_hotkey");
         AssertResourceReference(FindAutomationElement(settings, "LaunchAtStartupCheckBox"), "Content", "settings.startup.enabled");

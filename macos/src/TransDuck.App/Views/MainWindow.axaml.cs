@@ -72,6 +72,14 @@ internal partial class MainWindow : Window
 
     private void HandleRetryClick(object? sender, RoutedEventArgs eventArgs) => _ = _runtime.RetryAsync();
 
+    private void HandlePronounceClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (sender is Control { Tag: string term } && !string.IsNullOrWhiteSpace(term))
+        {
+            _ = _runtime.PronounceAsync(term);
+        }
+    }
+
     private async void HandleCopyClick(object? sender, RoutedEventArgs eventArgs)
     {
         var clipboard = GetTopLevel(this)?.Clipboard;
@@ -104,6 +112,7 @@ internal partial class MainWindow : Window
             Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime)
         {
             eventArgs.Cancel = true;
+            _runtime.StopPronunciation();
             Hide();
         }
     }

@@ -25,6 +25,18 @@ public sealed class ResultFloatingWindowSourceTests
         Assert.True(hide > visibleGuard);
     }
 
+    [Fact]
+    public void DictionaryResultCarriesTheEntryTermWithoutParsingRenderedText()
+    {
+        var runtime = ReadSource("TransDuck.App", "AppRuntime.cs");
+        var window = ReadSource("TransDuck.App", "Windows", "ResultFloatingWindow.xaml.cs");
+
+        Assert.Contains("result.Entry?.Term", runtime, StringComparison.Ordinal);
+        Assert.Contains("PronunciationTerm", window, StringComparison.Ordinal);
+        Assert.Contains("PronunciationRequested?.Invoke(this, term)", window, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToDisplayText().Split", runtime + window, StringComparison.Ordinal);
+    }
+
     private static string Slice(string source, string startMarker, string endMarker)
     {
         var start = source.IndexOf(startMarker, StringComparison.Ordinal);

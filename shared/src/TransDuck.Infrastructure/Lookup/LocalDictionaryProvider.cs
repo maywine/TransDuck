@@ -11,9 +11,9 @@ using TransDuck.Core.Lookup;
 namespace TransDuck.Infrastructure.Lookup;
 
 /// <summary>
-/// Queries user-owned ECDICT SQLite files and indexes UTF-8 ECDICT CSV files into an app-owned cache.
+/// Queries supported local SQLite dictionaries and indexes compatible UTF-8 CSV files into an app-owned cache.
 /// </summary>
-public sealed class EcdictDictionaryProvider : IDictionaryProvider
+public sealed class LocalDictionaryProvider : IDictionaryProvider
 {
     private const string SqliteSignature = "SQLite format 3\0";
     private static readonly UTF8Encoding StrictUtf8 = new(
@@ -23,15 +23,15 @@ public sealed class EcdictDictionaryProvider : IDictionaryProvider
         new(StringComparer.Ordinal);
     private readonly string _cacheDirectory;
 
-    public EcdictDictionaryProvider(string cacheDirectory)
+    public LocalDictionaryProvider(string cacheDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cacheDirectory);
         _cacheDirectory = Path.GetFullPath(cacheDirectory);
     }
 
     public DictionaryProviderRegistration Registration { get; } = new(
-        LocalDictionaryIds.Ecdict,
-        "ECDICT",
+        LocalDictionaryIds.File,
+        "Local dictionary",
         RequiresDataFile: true);
 
     public async Task<DictionaryLookupResult> LookupAsync(
@@ -64,7 +64,7 @@ public sealed class EcdictDictionaryProvider : IDictionaryProvider
         try
         {
             var format = await DetectFormatAsync(sourcePath, cancellationToken).ConfigureAwait(false);
-            var databasePath = format == EcdictDataFormat.Sqlite
+            var databasePath = format == LocalDictionaryFileFormat.Sqlite
                 ? sourcePath
                 : await EnsureCsvCacheAsync(sourcePath, cancellationToken).ConfigureAwait(false);
             return await QuerySqliteAsync(databasePath, term, cancellationToken).ConfigureAwait(false);
@@ -157,7 +157,7 @@ public sealed class EcdictDictionaryProvider : IDictionaryProvider
             var currentSource = await ReadSourceMetadataAsync(sourcePath, cancellationToken).ConfigureAwait(false);
             if (currentSource != source)
             {
-                throw new IOException("The ECDICT CSV file changed while it was being indexed.");
+                throw new IOException("The local dictionary CSV file changed while it was being indexed.");
             }
 
             File.Move(temporaryPath, cachePath, overwrite: true);
@@ -184,7 +184,7 @@ public sealed class EcdictDictionaryProvider : IDictionaryProvider
             TrimWhiteSpace = false,
         };
         parser.SetDelimiters(",");
-        var headers = parser.ReadFields() ?? throw new InvalidDataException("ECDICT CSV is empty.");
+        var headers = parser.ReadFields() ?? throw new InvalidDataException("The local dictionary CSV is empty.");
         var columns = headers
             .Select((name, index) => new KeyValuePair<string, int>(name.Trim(), index))
             .ToDictionary(static item => item.Key, static item => item.Value, StringComparer.OrdinalIgnoreCase);
@@ -341,11 +341,11 @@ public sealed class EcdictDictionaryProvider : IDictionaryProvider
         string[] required = ["word", "sw", "phonetic", "definition", "translation", "pos"];
         if (required.Any(column => !columns.Contains(column)))
         {
-            throw new InvalidDataException("The SQLite file is not a supported ECDICT database.");
+            throw new InvalidDataException("The SQLite file does not contain the supported local dictionary schema.");
         }
     }
 
-    private static async Task<EcdictDataFormat> DetectFormatAsync(
+    private static async Task<LocalDictionaryFileFormat> DetectFormatAsync(
         string filePath,
         CancellationToken cancellationToken)
     {
@@ -361,10 +361,10 @@ public sealed class EcdictDictionaryProvider : IDictionaryProvider
         if (bytesRead == signature.Length &&
             signature.AsSpan().SequenceEqual(Encoding.ASCII.GetBytes(SqliteSignature)))
         {
-            return EcdictDataFormat.Sqlite;
+            return LocalDictionaryFileFormat.Sqlite;
         }
 
-        return EcdictDataFormat.Csv;
+        return LocalDictionaryFileFormat.Csv;
     }
 
     private static string ReadOnlyConnectionString(string databasePath) =>
@@ -404,7 +404,7 @@ public sealed class EcdictDictionaryProvider : IDictionaryProvider
         var after = new FileInfo(sourcePath);
         if (after.Length != length || after.LastWriteTimeUtc.Ticks != writeTicks)
         {
-            throw new IOException("The ECDICT CSV file changed while its checksum was being calculated.");
+            throw new IOException("The local dictionary CSV file changed while its checksum was being calculated.");
         }
 
         return new SourceMetadata(length, writeTicks, Convert.ToHexStringLower(hash));
@@ -454,7 +454,7 @@ public sealed class EcdictDictionaryProvider : IDictionaryProvider
         columns.TryGetValue(name, out var index)
             ? index
             : throw new InvalidDataException(
-                string.Format(CultureInfo.InvariantCulture, "ECDICT CSV is missing the {0} column.", name));
+                string.Format(CultureInfo.InvariantCulture, "Local dictionary CSV is missing the {0} column.", name));
 
     private static string? Field(IReadOnlyList<string> fields, int index) =>
         index < fields.Count ? fields[index] : null;
@@ -467,7 +467,7 @@ public sealed class EcdictDictionaryProvider : IDictionaryProvider
 
     private sealed record SourceMetadata(long Length, long LastWriteTicks, string ContentSha256);
 
-    private enum EcdictDataFormat
+    private enum LocalDictionaryFileFormat
     {
         Csv,
         Sqlite,

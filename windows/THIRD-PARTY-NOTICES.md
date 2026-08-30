@@ -33,6 +33,14 @@
 - The bundled SQLite library is dedicated to the public domain. See
   `SQLite-Public-Domain.txt`.
 
+## System.Speech
+
+- [`System.Speech` 10.0.11](https://www.nuget.org/packages/System.Speech/10.0.11)
+  provides Windows Speech API synthesis for local dictionary pronunciation.
+- It is used under the MIT License. See `System.Speech-MIT.txt`.
+- Pronunciation uses installed Windows voices and does not download or play
+  dictionary-provided audio.
+
 ## tessdata_best language models
 
 - Upstream: [tesseract-ocr/tessdata_best](https://github.com/tesseract-ocr/tessdata_best)
@@ -48,5 +56,5 @@
 The model provenance and fixed checksums are also recorded in
 [`third_party/tesseract/tessdata-best/model-manifest.json`](third_party/tesseract/tessdata-best/model-manifest.json).
 
-The final application payload includes this notice, the two license files above, and the model-specific
-`tessdata/LICENSE` file.
+The final application payload includes this notice, the component license files listed above, and the
+model-specific `tessdata/LICENSE` file.

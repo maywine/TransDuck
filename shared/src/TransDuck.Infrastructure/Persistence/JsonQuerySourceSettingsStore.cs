@@ -2,6 +2,7 @@
 
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using TransDuck.Core.Contracts.V1;
 using TransDuck.Core.Lookup;
 using TransDuck.Core.Persistence;
@@ -48,11 +49,7 @@ public sealed class JsonQuerySourceSettingsStore : IQuerySourceSettingsStore, ID
 
             var content = await AtomicFileWriter.ReadUtf8Async(_filePath, cancellationToken)
                 .ConfigureAwait(false);
-            var settings = JsonSerializer.Deserialize<QuerySourceSettings>(
-                content,
-                ContractJson.SerializerOptions) ?? throw new ContractValidationException(
-                    ContractValidationError.MissingRequired,
-                    "Query source settings JSON does not contain a document.");
+            var settings = DeserializeSettings(content);
             return ToReadResult(settings);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -120,6 +117,53 @@ public sealed class JsonQuerySourceSettingsStore : IQuerySourceSettingsStore, ID
             ? PersistenceReadResult<QuerySourceSettings>.Success(settings)
             : PersistenceReadResult<QuerySourceSettings>.FromStatus(status);
 
+    private static QuerySourceSettings DeserializeSettings(string content)
+    {
+        using var document = JsonDocument.Parse(content);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new JsonException("Query source settings JSON must contain an object.");
+        }
+
+        var localDictionaryCount = 0;
+        var legacyLocalDictionaryCount = 0;
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            if (property.NameEquals("localDictionary"))
+            {
+                localDictionaryCount++;
+            }
+            else if (property.NameEquals("ecdict"))
+            {
+                legacyLocalDictionaryCount++;
+            }
+        }
+
+        if (localDictionaryCount == 1 && legacyLocalDictionaryCount == 0)
+        {
+            return JsonSerializer.Deserialize<QuerySourceSettings>(
+                content,
+                ContractJson.SerializerOptions) ?? throw new JsonException(
+                    "Query source settings JSON does not contain a document.");
+        }
+
+        if (localDictionaryCount == 0 && legacyLocalDictionaryCount == 1)
+        {
+            var legacy = JsonSerializer.Deserialize<LegacyQuerySourceSettingsV1>(
+                content,
+                ContractJson.SerializerOptions) ?? throw new JsonException(
+                    "Legacy query source settings JSON does not contain a document.");
+            return new QuerySourceSettings(
+                legacy.Version,
+                legacy.EnabledTranslationProviders,
+                legacy.LocalDictionary,
+                legacy.MacSystemDictionaryEnabled);
+        }
+
+        throw new JsonException(
+            "Query source settings must contain exactly one supported local dictionary property.");
+    }
+
     private async Task<PersistenceStatus?> TryEnterAsync(CancellationToken cancellationToken)
     {
         if (Volatile.Read(ref _disposeRequested) != 0)
@@ -170,4 +214,10 @@ public sealed class JsonQuerySourceSettingsStore : IQuerySourceSettingsStore, ID
             return false;
         }
     }
+
+    private sealed record LegacyQuerySourceSettingsV1(
+        [property: JsonRequired] int Version,
+        [property: JsonRequired] IReadOnlyList<ProviderDescriptor> EnabledTranslationProviders,
+        [property: JsonRequired, JsonPropertyName("ecdict")] LocalDictionarySettings LocalDictionary,
+        [property: JsonRequired] bool MacSystemDictionaryEnabled);
 }

@@ -13,17 +13,17 @@ public sealed class QuerySourceSettingsTests
         var combined = new QuerySourceSettings(
             QuerySourceSettingsMigration.CurrentVersion,
             [new ProviderDescriptor("deepl"), new ProviderDescriptor("ollama", "local")],
-            new EcdictDictionarySettings(true, "/data/ecdict.csv"),
+            new LocalDictionarySettings(true, "/data/dictionary.csv"),
             MacSystemDictionaryEnabled: true);
         var dictionaryOnly = new QuerySourceSettings(
             QuerySourceSettingsMigration.CurrentVersion,
             [],
-            new EcdictDictionarySettings(true, "/data/ecdict.db"),
+            new LocalDictionarySettings(true, "/data/dictionary.db"),
             MacSystemDictionaryEnabled: false);
         var macSystemOnly = new QuerySourceSettings(
             QuerySourceSettingsMigration.CurrentVersion,
             [],
-            EcdictDictionarySettings.Disabled,
+            LocalDictionarySettings.Disabled,
             MacSystemDictionaryEnabled: true);
 
         combined.Validate();
@@ -31,7 +31,7 @@ public sealed class QuerySourceSettingsTests
         macSystemOnly.Validate();
 
         Assert.Equal(2, combined.EnabledTranslationProviders.Count);
-        Assert.True(dictionaryOnly.Ecdict.Enabled);
+        Assert.True(dictionaryOnly.LocalDictionary.Enabled);
         Assert.True(macSystemOnly.MacSystemDictionaryEnabled);
     }
 
@@ -41,13 +41,13 @@ public sealed class QuerySourceSettingsTests
         var duplicate = new QuerySourceSettings(
             1,
             [new ProviderDescriptor("deepl"), new ProviderDescriptor("deepl")],
-            EcdictDictionarySettings.Disabled,
+            LocalDictionarySettings.Disabled,
             false);
-        var empty = new QuerySourceSettings(1, [], EcdictDictionarySettings.Disabled, false);
+        var empty = new QuerySourceSettings(1, [], LocalDictionarySettings.Disabled, false);
         var missingPath = new QuerySourceSettings(
             1,
             [],
-            new EcdictDictionarySettings(true, null),
+            new LocalDictionarySettings(true, null),
             false);
 
         Assert.Throws<ContractValidationException>(duplicate.Validate);
@@ -58,14 +58,14 @@ public sealed class QuerySourceSettingsTests
     [Fact]
     public void ToString_DoesNotExposeDictionaryPath()
     {
-        var path = "/private/QUERY_SOURCE_PATH_CANARY/ecdict.csv";
+        var path = "/private/QUERY_SOURCE_PATH_CANARY/dictionary.csv";
         var settings = new QuerySourceSettings(
             1,
             [],
-            new EcdictDictionarySettings(true, path),
+            new LocalDictionarySettings(true, path),
             false);
 
-        var text = settings.ToString() + settings.Ecdict;
+        var text = settings.ToString() + settings.LocalDictionary;
 
         Assert.DoesNotContain(path, text, StringComparison.Ordinal);
         Assert.Contains("HasDataFilePath=True", text, StringComparison.Ordinal);

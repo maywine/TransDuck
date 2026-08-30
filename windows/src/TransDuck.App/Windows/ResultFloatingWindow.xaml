@@ -113,12 +113,17 @@
               <Border Margin="0,0,0,10" Padding="10" Background="#F4F7FA"
                       BorderBrush="#D6E0E8" BorderThickness="1" CornerRadius="6">
                 <StackPanel>
-                  <DockPanel Margin="0,0,0,6" LastChildFill="False">
-                    <TextBlock DockPanel.Dock="Left" FontWeight="SemiBold"
-                               Text="{Binding DisplayName}" />
-                    <TextBlock DockPanel.Dock="Right" Foreground="#4A5568"
-                               Text="{Binding Status}" />
-                  </DockPanel>
+                  <Grid Margin="0,0,0,6" ColumnDefinitions="*,Auto,Auto">
+                    <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                    <Button Grid.Column="1" Margin="8,0" Padding="8,2"
+                            Content="{DynamicResource result.button.pronounce}"
+                            Tag="{Binding PronunciationTerm}"
+                            Visibility="{Binding PronunciationVisibility}"
+                            Click="PronounceButtonClick"
+                            AutomationProperties.AutomationId="PronounceButton"
+                            AutomationProperties.HelpText="{DynamicResource result.automation.pronounce.help}" />
+                    <TextBlock Grid.Column="2" Foreground="#4A5568" Text="{Binding Status}" />
+                  </Grid>
                   <TextBox Text="{Binding Text}" IsReadOnly="True" TextWrapping="Wrap"
                            Background="Transparent" BorderThickness="0" Padding="0" />
                 </StackPanel>

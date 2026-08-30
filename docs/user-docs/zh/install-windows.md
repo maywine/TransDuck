@@ -49,7 +49,7 @@ OCR 效果取决于原图、文字大小、对比度和语言。尽量紧贴清�
 每次翻译会将选定文本分别发送给所有已启用的在线服务商。API Key、火山引擎 AK/SK 与可选的
 Bing Cookie 由 Windows DPAPI 按当前用户加密，不会写入普通配置文件或便携应用目录。
 
-Windows 也支持用户提供的 ECDICT CSV 或 SQLite 本地词典，详见
+Windows 也支持用户提供、采用受支持结构的 CSV 或 SQLite 本地词典及系统语音发音，详见
 [本地词典与多翻译结果](dictionaries-and-multiple-results.md)。
 
 ## 配置代理

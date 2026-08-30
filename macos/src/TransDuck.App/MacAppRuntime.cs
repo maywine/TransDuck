@@ -14,6 +14,7 @@ using TransDuck.Platform.MacOS.Hotkeys;
 using TransDuck.Platform.MacOS.Ocr;
 using TransDuck.Platform.MacOS.Persistence;
 using TransDuck.Platform.MacOS.Selection;
+using TransDuck.Platform.MacOS.Speech;
 using TransDuck.Platform.MacOS.Startup;
 
 namespace TransDuck.MacOS.App;
@@ -37,8 +38,9 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     private readonly VisionOcrService _ocrService = new();
     private readonly LaunchAgentStartupService _startupService = new();
     private readonly MacGlobalHotkeyService _hotkeyService = new(new SharpHookKeyboardBackend());
-    private readonly EcdictDictionaryProvider _ecdictDictionaryProvider;
+    private readonly LocalDictionaryProvider _localDictionaryProvider;
     private readonly MacSystemDictionaryProvider _systemDictionaryProvider = new MacSystemDictionaryProvider();
+    private readonly ISystemSpeechPlayer _speechPlayer = new MacSystemSpeechPlayer();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly object _stateGate = new();
     private readonly object _operationGate = new();
@@ -72,7 +74,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         _hotkeySettingsStore = new JsonMacHotkeySettingsStore(_dataPaths);
         _historyStore = new JsonLinesHistoryStore(_dataPaths);
         _diagnosticSink = new JsonLinesDiagnosticSink(_dataPaths);
-        _ecdictDictionaryProvider = new EcdictDictionaryProvider(
+        _localDictionaryProvider = new LocalDictionaryProvider(
             Path.Combine(_dataPaths.RootDirectory, "dictionary-cache"));
         var leaseSource = new ProxyTranslationHttpClientLeaseSource(_httpClientPool);
         _providers.Register(new OpenAiCompatibleProvider(leaseSource));
@@ -194,7 +196,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 .ToHashSet(StringComparer.Ordinal)
             : [];
         var hasUsableSource = effectiveSources is not null &&
-            (effectiveSources.Ecdict.Enabled || effectiveSources.MacSystemDictionaryEnabled ||
+            (effectiveSources.LocalDictionary.Enabled || effectiveSources.MacSystemDictionaryEnabled ||
              effectiveSources.EnabledTranslationProviders.Any(provider =>
                  configuredProviderKeys.Contains(CanonicalProviderKey(provider))));
         if (!hasUsableSource)
@@ -210,6 +212,24 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
     public Task TranslateSelectedTextAsync(bool promptForPermission) =>
         TrackOperation(() => TranslateSelectedTextCoreAsync(promptForPermission));
+
+    public Task PronounceAsync(string text) =>
+        TrackOperation(() => PronounceCoreAsync(text));
+
+    public void StopPronunciation() => _speechPlayer.Stop();
+
+    private async Task PronounceCoreAsync(string text)
+    {
+        var result = await _speechPlayer.SpeakAsync(text, _lifetimeCancellation.Token);
+        if (result.Status is SpeechPlaybackStatus.Completed or SpeechPlaybackStatus.Cancelled)
+        {
+            return;
+        }
+
+        PublishState(status: result.Status == SpeechPlaybackStatus.Unavailable
+            ? "System pronunciation is unavailable."
+            : "The dictionary entry could not be pronounced.");
+    }
 
     private async Task TranslateSelectedTextCoreAsync(bool promptForPermission)
     {
@@ -516,6 +536,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         }
 
         _lifetimeCancellation.Cancel();
+        _speechPlayer.Stop();
         CancelCurrentOperation();
         await WaitForTrackedOperationsAsync();
         _hotkeyService.Pressed -= HandleHotkeyPressed;
@@ -536,6 +557,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         DisposeNonFatal(_credentialStore);
         DisposeNonFatal(_historyStore);
         DisposeNonFatal(_diagnosticSink);
+        DisposeNonFatal(_speechPlayer);
         DisposeNonFatal(_httpClientPool);
         DisposeNonFatal(_lifetimeCancellation);
     }
@@ -597,8 +619,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             .Where(provider => sourceFilter is null ||
                 sourceFilter.Contains(CanonicalProviderKey(provider)))
             .ToArray();
-        var includeEcdict = sourceSettings.Ecdict.Enabled &&
-            (sourceFilter is null || sourceFilter.Contains(LocalDictionaryIds.Ecdict));
+        var includeLocalDictionary = sourceSettings.LocalDictionary.Enabled &&
+            (sourceFilter is null || sourceFilter.Contains(LocalDictionaryIds.File));
         var includeMacSystem = sourceSettings.MacSystemDictionaryEnabled &&
             (sourceFilter is null || sourceFilter.Contains(LocalDictionaryIds.MacSystem));
         var presentations = providerSources
@@ -608,11 +630,11 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 string.Empty,
                 "Waiting"))
             .ToList();
-        if (includeEcdict)
+        if (includeLocalDictionary)
         {
             presentations.Add(new MacQuerySourceResult(
-                LocalDictionaryIds.Ecdict,
-                _ecdictDictionaryProvider.Registration.DisplayName,
+                LocalDictionaryIds.File,
+                _localDictionaryProvider.Registration.DisplayName,
                 string.Empty,
                 "Waiting"));
         }
@@ -646,11 +668,11 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 generation,
                 cancellationToken))
             .ToList();
-        if (includeEcdict)
+        if (includeLocalDictionary)
         {
             runs.Add(RunDictionarySourceAsync(
-                _ecdictDictionaryProvider,
-                sourceSettings.Ecdict.DataFilePath,
+                _localDictionaryProvider,
+                sourceSettings.LocalDictionary.DataFilePath,
                 text,
                 configuration,
                 generation,
@@ -932,7 +954,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             provider.Registration.ProviderId,
             provider.Registration.DisplayName,
             result.Entry?.ToDisplayText() ?? DescribeDictionaryStatus(result.Status),
-            DescribeDictionarySourceStatus(result.Status));
+            DescribeDictionarySourceStatus(result.Status),
+            result.Entry?.Term);
         if (result.Succeeded)
         {
             await AppendDictionaryHistoryAsync(text, provider.Registration, result.Entry!, configuration);
@@ -1308,7 +1331,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         string key,
         string displayName,
         string text,
-        string status)
+        string status,
+        string? pronunciationTerm = null)
     {
         if (!IsCurrent(generation) || Volatile.Read(ref _disposeRequested) != 0)
         {
@@ -1325,7 +1349,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
             var results = _state.Results.ToList();
             var index = results.FindIndex(candidate => string.Equals(candidate.Key, key, StringComparison.Ordinal));
-            var result = new MacQuerySourceResult(key, displayName, text, status);
+            var result = new MacQuerySourceResult(key, displayName, text, status, pronunciationTerm);
             if (index >= 0)
             {
                 results[index] = result;
@@ -1597,7 +1621,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         DictionaryLookupStatus.NotFound => "No matching dictionary entry was found.",
         DictionaryLookupStatus.InvalidRequest => "The selected text cannot be used for a dictionary lookup.",
         DictionaryLookupStatus.Unavailable => "The dictionary source is unavailable.",
-        DictionaryLookupStatus.InvalidData => "The selected file is not a supported ECDICT CSV or SQLite database.",
+        DictionaryLookupStatus.InvalidData =>
+            "The selected file is not a supported local dictionary CSV or SQLite database.",
         DictionaryLookupStatus.Cancelled => "Dictionary lookup cancelled.",
         _ => "The dictionary source is unavailable.",
     };

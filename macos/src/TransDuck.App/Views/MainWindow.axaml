@@ -43,9 +43,13 @@
             <Border Margin="0,0,0,10" Padding="12" CornerRadius="6"
                     Background="#F4F7FA" BorderBrush="#D6E0E8" BorderThickness="1">
               <StackPanel Spacing="6">
-                <Grid ColumnDefinitions="*,Auto">
+                <Grid ColumnDefinitions="*,Auto,Auto">
                   <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
-                  <TextBlock Grid.Column="1" Opacity="0.7" Text="{Binding Status}" />
+                  <Button Grid.Column="1" Margin="8,0" Padding="8,2"
+                          Content="Pronounce" Tag="{Binding PronunciationTerm}"
+                          IsVisible="{Binding CanPronounce}"
+                          Click="HandlePronounceClick" />
+                  <TextBlock Grid.Column="2" Opacity="0.7" Text="{Binding Status}" />
                 </Grid>
                 <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
               </StackPanel>

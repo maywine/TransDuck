@@ -18,8 +18,9 @@ Silicon arm64 Macs. The Windows release baseline is a single display.
   before translating it.
 - Enable one or more of Bing, Google, OpenAI-compatible, DeepL, Ollama, or
   Volcengine Translate and view each service's result separately.
-- Use a user-supplied ECDICT CSV/SQLite dictionary on Windows or macOS; macOS can
-  also query the active system dictionaries.
+- Use a user-supplied CSV/SQLite local dictionary with the supported schema and
+  pronounce entries with an installed system voice; macOS can also query the
+  active system dictionaries.
 - Use the system proxy, a custom HTTP proxy, or a direct connection.
 - Enable per-user login startup and keep the app available from the Windows
   notification area or macOS menu bar after closing its window.
