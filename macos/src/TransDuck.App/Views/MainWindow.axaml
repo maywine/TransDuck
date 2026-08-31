@@ -42,7 +42,9 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate>
             <Border Margin="0,0,0,10" Padding="12" CornerRadius="6"
-                    Background="#F4F7FA" BorderBrush="#D6E0E8" BorderThickness="1">
+                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    BorderThickness="1">
               <StackPanel Spacing="6">
                 <Grid ColumnDefinitions="*,Auto,Auto">
                   <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />

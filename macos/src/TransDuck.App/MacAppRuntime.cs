@@ -494,7 +494,9 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     {
         if (!_selectionService.EnsurePermission(prompt))
         {
-            PublishState(status: "Grant Accessibility permission in System Settings, then try again.");
+            PublishState(status: prompt
+                ? "Approve the macOS Accessibility request; the global hotkey will activate when you return."
+                : "Accessibility permission is required for selected-text translation.");
             return false;
         }
 

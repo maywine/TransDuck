@@ -171,7 +171,7 @@ internal partial class SettingsWindow : Window
         var ready = await _runtime.EnsureAccessibilityAndHotkeyAsync(prompt: true);
         StatusTextBlock.Text = ready
             ? "Accessibility permission and global hotkey are ready."
-            : "Grant access in System Settings, then click this button again.";
+            : "Approve the macOS Accessibility request; permission refreshes when you return.";
     }
 
     private void HandleReloadClick(object? sender, RoutedEventArgs eventArgs) => _ = LoadAsync();
