@@ -44,9 +44,13 @@ and cleanly exit before the ZIP is created.
 
 ## Platform behavior
 
+- The app sets both `LSUIElement` and Avalonia's `ShowInDock=false`, so it remains
+  available from the menu bar without a Dock icon. Closing a window hides it;
+  only the explicit menu-bar quit action stops the process.
 - The default selected-text hotkey is `Command+Option+D`. The keyboard hook is
   keyboard-only and ignores simulated events; it requires macOS Accessibility
-  permission.
+  permission. Foreground launch requests that permission through macOS, and
+  application reactivation refreshes the permission and enables the hook.
 - Selected text is read through the focused element's Accessibility
   `AXSelectedText` value. Apps that do not expose that value remain usable through
   manual input.
