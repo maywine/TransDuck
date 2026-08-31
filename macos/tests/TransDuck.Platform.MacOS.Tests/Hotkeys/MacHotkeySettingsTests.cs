@@ -27,4 +27,19 @@ public sealed class MacHotkeySettingsTests
         Assert.Throws<ContractValidationException>(unknownModifiers.Validate);
         Assert.Throws<ContractValidationException>(unknownKey.Validate);
     }
+
+    [Theory]
+    [InlineData(MacHotkeyModifiers.Command)]
+    [InlineData(MacHotkeyModifiers.Control)]
+    [InlineData(MacHotkeyModifiers.Option)]
+    [InlineData(MacHotkeyModifiers.Shift)]
+    [InlineData(MacHotkeyModifiers.Option | MacHotkeyModifiers.Shift)]
+    [InlineData(MacHotkeyModifiers.Command | MacHotkeyModifiers.Option)]
+    [InlineData(MacHotkeyModifiers.Control | MacHotkeyModifiers.Shift)]
+    public void Validate_AllowsSupportedNonEmptyModifierChords(MacHotkeyModifiers modifiers)
+    {
+        var settings = MacHotkeySettings.Default with { Modifiers = modifiers };
+
+        settings.Validate();
+    }
 }

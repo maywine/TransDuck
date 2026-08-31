@@ -26,6 +26,8 @@ TransDuck 只在菜单栏显示图标，不在程序坞保留图标。关闭应�
 ## 翻译选中文本
 
 默认快捷键是 `Command+Option+D`。
+物理按键与快捷键匹配时，TransDuck 会消费该事件，不再向当前应用输入字符，从而保留终端
+选区。
 
 1. 在其他应用中选中文本。
 2. 按快捷键，或从 TransDuck 菜单栏选择 **Translate selected text**。

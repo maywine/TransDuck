@@ -31,6 +31,8 @@ Closing an application window hides it while TransDuck continues running; use
 ## Translate selected text
 
 The default global hotkey is `Command+Option+D`.
+When a physical shortcut matches, TransDuck consumes it instead of typing the
+key into the focused application, preserving terminal selections.
 
 1. Select text in another application.
 2. Press the hotkey or choose **Translate selected text** from the menu-bar icon.
