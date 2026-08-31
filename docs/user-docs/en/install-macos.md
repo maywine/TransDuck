@@ -24,14 +24,20 @@ updater.
    Do not disable Gatekeeper or remove quarantine attributes to bypass the check.
 4. Open Settings from the TransDuck menu-bar icon and configure a provider.
 
+TransDuck runs from its menu-bar icon without keeping an icon in the Dock.
+Closing an application window hides it while TransDuck continues running; use
+**Quit TransDuck** from the menu-bar menu to stop the application.
+
 ## Translate selected text
 
 The default global hotkey is `Command+Option+D`.
 
 1. Select text in another application.
 2. Press the hotkey or choose **Translate selected text** from the menu-bar icon.
-3. macOS requests Accessibility permission on first use. After granting it,
-   return to TransDuck Settings and click the permission refresh button.
+3. On a foreground launch, TransDuck asks macOS for Accessibility permission.
+   Approve the system request; TransDuck automatically refreshes the permission
+   and enables the hotkey when you return to the app. The permission button in
+   Settings remains available for a manual retry.
 
 TransDuck reads only the focused control's exposed `AXSelectedText` value. Some
 applications do not expose that value; use the TransDuck window to paste and
