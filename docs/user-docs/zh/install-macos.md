@@ -20,14 +20,18 @@ DMG、PKG、安装程序或自动更新。
    “仍要打开”。不要关闭 Gatekeeper，也不要删除 quarantine 属性来绕过检查。
 4. 从菜单栏的 TransDuck 图标打开 Settings，配置翻译服务。
 
+TransDuck 只在菜单栏显示图标，不在程序坞保留图标。关闭应用窗口只会隐藏窗口，程序仍在
+后台运行；需要完全退出时，请从菜单栏菜单选择 **Quit TransDuck**。
+
 ## 翻译选中文本
 
 默认快捷键是 `Command+Option+D`。
 
 1. 在其他应用中选中文本。
 2. 按快捷键，或从 TransDuck 菜单栏选择 **Translate selected text**。
-3. 首次使用时，macOS 会要求 Accessibility 权限。授权后回到 TransDuck Settings，
-   点击刷新权限按钮。
+3. 用户在前台启动 TransDuck 时，App 会向 macOS 请求 Accessibility 权限。请确认系统
+   授权；返回 App 后，TransDuck 会自动刷新权限并启用快捷键。Settings 中的权限按钮仍可
+   用于手动重试。
 
 TransDuck 只读取当前焦点控件公开的 `AXSelectedText`。部分应用不公开该值；遇到这种
 情况时可打开 TransDuck 窗口手动粘贴并翻译。

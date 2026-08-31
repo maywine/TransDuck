@@ -15,6 +15,8 @@ public partial class App : Application
     private MainWindow? _mainWindow;
     private SettingsWindow? _settingsWindow;
     private HistoryWindow? _historyWindow;
+    private int _runtimeInitialized;
+    private int _accessibilityRefreshInProgress;
     private int _stopping;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -33,6 +35,11 @@ public partial class App : Application
             }
             desktop.Exit += HandleDesktopExit;
             desktop.ShutdownRequested += HandleShutdownRequested;
+            if (desktop is IActivatableLifetime activatableLifetime)
+            {
+                activatableLifetime.Activated += HandleApplicationActivated;
+            }
+
             _runtime.PresentationRequested += HandlePresentationRequested;
             _ = InitializeRuntimeAsync(_runtime);
         }
@@ -45,10 +52,48 @@ public partial class App : Application
         try
         {
             await runtime.InitializeAsync();
+            Volatile.Write(ref _runtimeInitialized, 1);
+            if (!Program.StartInBackground)
+            {
+                await runtime.EnsureAccessibilityAndHotkeyAsync(prompt: true);
+            }
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {
             runtime.ReportStartupFailure();
+        }
+    }
+
+    private void HandleApplicationActivated(object? sender, ActivatedEventArgs eventArgs)
+    {
+        if (Volatile.Read(ref _runtimeInitialized) == 0 ||
+            Volatile.Read(ref _stopping) != 0 ||
+            _runtime is not { } runtime)
+        {
+            return;
+        }
+
+        _ = RefreshAccessibilityAndHotkeyAsync(runtime);
+    }
+
+    private async Task RefreshAccessibilityAndHotkeyAsync(MacAppRuntime runtime)
+    {
+        if (Interlocked.Exchange(ref _accessibilityRefreshInProgress, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await runtime.EnsureAccessibilityAndHotkeyAsync(prompt: false);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            // A later activation or the Settings retry button can refresh permission again.
+        }
+        finally
+        {
+            Volatile.Write(ref _accessibilityRefreshInProgress, 0);
         }
     }
 
@@ -155,6 +200,8 @@ public partial class App : Application
             return;
         }
 
+        Volatile.Write(ref _runtimeInitialized, 0);
+
         if (_runtime is { } runtime)
         {
             runtime.PresentationRequested -= HandlePresentationRequested;
@@ -176,7 +223,13 @@ public partial class App : Application
         if (_desktop is { } desktop)
         {
             desktop.ShutdownRequested -= HandleShutdownRequested;
+            if (desktop is IActivatableLifetime activatableLifetime)
+            {
+                activatableLifetime.Activated -= HandleApplicationActivated;
+            }
         }
+
+        Volatile.Write(ref _runtimeInitialized, 0);
 
         if (_runtime is { } runtime)
         {

@@ -104,6 +104,11 @@ public sealed class NativeMacSmokeTests
             CancellationToken.None);
 
         Assert.True(result.Status is DictionaryLookupStatus.Found or DictionaryLookupStatus.NotFound);
+        if (result.Status == DictionaryLookupStatus.Found)
+        {
+            Assert.NotNull(result.Entry);
+            Assert.False(string.IsNullOrWhiteSpace(result.Entry!.ToDisplayText()));
+        }
     }
 
     [MacOSFact]

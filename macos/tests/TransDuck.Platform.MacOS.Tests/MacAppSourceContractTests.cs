@@ -58,6 +58,15 @@ public sealed class MacAppSourceContractTests
             "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml");
         Assert.Contains("PronunciationTerm", mainWindow, StringComparison.Ordinal);
         Assert.Contains("HandlePronounceClick", mainWindow, StringComparison.Ordinal);
+        Assert.Contains(
+            "Background=\"{DynamicResource SystemControlBackgroundBaseLowBrush}\"",
+            mainWindow,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "BorderBrush=\"{DynamicResource SystemControlForegroundBaseLowBrush}\"",
+            mainWindow,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("Background=\"#F4F7FA\"", mainWindow, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -119,6 +128,9 @@ public sealed class MacAppSourceContractTests
         Assert.Contains("--smoke-test", package, StringComparison.Ordinal);
         var program = ReadRepositoryFile("macos", "src", "TransDuck.App", "Program.cs");
         Assert.Contains("RunSmokeTest()", program, StringComparison.Ordinal);
+        Assert.Contains(".With(new MacOSPlatformOptions { ShowInDock = false })", program,
+            StringComparison.Ordinal);
+        Assert.Contains(".UseHarfBuzz()", program, StringComparison.Ordinal);
         Assert.Contains("new MacSystemDictionaryProvider()", program, StringComparison.Ordinal);
         Assert.Contains("WaitAsync(TimeSpan.FromSeconds(15))", program, StringComparison.Ordinal);
         Assert.Contains("DictionaryLookupStatus.Found or DictionaryLookupStatus.NotFound", program,
@@ -187,6 +199,52 @@ public sealed class MacAppSourceContractTests
         Assert.True(
             stop.IndexOf("await runtime.DisposeAsync()", StringComparison.Ordinal) <
             stop.IndexOf("_mainWindow?.Close()", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void App_RequestsAccessibilityOnForegroundLaunchAndRefreshesAfterActivation()
+    {
+        var source = ReadRepositoryFile("macos", "src", "TransDuck.App", "App.axaml.cs");
+        var initialize = Slice(
+            source,
+            "private async Task InitializeRuntimeAsync",
+            "private void HandleApplicationActivated");
+        var refresh = Slice(
+            source,
+            "private async Task RefreshAccessibilityAndHotkeyAsync",
+            "private void HandleOpenRequested");
+
+        Assert.Contains("desktop is IActivatableLifetime", source, StringComparison.Ordinal);
+        Assert.Contains("activatableLifetime.Activated += HandleApplicationActivated", source,
+            StringComparison.Ordinal);
+        Assert.Contains("activatableLifetime.Activated -= HandleApplicationActivated", source,
+            StringComparison.Ordinal);
+        Assert.Contains("if (!Program.StartInBackground)", initialize, StringComparison.Ordinal);
+        Assert.Contains("EnsureAccessibilityAndHotkeyAsync(prompt: true)", initialize,
+            StringComparison.Ordinal);
+        Assert.Contains("EnsureAccessibilityAndHotkeyAsync(prompt: false)", refresh,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void App_UsesOnlyTheMenuBarAndHidesWindowsWithoutStoppingTheProcess()
+    {
+        var program = ReadRepositoryFile("macos", "src", "TransDuck.App", "Program.cs");
+        var app = ReadRepositoryFile("macos", "src", "TransDuck.App", "App.axaml.cs");
+        var mainWindow = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml.cs");
+        var settingsWindow = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.axaml.cs");
+        var historyWindow = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "HistoryWindow.axaml.cs");
+
+        Assert.Contains("ShowInDock = false", program, StringComparison.Ordinal);
+        Assert.Contains("ShutdownMode.OnExplicitShutdown", app, StringComparison.Ordinal);
+        foreach (var window in new[] { mainWindow, settingsWindow, historyWindow })
+        {
+            Assert.Contains("eventArgs.Cancel = true", window, StringComparison.Ordinal);
+            Assert.Contains("Hide()", window, StringComparison.Ordinal);
+        }
     }
 
     private static string Slice(string source, string startMarker, string endMarker)
