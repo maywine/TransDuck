@@ -233,13 +233,13 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
     private async Task TranslateSelectedTextCoreAsync(bool promptForPermission)
     {
-        PresentationRequested?.Invoke(this, EventArgs.Empty);
         if (promptForPermission && !_hotkeyStarted)
         {
             await EnsureAccessibilityAndHotkeyAsync(prompt: true);
         }
 
         var selection = _selectionService.ReadSelectedText(promptForPermission: false);
+        PresentationRequested?.Invoke(this, EventArgs.Empty);
         if (!selection.Succeeded)
         {
             PublishState(status: DescribeSelectionFailure(selection.Status), isBusy: false);
@@ -1436,8 +1436,9 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         StateChanged?.Invoke(this, state);
     }
 
-    private void HandleHotkeyPressed(object? sender, EventArgs eventArgs) =>
-        _ = TranslateSelectedTextAsync(promptForPermission: false);
+    private void HandleHotkeyPressed(object? sender, EventArgs eventArgs) => _ = Task.Run(
+        () => TranslateSelectedTextAsync(promptForPermission: false),
+        CancellationToken.None);
 
     private Task TrackOperation(Func<Task> operationFactory)
     {

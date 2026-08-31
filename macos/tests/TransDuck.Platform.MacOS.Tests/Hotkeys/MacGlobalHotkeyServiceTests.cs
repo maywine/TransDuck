@@ -13,19 +13,26 @@ public sealed class MacGlobalHotkeyServiceTests
         service.Pressed += (_, _) => count++;
         var status = await service.StartAsync(MacHotkeySettings.Default, CancellationToken.None);
 
-        backend.RaisePressed(new MacKeyboardEvent(
+        var firstPress = new MacKeyboardEvent(
             MacVirtualKey.D,
-            MacHotkeyModifiers.Command | MacHotkeyModifiers.Option));
-        backend.RaisePressed(new MacKeyboardEvent(
+            MacHotkeyModifiers.Command | MacHotkeyModifiers.Option);
+        var repeatedPress = new MacKeyboardEvent(
             MacVirtualKey.D,
-            MacHotkeyModifiers.Command | MacHotkeyModifiers.Option));
-        backend.RaiseReleased(new MacKeyboardEvent(MacVirtualKey.D, MacHotkeyModifiers.None));
-        backend.RaisePressed(new MacKeyboardEvent(
+            MacHotkeyModifiers.Command | MacHotkeyModifiers.Option);
+        var release = new MacKeyboardEvent(MacVirtualKey.D, MacHotkeyModifiers.None);
+        var secondPress = new MacKeyboardEvent(
             MacVirtualKey.D,
-            MacHotkeyModifiers.Command | MacHotkeyModifiers.Option));
+            MacHotkeyModifiers.Command | MacHotkeyModifiers.Option);
+
+        backend.RaisePressed(firstPress);
+        backend.RaisePressed(repeatedPress);
+        backend.RaiseReleased(release);
+        backend.RaisePressed(secondPress);
 
         Assert.Equal(MacGlobalHotkeyStatus.Registered, status);
         Assert.Equal(2, count);
+        Assert.All(new[] { firstPress, repeatedPress, release, secondPress },
+            keyboardEvent => Assert.True(keyboardEvent.SuppressEvent));
     }
 
     [Fact]
@@ -37,16 +44,40 @@ public sealed class MacGlobalHotkeyServiceTests
         service.Pressed += (_, _) => count++;
         await service.StartAsync(MacHotkeySettings.Default, CancellationToken.None);
 
-        backend.RaisePressed(new MacKeyboardEvent(MacVirtualKey.E, MacHotkeySettings.Default.Modifiers));
-        backend.RaisePressed(new MacKeyboardEvent(
+        var wrongKey = new MacKeyboardEvent(MacVirtualKey.E, MacHotkeySettings.Default.Modifiers);
+        var extraModifier = new MacKeyboardEvent(
             MacVirtualKey.D,
-            MacHotkeySettings.Default.Modifiers | MacHotkeyModifiers.Shift));
-        backend.RaisePressed(new MacKeyboardEvent(
+            MacHotkeySettings.Default.Modifiers | MacHotkeyModifiers.Shift);
+        var simulated = new MacKeyboardEvent(
             MacVirtualKey.D,
             MacHotkeySettings.Default.Modifiers,
-            IsSimulated: true));
+            IsSimulated: true);
+
+        backend.RaisePressed(wrongKey);
+        backend.RaisePressed(extraModifier);
+        backend.RaisePressed(simulated);
 
         Assert.Equal(0, count);
+        Assert.All(new[] { wrongKey, extraModifier, simulated },
+            keyboardEvent => Assert.False(keyboardEvent.SuppressEvent));
+    }
+
+    [Fact]
+    public async Task OptionOnlyChord_IsSupportedAndSuppressed()
+    {
+        var backend = new FakeKeyboardHookBackend();
+        await using var service = new MacGlobalHotkeyService(backend);
+        var settings = MacHotkeySettings.Default with { Modifiers = MacHotkeyModifiers.Option };
+        var keyboardEvent = new MacKeyboardEvent(MacVirtualKey.D, MacHotkeyModifiers.Option);
+        var count = 0;
+        service.Pressed += (_, _) => count++;
+
+        var status = await service.StartAsync(settings, CancellationToken.None);
+        backend.RaisePressed(keyboardEvent);
+
+        Assert.Equal(MacGlobalHotkeyStatus.Registered, status);
+        Assert.Equal(1, count);
+        Assert.True(keyboardEvent.SuppressEvent);
     }
 
     [Fact]

@@ -3,7 +3,10 @@ namespace TransDuck.Platform.MacOS.Hotkeys;
 public sealed record MacKeyboardEvent(
     MacVirtualKey Key,
     MacHotkeyModifiers Modifiers,
-    bool IsSimulated = false);
+    bool IsSimulated = false)
+{
+    public bool SuppressEvent { get; set; }
+}
 
 public interface IMacKeyboardHookBackend : IAsyncDisposable
 {
@@ -190,11 +193,15 @@ public sealed class MacGlobalHotkeyService : IAsyncDisposable
         var shouldRaise = false;
         lock (_gate)
         {
-            if (_started && !_latched && keyboardEvent.Key == _settings.Key &&
+            if (_started && keyboardEvent.Key == _settings.Key &&
                 keyboardEvent.Modifiers == _settings.Modifiers)
             {
-                _latched = true;
-                shouldRaise = true;
+                keyboardEvent.SuppressEvent = true;
+                if (!_latched)
+                {
+                    _latched = true;
+                    shouldRaise = true;
+                }
             }
         }
 
@@ -206,10 +213,16 @@ public sealed class MacGlobalHotkeyService : IAsyncDisposable
 
     private void HandleKeyReleased(object? sender, MacKeyboardEvent keyboardEvent)
     {
+        if (keyboardEvent.IsSimulated || Volatile.Read(ref _disposeRequested) != 0)
+        {
+            return;
+        }
+
         lock (_gate)
         {
             if (keyboardEvent.Key == _settings.Key)
             {
+                keyboardEvent.SuppressEvent = _started && _latched;
                 _latched = false;
             }
         }

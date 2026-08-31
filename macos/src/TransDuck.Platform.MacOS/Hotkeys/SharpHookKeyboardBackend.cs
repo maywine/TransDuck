@@ -12,7 +12,7 @@ public sealed class SharpHookKeyboardBackend : IMacKeyboardHookBackend
     private int _disposeRequested;
 
     public SharpHookKeyboardBackend()
-        : this(new EventLoopGlobalHook())
+        : this(new SimpleGlobalHook())
     {
     }
 
@@ -140,6 +140,7 @@ public sealed class SharpHookKeyboardBackend : IMacKeyboardHookBackend
         if (TryMap(eventArgs, out var keyboardEvent))
         {
             KeyPressed?.Invoke(this, keyboardEvent);
+            eventArgs.SuppressEvent = keyboardEvent.SuppressEvent;
         }
     }
 
@@ -148,6 +149,7 @@ public sealed class SharpHookKeyboardBackend : IMacKeyboardHookBackend
         if (TryMap(eventArgs, out var keyboardEvent))
         {
             KeyReleased?.Invoke(this, keyboardEvent);
+            eventArgs.SuppressEvent = keyboardEvent.SuppressEvent;
         }
     }
 
