@@ -7,6 +7,7 @@ using TransDuck.Platform.MacOS.Ocr;
 using TransDuck.Platform.MacOS.Persistence;
 using TransDuck.Platform.MacOS.Selection;
 using TransDuck.Platform.MacOS.Startup;
+using SharpHook.Data;
 using SharpHook.Providers;
 
 namespace TransDuck.Platform.MacOS.Tests;
@@ -93,6 +94,8 @@ public sealed class NativeMacSmokeTests
     public void SharpHookNativeLibrary_LoadsAndChecksAccessibilityWithoutPromptOnMacOS()
     {
         _ = UioHookProvider.Instance.IsAxApiEnabled(promptUserIfDisabled: false);
+        Assert.True(UioHookProvider.Instance.GetOptionalFeatureSupport()
+            .HasFlag(UioHookFeature.EventSuppression));
     }
 
     [MacOSFact]

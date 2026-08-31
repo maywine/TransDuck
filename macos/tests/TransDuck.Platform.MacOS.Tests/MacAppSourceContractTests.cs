@@ -70,6 +70,38 @@ public sealed class MacAppSourceContractTests
     }
 
     [Fact]
+    public void SelectedText_IsCapturedBeforeTheTransDuckWindowTakesFocus()
+    {
+        var source = ReadRepositoryFile("macos", "src", "TransDuck.App", "MacAppRuntime.cs");
+        var selectionFlow = Slice(
+            source,
+            "private async Task TranslateSelectedTextCoreAsync",
+            "public Task CaptureOcrAndTranslateAsync");
+
+        var readSelection = selectionFlow.IndexOf("_selectionService.ReadSelectedText", StringComparison.Ordinal);
+        var presentWindow = selectionFlow.IndexOf("PresentationRequested?.Invoke", StringComparison.Ordinal);
+        Assert.True(readSelection >= 0 && presentWindow > readSelection);
+    }
+
+    [Fact]
+    public void GlobalHotkey_SuppressesTheMatchingEventBeforeDispatchingSelectionWork()
+    {
+        var backend = ReadRepositoryFile(
+            "macos", "src", "TransDuck.Platform.MacOS", "Hotkeys", "SharpHookKeyboardBackend.cs");
+        var service = ReadRepositoryFile(
+            "macos", "src", "TransDuck.Platform.MacOS", "Hotkeys", "MacGlobalHotkeyService.cs");
+        var runtime = ReadRepositoryFile("macos", "src", "TransDuck.App", "MacAppRuntime.cs");
+
+        Assert.Contains("new SimpleGlobalHook()", backend, StringComparison.Ordinal);
+        Assert.DoesNotContain("new EventLoopGlobalHook()", backend, StringComparison.Ordinal);
+        Assert.Contains("eventArgs.SuppressEvent = keyboardEvent.SuppressEvent", backend,
+            StringComparison.Ordinal);
+        Assert.Contains("keyboardEvent.SuppressEvent = true", service, StringComparison.Ordinal);
+        Assert.Contains("HandleHotkeyPressed(object? sender, EventArgs eventArgs) => _ = Task.Run(", runtime,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Runtime_UsesKeychainAndClosedDiagnosticsWithoutAPlaintextCredentialFallback()
     {
         var source = ReadRepositoryFile("macos", "src", "TransDuck.App", "MacAppRuntime.cs");
