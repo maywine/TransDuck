@@ -51,6 +51,8 @@ and cleanly exit before the ZIP is created.
   keyboard-only and ignores simulated events; it requires macOS Accessibility
   permission. Foreground launch requests that permission through macOS, and
   application reactivation refreshes the permission and enables the hook.
+  Custom chords must include Command or Control so they cannot type into the
+  focused application and destroy its selection.
 - Selected text is read through the focused element's Accessibility
   `AXSelectedText` value. Apps that do not expose that value remain usable through
   manual input.

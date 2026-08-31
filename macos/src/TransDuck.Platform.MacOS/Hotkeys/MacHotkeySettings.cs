@@ -92,6 +92,9 @@ public sealed record MacHotkeySettings(
         MacHotkeyModifiers.Option |
         MacHotkeyModifiers.Shift |
         MacHotkeyModifiers.Command;
+    private const MacHotkeyModifiers NonTextModifiers =
+        MacHotkeyModifiers.Control |
+        MacHotkeyModifiers.Command;
 
     public static MacHotkeySettings Default { get; } = new(
         MacHotkeySettingsMigration.CurrentVersion,
@@ -112,6 +115,13 @@ public sealed record MacHotkeySettings(
             throw new ContractValidationException(
                 ContractValidationError.InvalidValue,
                 "A supported macOS hotkey modifier is required.");
+        }
+
+        if ((Modifiers & NonTextModifiers) == 0)
+        {
+            throw new ContractValidationException(
+                ContractValidationError.InvalidValue,
+                "A macOS global hotkey must include Command or Control.");
         }
 
         if (!Enum.IsDefined(Key))

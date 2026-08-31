@@ -272,6 +272,12 @@ internal partial class SettingsWindow : Window
         if (OptionCheckBox.IsChecked == true) modifiers |= MacHotkeyModifiers.Option;
         if (ControlCheckBox.IsChecked == true) modifiers |= MacHotkeyModifiers.Control;
         if (ShiftCheckBox.IsChecked == true) modifiers |= MacHotkeyModifiers.Shift;
+        if ((modifiers & (MacHotkeyModifiers.Command | MacHotkeyModifiers.Control)) == 0)
+        {
+            error = "The global hotkey must include Command or Control.";
+            return false;
+        }
+
         if ((HotkeyKeyComboBox.SelectedItem as ComboBoxItem)?.Tag is not MacVirtualKey key)
         {
             error = "Choose a hotkey key.";

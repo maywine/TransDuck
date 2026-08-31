@@ -70,6 +70,20 @@ public sealed class MacAppSourceContractTests
     }
 
     [Fact]
+    public void SelectedText_IsCapturedBeforeTheTransDuckWindowTakesFocus()
+    {
+        var source = ReadRepositoryFile("macos", "src", "TransDuck.App", "MacAppRuntime.cs");
+        var selectionFlow = Slice(
+            source,
+            "private async Task TranslateSelectedTextCoreAsync",
+            "public Task CaptureOcrAndTranslateAsync");
+
+        var readSelection = selectionFlow.IndexOf("_selectionService.ReadSelectedText", StringComparison.Ordinal);
+        var presentWindow = selectionFlow.IndexOf("PresentationRequested?.Invoke", StringComparison.Ordinal);
+        Assert.True(readSelection >= 0 && presentWindow > readSelection);
+    }
+
+    [Fact]
     public void Runtime_UsesKeychainAndClosedDiagnosticsWithoutAPlaintextCredentialFallback()
     {
         var source = ReadRepositoryFile("macos", "src", "TransDuck.App", "MacAppRuntime.cs");

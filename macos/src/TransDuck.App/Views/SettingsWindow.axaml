@@ -89,6 +89,8 @@
           <CheckBox x:Name="ShiftCheckBox" Content="Shift" />
           <ComboBox x:Name="HotkeyKeyComboBox" Width="100" />
         </StackPanel>
+        <TextBlock Text="Command or Control is required so the shortcut does not replace selected text."
+                   TextWrapping="Wrap" Opacity="0.7" />
         <Button Content="Request / refresh Accessibility permission"
                 HorizontalAlignment="Left" Click="HandleAccessibilityClick" />
 

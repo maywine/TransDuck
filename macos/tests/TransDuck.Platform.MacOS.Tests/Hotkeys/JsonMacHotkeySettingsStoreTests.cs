@@ -45,6 +45,10 @@ public sealed class JsonMacHotkeySettingsStoreTests
             {"version":1,"modifiers":"none","key":"d"}
             """);
         var invalid = await store.ReadAsync(CancellationToken.None);
+        await File.WriteAllTextAsync(path, """
+            {"version":1,"modifiers":"option","key":"d"}
+            """);
+        var textProducing = await store.ReadAsync(CancellationToken.None);
         await File.WriteAllTextAsync(path, JsonSerializer.Serialize(
             MacHotkeySettings.Default with { Version = MacHotkeySettingsMigration.CurrentVersion + 1 },
             ContractJson.SerializerOptions));
@@ -52,6 +56,7 @@ public sealed class JsonMacHotkeySettingsStoreTests
 
         Assert.Equal(PersistenceStatus.InvalidData, malformed.Status);
         Assert.Equal(PersistenceStatus.InvalidData, invalid.Status);
+        Assert.Equal(PersistenceStatus.InvalidData, textProducing.Status);
         Assert.Equal(PersistenceStatus.InvalidData, future.Status);
     }
 

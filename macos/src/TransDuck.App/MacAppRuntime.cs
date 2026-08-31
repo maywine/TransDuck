@@ -233,13 +233,13 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
     private async Task TranslateSelectedTextCoreAsync(bool promptForPermission)
     {
-        PresentationRequested?.Invoke(this, EventArgs.Empty);
         if (promptForPermission && !_hotkeyStarted)
         {
             await EnsureAccessibilityAndHotkeyAsync(prompt: true);
         }
 
         var selection = _selectionService.ReadSelectedText(promptForPermission: false);
+        PresentationRequested?.Invoke(this, EventArgs.Empty);
         if (!selection.Succeeded)
         {
             PublishState(status: DescribeSelectionFailure(selection.Status), isBusy: false);
