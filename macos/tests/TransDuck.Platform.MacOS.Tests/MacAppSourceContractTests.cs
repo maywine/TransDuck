@@ -176,6 +176,38 @@ public sealed class MacAppSourceContractTests
     }
 
     [Fact]
+    public void MenuBarIcon_UsesSourceColoredDuckOnlyAsset()
+    {
+        var app = ReadRepositoryFile("macos", "src", "TransDuck.App", "App.axaml");
+        var project = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "TransDuck.App.csproj");
+        var generator = ReadRepositoryFile("windows", "packaging", "New-AppIcon.ps1");
+        var icon = ReadRepositoryBytes(
+            "assets", "brand-source-icon", "menu_bar_duck_color_46x34.png");
+
+        Assert.Contains("Icon=\"/Assets/TransDuckMenuBarDuckColor.png\"", app,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("MacOSProperties.IsTemplateIcon", app,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("<TrayIcon Icon=\"/Assets/TransDuck.png\"", app,
+            StringComparison.Ordinal);
+        Assert.Contains("menu_bar_duck_color_46x34.png", project, StringComparison.Ordinal);
+        Assert.Contains("MenuBarDuckColorPath", generator, StringComparison.Ordinal);
+        Assert.Contains("FromArgb(255, 254, 205, 40)", generator, StringComparison.Ordinal);
+        Assert.Contains("FromArgb(255, 254, 114, 1)", generator, StringComparison.Ordinal);
+        Assert.DoesNotContain("DrawString", generator, StringComparison.Ordinal);
+
+        Assert.True(icon.AsSpan().StartsWith(
+            new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }));
+        Assert.Equal((uint)46,
+            System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(icon.AsSpan(16, 4)));
+        Assert.Equal((uint)34,
+            System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(icon.AsSpan(20, 4)));
+        Assert.Equal((byte)8, icon[24]);
+        Assert.Equal((byte)6, icon[25]);
+    }
+
+    [Fact]
     public void BundleVerifier_ClosesNonSystemDylibDependenciesInsideMacOSContents()
     {
         var verify = ReadRepositoryFile("macos", "packaging", "TransDuck.Packaging", "Program.cs");
@@ -234,7 +266,7 @@ public sealed class MacAppSourceContractTests
     }
 
     [Fact]
-    public void App_RequestsAccessibilityOnForegroundLaunchAndRefreshesAfterActivation()
+    public void App_InitializesTheHotkeyOnEveryLaunchAndPromptsOnlyInTheForeground()
     {
         var source = ReadRepositoryFile("macos", "src", "TransDuck.App", "App.axaml.cs");
         var initialize = Slice(
@@ -251,9 +283,10 @@ public sealed class MacAppSourceContractTests
             StringComparison.Ordinal);
         Assert.Contains("activatableLifetime.Activated -= HandleApplicationActivated", source,
             StringComparison.Ordinal);
-        Assert.Contains("if (!Program.StartInBackground)", initialize, StringComparison.Ordinal);
-        Assert.Contains("EnsureAccessibilityAndHotkeyAsync(prompt: true)", initialize,
+        Assert.Contains(
+            "EnsureAccessibilityAndHotkeyAsync(prompt: !Program.StartInBackground)", initialize,
             StringComparison.Ordinal);
+        Assert.DoesNotContain("if (!Program.StartInBackground)", initialize, StringComparison.Ordinal);
         Assert.Contains("EnsureAccessibilityAndHotkeyAsync(prompt: false)", refresh,
             StringComparison.Ordinal);
     }
@@ -289,6 +322,16 @@ public sealed class MacAppSourceContractTests
 
     private static string ReadRepositoryFile(params string[] relativePath)
     {
+        return File.ReadAllText(FindRepositoryFile(relativePath));
+    }
+
+    private static byte[] ReadRepositoryBytes(params string[] relativePath)
+    {
+        return File.ReadAllBytes(FindRepositoryFile(relativePath));
+    }
+
+    private static string FindRepositoryFile(params string[] relativePath)
+    {
         foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
         {
             for (var directory = new DirectoryInfo(start); directory is not null; directory = directory.Parent)
@@ -296,7 +339,7 @@ public sealed class MacAppSourceContractTests
                 var candidate = Path.Combine([directory.FullName, .. relativePath]);
                 if (File.Exists(candidate))
                 {
-                    return File.ReadAllText(candidate);
+                    return candidate;
                 }
             }
         }

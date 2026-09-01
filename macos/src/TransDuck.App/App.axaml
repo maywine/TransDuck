@@ -7,7 +7,8 @@
   </Application.Styles>
   <TrayIcon.Icons>
     <TrayIcons>
-      <TrayIcon Icon="/Assets/TransDuck.png" ToolTipText="TransDuck">
+      <TrayIcon Icon="/Assets/TransDuckMenuBarDuckColor.png"
+                ToolTipText="TransDuck">
         <TrayIcon.Menu>
           <NativeMenu>
             <NativeMenuItem Header="Translate..." Click="HandleOpenRequested" />

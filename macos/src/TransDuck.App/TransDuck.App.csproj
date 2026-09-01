@@ -26,5 +26,8 @@
     <AvaloniaResource Include="..\..\..\assets\brand-source-icon\icon_128x128.png">
       <Link>Assets\TransDuck.png</Link>
     </AvaloniaResource>
+    <AvaloniaResource Include="..\..\..\assets\brand-source-icon\menu_bar_duck_color_46x34.png">
+      <Link>Assets\TransDuckMenuBarDuckColor.png</Link>
+    </AvaloniaResource>
   </ItemGroup>
 </Project>

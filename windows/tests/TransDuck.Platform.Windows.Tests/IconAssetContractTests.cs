@@ -3,6 +3,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using TransDuck.Platform.Windows.Tray;
 
 namespace TransDuck.Platform.Windows.Tests;
 
@@ -62,6 +63,64 @@ public sealed class IconAssetContractTests
     }
 
     [Fact]
+    public void TransDuckTrayIco_ContainsFourDedicatedPngFramesMatchingTheDuckAssets()
+    {
+        var icoPath = FindRepositoryFile(
+            "windows", "src", "TransDuck.Platform.Windows", "Assets", "TransDuck.Tray.ico");
+        var iconBytes = File.ReadAllBytes(icoPath);
+        var expectedSources = new Dictionary<int, string>
+        {
+            [16] = "tray_duck_color_16x16.png",
+            [20] = "tray_duck_color_20x20.png",
+            [24] = "tray_duck_color_24x24.png",
+            [32] = "tray_duck_color_32x32.png",
+        };
+
+        Assert.Equal((ushort)0, ReadUInt16(iconBytes, 0));
+        Assert.Equal((ushort)1, ReadUInt16(iconBytes, 2));
+        Assert.Equal((ushort)expectedSources.Count, ReadUInt16(iconBytes, 4));
+        var frames = Enumerable.Range(0, expectedSources.Count)
+            .Select(index => ReadFrame(iconBytes, 6 + (16 * index)))
+            .OrderBy(frame => frame.Width)
+            .ToArray();
+
+        Assert.Equal(expectedSources.Keys.OrderBy(static size => size),
+            frames.Select(static frame => frame.Width));
+        foreach (var frame in frames)
+        {
+            Assert.Equal(frame.Width, frame.Height);
+            Assert.Equal((ushort)1, frame.Planes);
+            Assert.Equal((ushort)32, frame.BitCount);
+            Assert.True(frame.Offset >= 6 + (16 * expectedSources.Count));
+            Assert.True(frame.Size > 0 && frame.Offset <= iconBytes.Length - frame.Size);
+            var payload = iconBytes.AsSpan(frame.Offset, frame.Size).ToArray();
+            var source = File.ReadAllBytes(FindRepositoryFile(
+                "assets", "brand-source-icon", expectedSources[frame.Width]));
+
+            Assert.Equal(source, payload);
+            AssertPngDimensionsAndRgba(payload, frame.Width, frame.Height);
+        }
+    }
+
+    [Fact]
+    public void EmbeddedTrayIcon_EmbedsTheIcoAndSelectsTheNearestDpiFrame()
+    {
+        var source = File.ReadAllBytes(FindRepositoryFile(
+            "windows", "src", "TransDuck.Platform.Windows", "Assets", "TransDuck.Tray.ico"));
+        using var resource = typeof(ShellNotifyIconTrayService).Assembly
+            .GetManifestResourceStream(EmbeddedTrayIcon.ResourceName);
+
+        Assert.NotNull(resource);
+        using var buffer = new MemoryStream();
+        resource.CopyTo(buffer);
+        Assert.Equal(source, buffer.ToArray());
+        Assert.Equal(16, EmbeddedTrayIcon.SelectFrame(source, 16).Size);
+        Assert.Equal(20, EmbeddedTrayIcon.SelectFrame(source, 17).Size);
+        Assert.Equal(32, EmbeddedTrayIcon.SelectFrame(source, 25).Size);
+        Assert.Equal(32, EmbeddedTrayIcon.SelectFrame(source, 64).Size);
+    }
+
+    [Fact]
     public void BrandIconSourceAndGenerator_PinTheApprovedMultiSizeAssetFlow()
     {
         var sourceBytes = File.ReadAllBytes(FindRepositoryFile(
@@ -75,9 +134,13 @@ public sealed class IconAssetContractTests
             StringComparison.Ordinal);
         Assert.Contains("$icoSizes = @(16, 32, 64, 128, 256)", generator,
             StringComparison.Ordinal);
+        Assert.Contains("$traySizes = @(16, 20, 24, 32)", generator,
+            StringComparison.Ordinal);
         Assert.Contains("$icnsTypes = [ordered]@{", generator, StringComparison.Ordinal);
         Assert.Contains("Format32bppArgb", generator, StringComparison.Ordinal);
         Assert.Contains("icon_{0}x{0}.png", generator, StringComparison.Ordinal);
+        Assert.Contains("tray_duck_color_{0}x{0}.png", generator, StringComparison.Ordinal);
+        Assert.Contains("TrayIcoPath", generator, StringComparison.Ordinal);
         Assert.Contains("IO.BinaryWriter", generator, StringComparison.Ordinal);
     }
 
@@ -122,26 +185,41 @@ public sealed class IconAssetContractTests
     }
 
     [Fact]
-    public void AppProjectAndTraySource_UseTheEmbeddedProcessIconWithoutExternalIconLoading()
+    public void AppAndTrayUseSeparateEmbeddedIconsWithoutExternalIconLoading()
     {
         var project = File.ReadAllText(FindRepositoryFile(
             "windows", "src", "TransDuck.App", "TransDuck.App.csproj"));
+        var platformProject = File.ReadAllText(FindRepositoryFile(
+            "windows", "src", "TransDuck.Platform.Windows", "TransDuck.Platform.Windows.csproj"));
         var tray = StripComments(File.ReadAllText(FindRepositoryFile(
             "windows", "src", "TransDuck.Platform.Windows", "Tray", "ShellNotifyIconTrayService.cs")));
+        var loader = StripComments(File.ReadAllText(FindRepositoryFile(
+            "windows", "src", "TransDuck.Platform.Windows", "Tray", "EmbeddedTrayIcon.cs")));
         var interop = StripComments(File.ReadAllText(FindRepositoryFile(
             "windows", "src", "TransDuck.Platform.Windows", "Interop", "Win32ShellNative.cs")));
-        var createData = Slice(tray, "private NotifyIconData CreateData()", "private void HandleMessage");
-        var iconLoader = Slice(interop, "public static IntPtr LoadCurrentProcessIcon", "}");
+        var addIcon = Slice(tray, "private TrayOperationResult AddIcon()", "private NotifyIconData CreateIdentityData()");
+        var createAddData = Slice(tray, "private NotifyIconData CreateAddData", "private void HandleMessage");
 
         Assert.Contains("<ApplicationIcon>Assets\\TransDuck.ico</ApplicationIcon>", project, StringComparison.Ordinal);
-        Assert.DoesNotContain("System.Drawing", project, StringComparison.Ordinal);
-        Assert.Contains("IconHandle = Win32ShellNative.LoadCurrentProcessIcon(ApplicationIconId)", createData,
+        Assert.Contains("<EmbeddedResource Include=\"Assets\\TransDuck.Tray.ico\"", platformProject,
             StringComparison.Ordinal);
-        Assert.DoesNotContain("TransDuck.ico", tray, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("System.Drawing", tray + interop, StringComparison.Ordinal);
-        Assert.True(iconLoader.IndexOf("GetModuleHandle(null)", StringComparison.Ordinal) >= 0);
-        Assert.True(iconLoader.IndexOf("LoadIcon(module, iconName)", StringComparison.Ordinal) >= 0);
-        Assert.True(iconLoader.IndexOf("LoadIcon(IntPtr.Zero, iconName)", StringComparison.Ordinal) >= 0);
+        Assert.Contains("LogicalName=\"TransDuck.Platform.Windows.Assets.TransDuck.Tray.ico\"", platformProject,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("CopyToOutputDirectory", platformProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("CopyToPublishDirectory", platformProject, StringComparison.Ordinal);
+        Assert.Contains("using var icon = EmbeddedTrayIcon.Load(_messageWindow.Handle)", addIcon,
+            StringComparison.Ordinal);
+        Assert.Contains("CreateAddData(icon.DangerousGetHandle())", addIcon, StringComparison.Ordinal);
+        Assert.Contains("data.IconHandle = iconHandle", createAddData, StringComparison.Ordinal);
+        Assert.Contains("GetManifestResourceStream(ResourceName)", loader, StringComparison.Ordinal);
+        Assert.Contains("CreateIconFromResourceEx", loader + interop, StringComparison.Ordinal);
+        Assert.Contains("GetSystemMetricsForDpi", loader + interop, StringComparison.Ordinal);
+        Assert.Contains("ReleaseHandle() => Win32ShellNative.DestroyIcon(handle)", interop,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("LoadCurrentProcessIcon", tray + interop, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Drawing", project + platformProject + tray + loader + interop,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("File.Open", tray + loader, StringComparison.Ordinal);
     }
 
     private static IconFrame ReadFrame(byte[] iconBytes, int offset)

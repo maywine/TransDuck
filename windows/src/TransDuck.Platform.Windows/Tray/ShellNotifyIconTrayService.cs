@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.IO;
 using System.Runtime.InteropServices;
 using TransDuck.Platform.Windows.Interop;
 
@@ -9,7 +11,6 @@ namespace TransDuck.Platform.Windows.Tray;
 public sealed class ShellNotifyIconTrayService : IDisposable
 {
     private const uint IconIdentifier = 1;
-    private static readonly IntPtr ApplicationIconId = new(32512);
     private readonly NativeMessageWindow _messageWindow;
     private readonly uint _taskbarCreatedMessage;
     private readonly uint _callbackMessage;
@@ -46,7 +47,7 @@ public sealed class ShellNotifyIconTrayService : IDisposable
             return TrayOperationResult.NotRunning();
         }
 
-        var data = CreateData();
+        var data = CreateIdentityData();
         if (!Win32ShellNative.ShellNotifyIcon(Win32ShellNative.NimDelete, ref data))
         {
             return TrayOperationResult.Failed("无法从通知区域移除 TransDuck 图标。",
@@ -84,16 +85,28 @@ public sealed class ShellNotifyIconTrayService : IDisposable
 
     private TrayOperationResult AddIcon()
     {
-        var data = CreateData();
-        if (!Win32ShellNative.ShellNotifyIcon(Win32ShellNative.NimAdd, ref data))
+        try
+        {
+            using var icon = EmbeddedTrayIcon.Load(_messageWindow.Handle);
+            var data = CreateAddData(icon.DangerousGetHandle());
+            if (!Win32ShellNative.ShellNotifyIcon(Win32ShellNative.NimAdd, ref data))
+            {
+                _isAdded = false;
+                return TrayOperationResult.Failed("无法将 TransDuck 添加到通知区域。",
+                    Marshal.GetLastWin32Error());
+            }
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or IOException or Win32Exception)
         {
             _isAdded = false;
-            return TrayOperationResult.Failed("无法将 TransDuck 添加到通知区域。",
-                Marshal.GetLastWin32Error());
+            var error = exception is Win32Exception win32Exception ? win32Exception.NativeErrorCode : 0;
+            return TrayOperationResult.Failed("无法加载 TransDuck 通知区域图标。", error);
         }
 
-        data.VersionOrTimeout = Win32ShellNative.NotifyIconVersion4;
-        if (!Win32ShellNative.ShellNotifyIcon(Win32ShellNative.NimSetVersion, ref data))
+        var versionData = CreateIdentityData();
+        versionData.VersionOrTimeout = Win32ShellNative.NotifyIconVersion4;
+        if (!Win32ShellNative.ShellNotifyIcon(Win32ShellNative.NimSetVersion, ref versionData))
         {
             _isAdded = true;
             return TrayOperationResult.Failed("通知区域图标已添加，但无法启用版本 4 回调。",
@@ -104,18 +117,25 @@ public sealed class ShellNotifyIconTrayService : IDisposable
         return TrayOperationResult.Added();
     }
 
-    private NotifyIconData CreateData() => new()
+    private NotifyIconData CreateIdentityData() => new()
     {
         CbSize = (uint)Marshal.SizeOf<NotifyIconData>(),
         WindowHandle = _messageWindow.Handle,
         Identifier = IconIdentifier,
-        Flags = Win32ShellNative.NifMessage | Win32ShellNative.NifIcon | Win32ShellNative.NifTip,
-        CallbackMessage = _callbackMessage,
-        IconHandle = Win32ShellNative.LoadCurrentProcessIcon(ApplicationIconId),
-        Tooltip = Tooltip,
+        Tooltip = string.Empty,
         BalloonText = string.Empty,
         BalloonTitle = string.Empty,
     };
+
+    private NotifyIconData CreateAddData(IntPtr iconHandle)
+    {
+        var data = CreateIdentityData();
+        data.Flags = Win32ShellNative.NifMessage | Win32ShellNative.NifIcon | Win32ShellNative.NifTip;
+        data.CallbackMessage = _callbackMessage;
+        data.IconHandle = iconHandle;
+        data.Tooltip = Tooltip;
+        return data;
+    }
 
     private void HandleMessage(object? sender, NativeWindowMessageEventArgs args)
     {

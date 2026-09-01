@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 
 namespace TransDuck.Platform.Windows.Interop;
 
@@ -14,6 +15,10 @@ internal static partial class Win32ShellNative
     public const int WmApp = 0x8000;
     public const int WmLeftButtonUp = 0x0202;
     public const int WmContextMenu = 0x007B;
+    public const int SmCxSmallIcon = 49;
+    public const int SmCySmallIcon = 50;
+    public const uint IconResourceVersion = 0x00030000;
+    public const uint LrDefaultColor = 0x00000000;
 
     [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -22,22 +27,40 @@ internal static partial class Win32ShellNative
     [LibraryImport("user32.dll", EntryPoint = "RegisterWindowMessageW", StringMarshalling = StringMarshalling.Utf16)]
     public static partial uint RegisterWindowMessage(string text);
 
-    [LibraryImport("user32.dll", EntryPoint = "LoadIconW", SetLastError = true)]
-    public static partial IntPtr LoadIcon(IntPtr instance, IntPtr iconName);
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern unsafe SafeIconHandle CreateIconFromResourceEx(
+        byte* resourceBits,
+        uint resourceSize,
+        [MarshalAs(UnmanagedType.Bool)] bool isIcon,
+        uint version,
+        int desiredWidth,
+        int desiredHeight,
+        uint flags);
 
-    [LibraryImport("kernel32.dll", EntryPoint = "GetModuleHandleW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    public static partial IntPtr GetModuleHandle(string? moduleName);
+    [LibraryImport("user32.dll")]
+    public static partial uint GetDpiForWindow(IntPtr windowHandle);
+
+    [LibraryImport("user32.dll")]
+    public static partial int GetSystemMetricsForDpi(int index, uint dpi);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool DestroyIcon(IntPtr iconHandle);
 
     [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SetForegroundWindow(IntPtr windowHandle);
 
-    public static IntPtr LoadCurrentProcessIcon(IntPtr iconName)
+}
+
+internal sealed class SafeIconHandle : SafeHandleZeroOrMinusOneIsInvalid
+{
+    public SafeIconHandle()
+        : base(ownsHandle: true)
     {
-        var module = GetModuleHandle(null);
-        var icon = module != IntPtr.Zero ? LoadIcon(module, iconName) : IntPtr.Zero;
-        return icon != IntPtr.Zero ? icon : LoadIcon(IntPtr.Zero, iconName);
     }
+
+    protected override bool ReleaseHandle() => Win32ShellNative.DestroyIcon(handle);
 }
 
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

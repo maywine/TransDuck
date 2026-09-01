@@ -53,10 +53,7 @@ public partial class App : Application
         {
             await runtime.InitializeAsync();
             Volatile.Write(ref _runtimeInitialized, 1);
-            if (!Program.StartInBackground)
-            {
-                await runtime.EnsureAccessibilityAndHotkeyAsync(prompt: true);
-            }
+            await runtime.EnsureAccessibilityAndHotkeyAsync(prompt: !Program.StartInBackground);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {

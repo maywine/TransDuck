@@ -13,5 +13,7 @@
     <ProjectReference Include="..\..\..\shared\src\TransDuck.Infrastructure\TransDuck.Infrastructure.csproj" />
     <PackageReference Include="System.Speech" Version="10.0.11" />
     <PackageReference Include="Tesseract" Version="5.2.0" />
+    <EmbeddedResource Include="Assets\TransDuck.Tray.ico"
+                      LogicalName="TransDuck.Platform.Windows.Assets.TransDuck.Tray.ico" />
   </ItemGroup>
 </Project>
