@@ -119,6 +119,73 @@ public sealed class LocalDictionaryProviderTests
     }
 
     [Fact]
+    public async Task LookupAsync_PrefersExactWordOverNormalizedAlternative()
+    {
+        using var temporary = new PersistenceTestDirectory();
+        var databasePath = temporary.FilePath("stardict.db");
+        await CreateDatabaseAsync(databasePath);
+        await ExecuteDatabaseAsync(databasePath, """
+            INSERT INTO stardict(word, sw, phonetic, definition, translation, pos)
+            VALUES ('long-time', 'longtime', NULL, NULL, 'normalized', NULL),
+                   ('longtime', 'longtime', NULL, NULL, 'exact', NULL);
+            """);
+        var provider = new LocalDictionaryProvider(temporary.DirectoryPath("cache"));
+
+        var result = await provider.LookupAsync("LONGTIME", databasePath, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("longtime", result.Entry!.Term);
+        Assert.Equal("exact", result.Entry.Translation);
+    }
+
+    [Fact]
+    public async Task LookupAsync_UsesNormalizedFallbackWhenExactWordIsAbsent()
+    {
+        using var temporary = new PersistenceTestDirectory();
+        var databasePath = temporary.FilePath("stardict.db");
+        await CreateDatabaseAsync(databasePath);
+        await ExecuteDatabaseAsync(databasePath, """
+            INSERT INTO stardict(word, sw, phonetic, definition, translation, pos)
+            VALUES ('long-time', 'longtime', NULL, NULL, 'normalized', NULL);
+            """);
+        var provider = new LocalDictionaryProvider(temporary.DirectoryPath("cache"));
+
+        var result = await provider.LookupAsync("long time", databasePath, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("long-time", result.Entry!.Term);
+        Assert.Equal("normalized", result.Entry.Translation);
+    }
+
+    [Fact]
+    public async Task LookupSql_UsesIndexedPlansWithoutScanningTheDictionary()
+    {
+        using var temporary = new PersistenceTestDirectory();
+        var databasePath = temporary.FilePath("stardict.db");
+        await CreateDatabaseAsync(databasePath);
+
+        var exactPlan = await ExplainQueryPlanAsync(
+            databasePath,
+            LocalDictionaryProvider.ExactLookupSql,
+            "gave");
+        var normalizedPlan = await ExplainQueryPlanAsync(
+            databasePath,
+            LocalDictionaryProvider.NormalizedLookupSql,
+            "gave");
+
+        Assert.Contains(exactPlan, detail =>
+            detail.Contains("SEARCH", StringComparison.OrdinalIgnoreCase) &&
+            detail.Contains("word=?", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(normalizedPlan, detail =>
+            detail.Contains("SEARCH", StringComparison.OrdinalIgnoreCase) &&
+            detail.Contains("stardict_sw", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(exactPlan, detail =>
+            detail.Contains("SCAN stardict", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(normalizedPlan, detail =>
+            detail.Contains("SCAN stardict", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task LookupAsync_ReturnsNotFoundWhenMatchedEntryHasNoDefinitions()
     {
         using var temporary = new PersistenceTestDirectory();
@@ -134,7 +201,8 @@ public sealed class LocalDictionaryProviderTests
             await using var command = connection.CreateCommand();
             command.CommandText = """
                 INSERT INTO stardict(word, sw, phonetic, definition, translation, pos)
-                VALUES ('empty', 'empty', NULL, NULL, NULL, NULL);
+                VALUES ('empty', 'exact-empty', NULL, NULL, NULL, NULL),
+                       ('empty!', 'empty', NULL, NULL, 'fallback', NULL);
                 """;
             await command.ExecuteNonQueryAsync();
         }
@@ -182,9 +250,48 @@ public sealed class LocalDictionaryProviderTests
                 translation TEXT,
                 pos TEXT
             );
+            CREATE INDEX stardict_sw ON stardict(sw, word COLLATE NOCASE);
             INSERT INTO stardict(word, sw, phonetic, definition, translation, pos)
             VALUES ('gave', 'gave', 'ɡeɪv', 'past tense of give', 'give的过去式', 'v');
             """;
         await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task ExecuteDatabaseAsync(string path, string commandText)
+    {
+        await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Pooling = false,
+        }.ToString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = commandText;
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<IReadOnlyList<string>> ExplainQueryPlanAsync(
+        string path,
+        string query,
+        string value)
+    {
+        await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false,
+        }.ToString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "EXPLAIN QUERY PLAN " + query;
+        command.Parameters.AddWithValue("$value", value);
+        var details = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            details.Add(reader.GetString(3));
+        }
+
+        return details;
     }
 }

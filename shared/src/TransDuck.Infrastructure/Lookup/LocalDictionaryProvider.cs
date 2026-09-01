@@ -16,6 +16,19 @@ namespace TransDuck.Infrastructure.Lookup;
 public sealed class LocalDictionaryProvider : IDictionaryProvider
 {
     private const string SqliteSignature = "SQLite format 3\0";
+    internal const string ExactLookupSql = """
+        SELECT word, phonetic, definition, translation, pos
+        FROM stardict
+        WHERE word = $value COLLATE NOCASE
+        LIMIT 1;
+        """;
+    internal const string NormalizedLookupSql = """
+        SELECT word, phonetic, definition, translation, pos
+        FROM stardict
+        WHERE sw = $value COLLATE NOCASE
+        ORDER BY word COLLATE NOCASE
+        LIMIT 1;
+        """;
     private static readonly UTF8Encoding StrictUtf8 = new(
         encoderShouldEmitUTF8Identifier: false,
         throwOnInvalidBytes: true);
@@ -292,37 +305,50 @@ public sealed class LocalDictionaryProvider : IDictionaryProvider
         await using var connection = new SqliteConnection(ReadOnlyConnectionString(databasePath));
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         await EnsureSupportedSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
+        var entry = await QueryEntryAsync(
+            connection,
+            ExactLookupSql,
+            term,
+            cancellationToken).ConfigureAwait(false);
+        if (entry is null)
+        {
+            entry = await QueryEntryAsync(
+                connection,
+                NormalizedLookupSql,
+                StripWord(term),
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        if (entry is null ||
+            (string.IsNullOrWhiteSpace(entry.Translation) && string.IsNullOrWhiteSpace(entry.Definition)))
+        {
+            return DictionaryLookupResult.FromStatus(DictionaryLookupStatus.NotFound);
+        }
+
+        return DictionaryLookupResult.Found(entry);
+    }
+
+    private static async Task<DictionaryLookupEntry?> QueryEntryAsync(
+        SqliteConnection connection,
+        string commandText,
+        string value,
+        CancellationToken cancellationToken)
+    {
         await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT word, phonetic, definition, translation, pos
-            FROM stardict
-            WHERE word = $word COLLATE NOCASE OR sw = $sw COLLATE NOCASE
-            ORDER BY CASE WHEN word = $word COLLATE NOCASE THEN 0 ELSE 1 END,
-                     word COLLATE NOCASE
-            LIMIT 1;
-            """;
-        command.Parameters.AddWithValue("$word", term);
-        command.Parameters.AddWithValue("$sw", StripWord(term));
+        command.CommandText = commandText;
+        command.Parameters.AddWithValue("$value", value);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            return DictionaryLookupResult.FromStatus(DictionaryLookupStatus.NotFound);
+            return null;
         }
 
-        var definition = NullableString(reader, 2);
-        var translation = NullableString(reader, 3);
-        if (string.IsNullOrWhiteSpace(translation) && string.IsNullOrWhiteSpace(definition))
-        {
-            return DictionaryLookupResult.FromStatus(DictionaryLookupStatus.NotFound);
-        }
-
-        var entry = new DictionaryLookupEntry(
+        return new DictionaryLookupEntry(
             reader.GetString(0),
             NullableString(reader, 1),
-            translation,
-            definition,
+            NullableString(reader, 3),
+            NullableString(reader, 2),
             NullableString(reader, 4));
-        return DictionaryLookupResult.Found(entry);
     }
 
     private static async Task EnsureSupportedSchemaAsync(
