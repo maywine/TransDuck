@@ -57,10 +57,10 @@ public sealed class ProductIdentitySourceTests
             .SelectMany(group => group.Elements())
             .ToDictionary(element => element.Name.LocalName, element => element.Value, StringComparer.Ordinal);
 
-        Assert.Equal("0.0.4", properties["VersionPrefix"]);
+        Assert.Equal("0.0.5", properties["VersionPrefix"]);
         Assert.Equal("$(VersionPrefix)", properties["Version"]);
-        Assert.Equal("0.0.4.0", properties["AssemblyVersion"]);
-        Assert.Equal("0.0.4.0", properties["FileVersion"]);
+        Assert.Equal("0.0.5.0", properties["AssemblyVersion"]);
+        Assert.Equal("0.0.5.0", properties["FileVersion"]);
         Assert.Equal("$(VersionPrefix)", properties["InformationalVersion"]);
         Assert.Equal("false", properties["IncludeSourceRevisionInInformationalVersion"]);
     }
