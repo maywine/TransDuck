@@ -101,6 +101,7 @@ internal static class Program
 
         RequireEntry(archive, AppName + "/Contents/Info.plist");
         var executable = RequireEntry(archive, AppName + "/Contents/MacOS/TransDuck");
+        RequireEntry(archive, AppName + "/Contents/MacOS/TransDuck.UI.dll");
         var uioHook = RequireEntry(archive, AppName + "/Contents/MacOS/libuiohook.dylib");
         var avaloniaNative = RequireEntry(archive, AppName + "/Contents/MacOS/libAvaloniaNative.dylib");
         var skia = RequireEntry(archive, AppName + "/Contents/MacOS/libSkiaSharp.dylib");

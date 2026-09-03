@@ -1,20 +1,20 @@
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Shapes;
-using System.Windows.Interop;
-using System.Windows.Threading;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Platform;
+using Avalonia.Threading;
 using TransDuck.Platform.Windows.Interop;
 
 namespace TransDuck.Platform.Windows.Capture;
 
 /// <summary>
-/// Shows one WPF overlay per monitor and returns a single-monitor physical-pixel selection.
+/// Shows one Avalonia overlay per monitor and returns a single-monitor physical-pixel selection.
 /// </summary>
 public sealed class ScreenSelectionOverlay
 {
-    private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
+    private readonly Dispatcher _dispatcher = Dispatcher.UIThread;
     private readonly List<SelectionOverlayWindow> _windows = [];
     private TaskCompletionSource<ScreenSelection?>? _completion;
 
@@ -49,7 +49,7 @@ public sealed class ScreenSelectionOverlay
             }
             else
             {
-                _dispatcher.BeginInvoke(CancelSelection);
+                _dispatcher.Post(CancelSelection);
             }
         });
         _ = _completion.Task.ContinueWith(
@@ -99,9 +99,9 @@ internal sealed class SelectionOverlayWindow : Window
     public SelectionOverlayWindow(DisplayMonitor monitor)
     {
         _monitor = monitor;
-        WindowStyle = WindowStyle.None;
-        ResizeMode = ResizeMode.NoResize;
-        AllowsTransparency = true;
+        WindowDecorations = Avalonia.Controls.WindowDecorations.None;
+        CanResize = false;
+        TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
         Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
         Topmost = true;
         ShowInTaskbar = false;
@@ -110,33 +110,40 @@ internal sealed class SelectionOverlayWindow : Window
         _canvas = new Canvas { Background = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)) };
         _selectionRectangle = new Rectangle
         {
-            Visibility = Visibility.Collapsed,
+            IsVisible = false,
             Stroke = Brushes.DodgerBlue,
             StrokeThickness = 2,
             Fill = new SolidColorBrush(Color.FromArgb(50, 30, 144, 255)),
         };
         _canvas.Children.Add(_selectionRectangle);
         Content = _canvas;
-        SourceInitialized += PositionOverMonitor;
+        Opened += PositionOverMonitor;
+        Closed += HandleClosed;
     }
 
     public event EventHandler<ScreenSelection>? SelectionCompleted;
 
     public event Action? SelectionCancelled;
 
-    protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs eventArgs)
+    protected override void OnPointerPressed(PointerPressedEventArgs eventArgs)
     {
-        base.OnPreviewMouseLeftButtonDown(eventArgs);
+        base.OnPointerPressed(eventArgs);
+        if (!eventArgs.GetCurrentPoint(_canvas).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
         Focus();
         _start = eventArgs.GetPosition(_canvas);
-        Mouse.Capture(_canvas);
+        eventArgs.Pointer.Capture(_canvas);
         eventArgs.Handled = true;
     }
 
-    protected override void OnPreviewMouseMove(MouseEventArgs eventArgs)
+    protected override void OnPointerMoved(PointerEventArgs eventArgs)
     {
-        base.OnPreviewMouseMove(eventArgs);
-        if (_start is not { } start || eventArgs.LeftButton != MouseButtonState.Pressed)
+        base.OnPointerMoved(eventArgs);
+        if (_start is not { } start ||
+            !eventArgs.GetCurrentPoint(_canvas).Properties.IsLeftButtonPressed)
         {
             return;
         }
@@ -144,15 +151,15 @@ internal sealed class SelectionOverlayWindow : Window
         ShowSelection(start, eventArgs.GetPosition(_canvas));
     }
 
-    protected override void OnPreviewMouseLeftButtonUp(MouseButtonEventArgs eventArgs)
+    protected override void OnPointerReleased(PointerReleasedEventArgs eventArgs)
     {
-        base.OnPreviewMouseLeftButtonUp(eventArgs);
+        base.OnPointerReleased(eventArgs);
         if (_start is not { } start)
         {
             return;
         }
 
-        Mouse.Capture(null);
+        eventArgs.Pointer.Capture(null);
         _start = null;
         var selection = ToSelection(start, eventArgs.GetPosition(_canvas));
         if (selection.PhysicalBounds.IsEmpty)
@@ -177,22 +184,21 @@ internal sealed class SelectionOverlayWindow : Window
         base.OnKeyDown(eventArgs);
     }
 
-    protected override void OnClosed(EventArgs eventArgs)
+    private void HandleClosed(object? sender, EventArgs eventArgs)
     {
-        SourceInitialized -= PositionOverMonitor;
+        Opened -= PositionOverMonitor;
+        Closed -= HandleClosed;
         if (!_completed)
         {
             SelectionCancelled?.Invoke();
         }
-
-        base.OnClosed(eventArgs);
     }
 
     private void PositionOverMonitor(object? sender, EventArgs eventArgs)
     {
         var bounds = _monitor.PhysicalBounds;
         Win32DisplayNative.SetWindowPos(
-            new WindowInteropHelper(this).Handle,
+            this.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero,
             new IntPtr(-1),
             bounds.Left,
             bounds.Top,
@@ -209,7 +215,7 @@ internal sealed class SelectionOverlayWindow : Window
         Canvas.SetTop(_selectionRectangle, top);
         _selectionRectangle.Width = Math.Abs(end.X - start.X);
         _selectionRectangle.Height = Math.Abs(end.Y - start.Y);
-        _selectionRectangle.Visibility = Visibility.Visible;
+        _selectionRectangle.IsVisible = true;
     }
 
     private ScreenSelection ToSelection(Point start, Point end)

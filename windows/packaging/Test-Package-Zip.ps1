@@ -13,11 +13,9 @@ $script:FixedZipTimestamp = [DateTimeOffset]::new(2000, 1, 1, 0, 0, 0, [TimeSpan
 $script:RequiredEntries = @(
     'TransDuck-Windows-x64/TransDuck.exe',
     'TransDuck-Windows-x64/e_sqlite3.dll',
-    'TransDuck-Windows-x64/D3DCompiler_47_cor3.dll',
-    'TransDuck-Windows-x64/PenImc_cor3.dll',
-    'TransDuck-Windows-x64/PresentationNative_cor3.dll',
-    'TransDuck-Windows-x64/vcruntime140_cor3.dll',
-    'TransDuck-Windows-x64/wpfgfx_cor3.dll',
+    'TransDuck-Windows-x64/av_libglesv2.dll',
+    'TransDuck-Windows-x64/libHarfBuzzSharp.dll',
+    'TransDuck-Windows-x64/libSkiaSharp.dll',
     'TransDuck-Windows-x64/x64/tesseract50.dll',
     'TransDuck-Windows-x64/x64/leptonica-1.82.0.dll',
     'TransDuck-Windows-x64/tessdata/eng.traineddata',
@@ -25,22 +23,27 @@ $script:RequiredEntries = @(
     'TransDuck-Windows-x64/tessdata/model-manifest.json',
     'TransDuck-Windows-x64/tessdata/LICENSE',
     'TransDuck-Windows-x64/licenses/Apache-2.0.txt',
+    'TransDuck-Windows-x64/licenses/Avalonia-ANGLE-BSD-3-Clause.txt',
+    'TransDuck-Windows-x64/licenses/Avalonia-MIT.txt',
+    'TransDuck-Windows-x64/licenses/HarfBuzzSharp-MIT.txt',
+    'TransDuck-Windows-x64/licenses/Inter-OFL-1.1.txt',
     'TransDuck-Windows-x64/licenses/Leptonica-BSD-2-Clause.txt',
+    'TransDuck-Windows-x64/licenses/MicroCom-MIT.txt',
     'TransDuck-Windows-x64/licenses/Microsoft.Data.Sqlite-MIT.txt',
     'TransDuck-Windows-x64/licenses/System.Speech-MIT.txt',
     'TransDuck-Windows-x64/licenses/SQLite-Public-Domain.txt',
+    'TransDuck-Windows-x64/licenses/SkiaSharp-HarfBuzz-ThirdPartyNotices.txt',
+    'TransDuck-Windows-x64/licenses/SkiaSharp-MIT.txt',
     'TransDuck-Windows-x64/licenses/Microsoft-DotNet-Library-License.txt',
     'TransDuck-Windows-x64/licenses/Microsoft-DotNet-Third-Party-Notices.txt',
     'TransDuck-Windows-x64/LICENSE.txt',
     'TransDuck-Windows-x64/THIRD-PARTY-NOTICES.md',
     'TransDuck-Windows-x64/README.txt'
 )
-$script:RequiredWpfNativeEntries = @(
-    'TransDuck-Windows-x64/D3DCompiler_47_cor3.dll',
-    'TransDuck-Windows-x64/PenImc_cor3.dll',
-    'TransDuck-Windows-x64/PresentationNative_cor3.dll',
-    'TransDuck-Windows-x64/vcruntime140_cor3.dll',
-    'TransDuck-Windows-x64/wpfgfx_cor3.dll'
+$script:RequiredAvaloniaNativeEntries = @(
+    'TransDuck-Windows-x64/av_libglesv2.dll',
+    'TransDuck-Windows-x64/libHarfBuzzSharp.dll',
+    'TransDuck-Windows-x64/libSkiaSharp.dll'
 )
 $script:BundledManagedEntries = @(
     'TransDuck-Windows-x64/TransDuck.deps.json',
@@ -49,9 +52,17 @@ $script:BundledManagedEntries = @(
     'TransDuck-Windows-x64/TransDuck.Core.dll',
     'TransDuck-Windows-x64/TransDuck.Infrastructure.dll',
     'TransDuck-Windows-x64/TransDuck.Platform.Windows.dll',
+    'TransDuck-Windows-x64/TransDuck.UI.dll',
     'TransDuck-Windows-x64/Tesseract.dll',
     'TransDuck-Windows-x64/System.Speech.dll',
     'TransDuck-Windows-x64/System.Private.CoreLib.dll',
+    'TransDuck-Windows-x64/Avalonia.Base.dll',
+    'TransDuck-Windows-x64/Avalonia.Controls.dll',
+    'TransDuck-Windows-x64/Avalonia.Win32.dll',
+    'TransDuck-Windows-x64/HarfBuzzSharp.dll',
+    'TransDuck-Windows-x64/SkiaSharp.dll',
+    'TransDuck-Windows-x64/Microsoft.Win32.SystemEvents.dll',
+    'TransDuck-Windows-x64/System.Security.Cryptography.ProtectedData.dll',
     'TransDuck-Windows-x64/PresentationFramework.dll',
     'TransDuck-Windows-x64/coreclr.dll',
     'TransDuck-Windows-x64/hostfxr.dll',
@@ -75,7 +86,7 @@ function Test-ForbiddenEntry([string]$Name) {
     $leaf = [IO.Path]::GetFileName($Name)
     return $Name -match '(?i)(^|/)(x86|assets|tests?|credentials)(/|$)' -or
         $Name -match '(?i)paddle' -or
-        $leaf -match '(?i)^(appxmanifest\.xml|.*\.(pdb|cs|csproj|sln|xaml|ps1|psm1|msix|appx|appxbundle|pfx|p12|pem|key|cer|crt|der|p7b|pvk|ppk|jks))$' -or
+        $leaf -match '(?i)^(appxmanifest\.xml|.*\.(pdb|cs|csproj|sln|xaml|axaml|ps1|psm1|msix|appx|appxbundle|pfx|p12|pem|key|cer|crt|der|p7b|pvk|ppk|jks))$' -or
         $leaf -match '(?i)^(configuration|provider-settings|query-sources|hotkey-settings|proxy-settings|history|diagnostics)(\.|$)' -or
         $leaf -match '(?i)(private.?key|certificate|\.credential$)'
 }
@@ -156,7 +167,7 @@ $report = [ordered]@{
     ForbiddenEntriesAbsent = $false
     BundledManagedEntriesAbsent = $false
     MainExecutableX64 = $false
-    WpfNativeRuntimeX64 = $false
+    AvaloniaNativeRuntimeX64 = $false
     TesseractNativeX64 = $false
     LeptonicaNativeX64 = $false
     SQLiteNativeX64 = $false
@@ -213,8 +224,8 @@ try {
         $byName = @{}
         foreach ($entry in $entries) { $byName[$entry.FullName] = $entry }
         $report.MainExecutableX64 = Test-PeX64 $byName['TransDuck-Windows-x64/TransDuck.exe']
-        $report.WpfNativeRuntimeX64 = @(
-            $script:RequiredWpfNativeEntries | Where-Object { -not (Test-PeX64 $byName[$_]) }
+        $report.AvaloniaNativeRuntimeX64 = @(
+            $script:RequiredAvaloniaNativeEntries | Where-Object { -not (Test-PeX64 $byName[$_]) }
         ).Count -eq 0
         $report.TesseractNativeX64 = Test-PeX64 $byName['TransDuck-Windows-x64/x64/tesseract50.dll']
         $report.LeptonicaNativeX64 = Test-PeX64 $byName['TransDuck-Windows-x64/x64/leptonica-1.82.0.dll']
@@ -228,7 +239,7 @@ try {
     foreach ($name in @(
         'EntriesUnique', 'EntriesSafe', 'EntriesSortedOrdinal', 'EntriesFixedTimestamp',
         'TopLevelDirectoryValid', 'RequiredEntriesPresent', 'ForbiddenEntriesAbsent',
-        'BundledManagedEntriesAbsent', 'MainExecutableX64', 'WpfNativeRuntimeX64',
+        'BundledManagedEntriesAbsent', 'MainExecutableX64', 'AvaloniaNativeRuntimeX64',
         'TesseractNativeX64', 'LeptonicaNativeX64', 'SQLiteNativeX64',
         'StagingDirectoriesAbsent'
     )) {

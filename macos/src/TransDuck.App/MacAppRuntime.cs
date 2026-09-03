@@ -16,6 +16,7 @@ using TransDuck.Platform.MacOS.Persistence;
 using TransDuck.Platform.MacOS.Selection;
 using TransDuck.Platform.MacOS.Speech;
 using TransDuck.Platform.MacOS.Startup;
+using TransDuck.UI;
 
 namespace TransDuck.MacOS.App;
 
@@ -626,7 +627,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         var includeMacSystem = sourceSettings.MacSystemDictionaryEnabled &&
             (sourceFilter is null || sourceFilter.Contains(LocalDictionaryIds.MacSystem));
         var presentations = providerSources
-            .Select(provider => new MacQuerySourceResult(
+            .Select(provider => new TranslationResultViewModel(
                 CanonicalProviderKey(provider),
                 DescribeProvider(provider),
                 string.Empty,
@@ -634,7 +635,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             .ToList();
         if (includeLocalDictionary)
         {
-            presentations.Add(new MacQuerySourceResult(
+            presentations.Add(new TranslationResultViewModel(
                 LocalDictionaryIds.File,
                 _localDictionaryProvider.Registration.DisplayName,
                 string.Empty,
@@ -643,7 +644,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
         if (includeMacSystem)
         {
-            presentations.Add(new MacQuerySourceResult(
+            presentations.Add(new TranslationResultViewModel(
                 LocalDictionaryIds.MacSystem,
                 _systemDictionaryProvider.Registration.DisplayName,
                 string.Empty,
@@ -1288,7 +1289,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         string? status = null,
         bool? isBusy = null,
         bool? canRetry = null,
-        IReadOnlyList<MacQuerySourceResult>? results = null)
+        IReadOnlyList<TranslationResultViewModel>? results = null)
     {
         if (IsCurrent(generation))
         {
@@ -1302,7 +1303,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         string? status = null,
         bool? isBusy = null,
         bool? canRetry = null,
-        IReadOnlyList<MacQuerySourceResult>? results = null)
+        IReadOnlyList<TranslationResultViewModel>? results = null)
     {
         if (Volatile.Read(ref _disposeRequested) != 0)
         {
@@ -1351,7 +1352,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
             var results = _state.Results.ToList();
             var index = results.FindIndex(candidate => string.Equals(candidate.Key, key, StringComparison.Ordinal));
-            var result = new MacQuerySourceResult(key, displayName, text, status, pronunciationTerm);
+            var result = new TranslationResultViewModel(key, displayName, text, status, pronunciationTerm);
             if (index >= 0)
             {
                 results[index] = result;
@@ -1374,15 +1375,15 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         StateChanged?.Invoke(this, state);
     }
 
-    private IReadOnlyList<MacQuerySourceResult> PrepareRetryResults(
-        IReadOnlyList<MacQuerySourceResult> retryPresentations)
+    private IReadOnlyList<TranslationResultViewModel> PrepareRetryResults(
+        IReadOnlyList<TranslationResultViewModel> retryPresentations)
     {
         lock (_stateGate)
         {
             var replacements = retryPresentations.ToDictionary(
                 static result => result.Key,
                 StringComparer.Ordinal);
-            var results = new List<MacQuerySourceResult>(_state.Results.Count + replacements.Count);
+            var results = new List<TranslationResultViewModel>(_state.Results.Count + replacements.Count);
             foreach (var result in _state.Results)
             {
                 if (replacements.Remove(result.Key, out var replacement))
@@ -1400,7 +1401,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         }
     }
 
-    private static string CombineResults(IEnumerable<MacQuerySourceResult> results) => string.Join(
+    private static string CombineResults(IEnumerable<TranslationResultViewModel> results) => string.Join(
         Environment.NewLine + Environment.NewLine,
         results
             .Where(static result => !string.IsNullOrWhiteSpace(result.Text))
@@ -1418,7 +1419,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         {
             var results = _state.Results
                 .Select(static result => result.Status is "Waiting" or "Receiving" or "Looking up"
-                    ? result with { Status = "Cancelled" }
+                    ? result.WithStatus("Cancelled")
                     : result)
                 .ToArray();
             _retry = null;

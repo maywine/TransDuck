@@ -75,6 +75,9 @@ TransDuck 使用 [MIT License](LICENSE)。每个平台发布包都包含其第�
 
 ## 开发
 
+Windows 与 macOS 共用 `ui/TransDuck.UI` 中的 Avalonia 窗口、界面本地化资源和展示模型；
+平台工程只保留系统集成适配。
+
 仓库规则见 [AGENTS.md](AGENTS.md)。仓库默认仅本地使用；除非用户明确要求，不配置
 remote，也不 push。
 

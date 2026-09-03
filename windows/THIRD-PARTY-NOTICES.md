@@ -1,15 +1,30 @@
 # Windows third-party notices
 
-本目录的 Windows OCR 交付物包含下列第三方组件。模型和 native runtime 都在构建/打包时
+本目录的 Windows 交付物包含下列第三方组件。模型和 native runtime 都在构建/打包时
 随应用复制；运行时不会下载模型、许可证或 native 二进制。
 
-## Microsoft .NET and WPF runtime
+## Microsoft .NET runtime
 
-- The self-contained Windows package embeds managed .NET runtime and WPF assemblies in
-  `TransDuck.exe` and distributes the required native WPF runtime files beside it.
+- The self-contained Windows package embeds the managed .NET runtime in `TransDuck.exe`.
 - The package includes `licenses/Microsoft-DotNet-Library-License.txt` and
   `licenses/Microsoft-DotNet-Third-Party-Notices.txt` from the .NET distribution used to publish it.
 - Upstream license information: <https://github.com/dotnet/core/blob/main/license-information.md>
+
+## Avalonia UI
+
+- Avalonia UI 12.1.1, including its Win32, Skia, HarfBuzz, Fluent theme, and Inter font
+  integration packages, is used under the MIT License. See `Avalonia-MIT.txt`,
+  `SkiaSharp-MIT.txt`, and `HarfBuzzSharp-MIT.txt`.
+- Notices for third-party material incorporated into the native SkiaSharp and HarfBuzzSharp
+  binaries are in `SkiaSharp-HarfBuzz-ThirdPartyNotices.txt`.
+- The embedded Inter font files are licensed under SIL Open Font License 1.1; see
+  `Inter-OFL-1.1.txt`.
+- Avalonia's redistributed MicroCom.Runtime dependency is used under the MIT License; see
+  `MicroCom-MIT.txt`.
+- Avalonia's Windows ANGLE native library is licensed under the BSD 3-Clause terms in
+  `Avalonia-ANGLE-BSD-3-Clause.txt`.
+- Microsoft.Windows.CsWin32 0.3.287 is an MIT-licensed build-time source generator. It is
+  not included as a runtime assembly in the portable ZIP.
 
 ## Tesseract .NET wrapper and native runtime
 

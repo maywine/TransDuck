@@ -1,95 +1,78 @@
-<Window x:Class="TransDuck.App.Windows.HistoryWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TransDuck.UI.Views.HistoryWindowBase"
         Title="{DynamicResource history.window.title}"
+        Icon="avares://TransDuck.UI/Assets/TransDuck.png"
         Width="760"
         Height="580"
         MinWidth="600"
         MinHeight="420"
         WindowStartupLocation="CenterScreen">
-  <Grid Margin="20">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="*" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-    </Grid.RowDefinitions>
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="2*" />
-      <ColumnDefinition Width="3*" />
-    </Grid.ColumnDefinitions>
-
-    <Grid Grid.Row="0" Grid.Column="0" Margin="0,0,14,0">
-      <Grid.RowDefinitions>
-        <RowDefinition Height="Auto" />
-        <RowDefinition Height="*" />
-      </Grid.RowDefinitions>
+  <Grid Margin="20" RowDefinitions="*,Auto,Auto" ColumnDefinitions="2*,3*">
+    <Grid Grid.Row="0" Grid.Column="0" Margin="0,0,14,0" RowDefinitions="Auto,*">
       <TextBlock Grid.Row="0" Margin="0,0,0,6" FontWeight="SemiBold"
                  Text="{DynamicResource history.heading.list}" />
-      <ListBox x:Name="HistoryListBox"
+      <ListBox x:Name="HistoryListBoxElement"
                Grid.Row="1"
-               DisplayMemberPath="Label"
-               SelectionChanged="HistorySelectionChanged"
+               SelectionChanged="HandleSelectionChanged"
                AutomationProperties.AutomationId="HistoryListBox"
                AutomationProperties.Name="{DynamicResource history.automation.list.name}"
-               AutomationProperties.HelpText="{DynamicResource history.automation.list.help}" />
+               AutomationProperties.HelpText="{DynamicResource history.automation.list.help}">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
     </Grid>
 
-    <Grid Grid.Row="0" Grid.Column="1">
-      <Grid.RowDefinitions>
-        <RowDefinition Height="Auto" />
-        <RowDefinition Height="*" />
-        <RowDefinition Height="Auto" />
-        <RowDefinition Height="*" />
-      </Grid.RowDefinitions>
+    <Grid Grid.Row="0" Grid.Column="1" RowDefinitions="Auto,*,Auto,*">
       <TextBlock Grid.Row="0" Margin="0,0,0,6" FontWeight="SemiBold"
                  Text="{DynamicResource history.heading.source}" />
-      <TextBox x:Name="HistorySourceTextBox"
+      <TextBox x:Name="HistorySourceTextBoxElement"
                Grid.Row="1"
                IsReadOnly="True"
                TextWrapping="Wrap"
-               VerticalScrollBarVisibility="Auto"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
                AutomationProperties.AutomationId="HistorySourceTextBox"
                AutomationProperties.Name="{DynamicResource history.automation.source.name}"
                AutomationProperties.HelpText="{DynamicResource history.automation.source.help}" />
       <TextBlock Grid.Row="2" Margin="0,12,0,6" FontWeight="SemiBold"
                  Text="{DynamicResource history.heading.result}" />
-      <TextBox x:Name="HistoryResultTextBox"
+      <TextBox x:Name="HistoryResultTextBoxElement"
                Grid.Row="3"
                IsReadOnly="True"
                TextWrapping="Wrap"
-               VerticalScrollBarVisibility="Auto"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
                AutomationProperties.AutomationId="HistoryResultTextBox"
                AutomationProperties.Name="{DynamicResource history.automation.result.name}"
                AutomationProperties.HelpText="{DynamicResource history.automation.result.help}" />
     </Grid>
 
-    <TextBlock x:Name="HistoryStatusTextBlock"
+    <TextBlock x:Name="HistoryStatusTextBlockElement"
                Grid.Row="1"
                Grid.ColumnSpan="2"
                Margin="0,14,0,12"
-               Foreground="#4A5568"
+               Opacity="0.75"
                TextWrapping="Wrap"
                AutomationProperties.AutomationId="HistoryStatusTextBlock"
                AutomationProperties.Name="{DynamicResource history.automation.status.name}"
                AutomationProperties.HelpText="{DynamicResource history.automation.status.help}" />
 
     <StackPanel Grid.Row="2" Grid.ColumnSpan="2" HorizontalAlignment="Right" Orientation="Horizontal">
-      <Button x:Name="RefreshHistoryButton"
+      <Button x:Name="RefreshHistoryButtonElement"
               Margin="0,0,8,0"
-              Padding="14,5"
               Content="{DynamicResource history.button.refresh}"
-              Click="RefreshHistoryButtonClick"
+              Click="HandleRefreshClick"
               AutomationProperties.AutomationId="RefreshHistoryButton" />
-      <Button x:Name="ClearHistoryButton"
+      <Button x:Name="ClearHistoryButtonElement"
               Margin="0,0,8,0"
-              Padding="14,5"
               Content="{DynamicResource history.button.clear}"
-              Click="ClearHistoryButtonClick"
+              Click="HandleClearClick"
               AutomationProperties.AutomationId="ClearHistoryButton" />
-      <Button x:Name="CloseHistoryButton"
-              Padding="14,5"
+      <Button x:Name="CloseHistoryButtonElement"
               Content="{DynamicResource history.button.close}"
-              Click="CloseHistoryButtonClick"
+              Click="HandleCloseClick"
               AutomationProperties.AutomationId="CloseHistoryButton" />
     </StackPanel>
   </Grid>

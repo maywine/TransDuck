@@ -58,19 +58,6 @@ public sealed class ShellNotifyIconTrayService : IDisposable
         return TrayOperationResult.Removed();
     }
 
-    /// <summary>
-    /// Activates the hidden top-level owner before a caller opens the notification-area context menu.
-    /// </summary>
-    public bool TryActivateContextMenuOwner()
-    {
-        if (_disposed)
-        {
-            return false;
-        }
-
-        return Win32ShellNative.SetForegroundWindow(_messageWindow.Handle);
-    }
-
     public void Dispose()
     {
         if (_disposed)

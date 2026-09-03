@@ -6,7 +6,7 @@ using TransDuck.Core.Persistence;
 namespace TransDuck.App.Services;
 
 /// <summary>
-/// Coordinates retained history reads and clears without exposing persistence details to WPF.
+/// Coordinates retained history reads and clears without exposing persistence details to the UI.
 /// </summary>
 internal sealed class HistoryController
 {

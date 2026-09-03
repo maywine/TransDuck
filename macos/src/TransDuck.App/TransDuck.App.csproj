@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\shared\src\TransDuck.Core\TransDuck.Core.csproj" />
     <ProjectReference Include="..\..\..\shared\src\TransDuck.Infrastructure\TransDuck.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\ui\TransDuck.UI\TransDuck.UI.csproj" />
     <ProjectReference Include="..\TransDuck.Platform.MacOS\TransDuck.Platform.MacOS.csproj" />
     <PackageReference Include="Avalonia" Version="12.1.1" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.1" />
@@ -23,9 +24,6 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
   </ItemGroup>
   <ItemGroup>
-    <AvaloniaResource Include="..\..\..\assets\brand-source-icon\icon_128x128.png">
-      <Link>Assets\TransDuck.png</Link>
-    </AvaloniaResource>
     <AvaloniaResource Include="..\..\..\assets\brand-source-icon\menu_bar_duck_color_46x34.png">
       <Link>Assets\TransDuckMenuBarDuckColor.png</Link>
     </AvaloniaResource>

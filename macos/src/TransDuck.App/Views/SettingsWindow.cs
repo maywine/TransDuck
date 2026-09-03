@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using TransDuck.Core;
 using TransDuck.Core.Contracts.V1;
@@ -9,10 +8,11 @@ using TransDuck.Core.Translation;
 using TransDuck.Infrastructure.Proxy;
 using TransDuck.Platform.MacOS.Hotkeys;
 using TransDuck.Platform.MacOS.Startup;
+using TransDuck.UI.Views;
 
 namespace TransDuck.MacOS.App.Views;
 
-internal partial class SettingsWindow : Window
+internal sealed class SettingsWindow : SettingsWindowBase
 {
     private readonly MacAppRuntime _runtime;
     private readonly Dictionary<string, ProviderProfileSettings> _profiles = new(StringComparer.Ordinal);
@@ -22,17 +22,15 @@ internal partial class SettingsWindow : Window
     public SettingsWindow(MacAppRuntime runtime)
     {
         _runtime = runtime;
-        InitializeComponent();
+        ConfigureForMacSettingsWindow();
+        ProviderSelectionRequested += HandleProviderSelectionChanged;
+        ProxyModeSelectionRequested += HandleProxyModeSelectionChanged;
+        AccessibilityRequested += HandleAccessibilityRequested;
+        ReloadRequested += HandleReloadRequested;
+        BrowseLocalDictionaryRequested += HandleBrowseLocalDictionaryRequested;
+        SaveQuerySourcesRequested += HandleSaveQuerySourcesRequested;
+        SaveAllRequested += HandleSaveRequested;
         VersionTextBlock.Text = ProductVersionDisplay.FromAssembly(typeof(App).Assembly);
-        foreach (var definition in MacAppRuntime.ProviderDefinitions)
-        {
-            ProviderComboBox.Items.Add(new ComboBoxItem
-            {
-                Content = definition.DisplayName,
-                Tag = definition.ProviderId,
-            });
-        }
-
         foreach (var key in Enum.GetValues<MacVirtualKey>())
         {
             HotkeyKeyComboBox.Items.Add(new ComboBoxItem { Content = DescribeKey(key), Tag = key });
@@ -166,7 +164,7 @@ internal partial class SettingsWindow : Window
     private void ApplyProxyInputState() => ProxyUriTextBox.IsEnabled =
         string.Equals(SelectedTag(ProxyModeComboBox), nameof(ProxyMode.CustomHttp), StringComparison.Ordinal);
 
-    private async void HandleAccessibilityClick(object? sender, RoutedEventArgs eventArgs)
+    private async void HandleAccessibilityRequested(object? sender, EventArgs eventArgs)
     {
         var ready = await _runtime.EnsureAccessibilityAndHotkeyAsync(prompt: true);
         StatusTextBlock.Text = ready
@@ -174,9 +172,9 @@ internal partial class SettingsWindow : Window
             : "Approve the macOS Accessibility request; permission refreshes when you return.";
     }
 
-    private void HandleReloadClick(object? sender, RoutedEventArgs eventArgs) => _ = LoadAsync();
+    private void HandleReloadRequested(object? sender, EventArgs eventArgs) => _ = LoadAsync();
 
-    private async void HandleBrowseLocalDictionaryClick(object? sender, RoutedEventArgs eventArgs)
+    private async void HandleBrowseLocalDictionaryRequested(object? sender, EventArgs eventArgs)
     {
         try
         {
@@ -205,7 +203,7 @@ internal partial class SettingsWindow : Window
         }
     }
 
-    private async void HandleSaveQuerySourcesClick(object? sender, RoutedEventArgs eventArgs)
+    private async void HandleSaveQuerySourcesRequested(object? sender, EventArgs eventArgs)
     {
         if (!TryCreateQuerySourceSettings(includeCurrentUnsavedProvider: false, out var settings, out var error))
         {
@@ -225,7 +223,7 @@ internal partial class SettingsWindow : Window
         }
     }
 
-    private async void HandleSaveClick(object? sender, RoutedEventArgs eventArgs)
+    private async void HandleSaveRequested(object? sender, EventArgs eventArgs)
     {
         SaveButton.IsEnabled = false;
         try

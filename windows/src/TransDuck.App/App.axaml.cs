@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using System.Security.Principal;
 using System.Threading;
-using System.Windows;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
 using TransDuck.App.Services;
 
 namespace TransDuck.App;
@@ -11,22 +14,39 @@ namespace TransDuck.App;
 /// </summary>
 public partial class App : Application
 {
+    private IClassicDesktopStyleApplicationLifetime? _desktop;
     private AppRuntime? _runtime;
+    private Task? _startupTask;
     private Mutex? _sessionMutex;
     private bool _ownsSessionMutex;
 
-    protected override async void OnStartup(StartupEventArgs eventArgs)
+    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+
+    public override void OnFrameworkInitializationCompleted()
     {
-        base.OnStartup(eventArgs);
-        try
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            _desktop = desktop;
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            desktop.Exit += HandleDesktopExit;
+            AppStrings.InitializeForCurrentCulture();
             if (!TryAcquireSessionMutex())
             {
-                Shutdown();
-                return;
+                desktop.Shutdown();
             }
+            else
+            {
+                _startupTask = StartRuntimeAsync();
+            }
+        }
 
-            AppStrings.InitializeForCurrentCulture();
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task StartRuntimeAsync()
+    {
+        try
+        {
             _runtime = new AppRuntime();
             await _runtime.StartAsync();
         }
@@ -46,17 +66,26 @@ public partial class App : Application
             }
 
             _runtime = null;
-            MessageBox.Show(AppStrings.Get("app.startup.failure"), AppStrings.Get("app.brand"));
-            Shutdown();
+            NativeMessageBox.ShowError(
+                owner: IntPtr.Zero,
+                AppStrings.Get("app.startup.failure"),
+                AppStrings.Get("app.brand"));
+            _desktop?.Shutdown(1);
         }
     }
 
-    protected override void OnExit(ExitEventArgs eventArgs)
+    private void HandleDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs eventArgs)
     {
+        if (_desktop is { } desktop)
+        {
+            desktop.Exit -= HandleDesktopExit;
+        }
+
         _runtime?.Dispose();
         _runtime = null;
+        _startupTask = null;
         ReleaseSessionMutex();
-        base.OnExit(eventArgs);
+        _desktop = null;
     }
 
     private bool TryAcquireSessionMutex()

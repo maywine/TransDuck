@@ -41,8 +41,8 @@ public sealed class SettingsWindowMarkupTests
             ["TimeoutSecondsTextBox"] = "TextBox",
             ["HistoryMaxEntriesTextBox"] = "TextBox",
             ["HistoryMaxAgeDaysTextBox"] = "TextBox",
-            ["CredentialPasswordBox"] = "PasswordBox",
-            ["VolcengineAccessKeyIdPasswordBox"] = "PasswordBox",
+            ["CredentialPasswordBox"] = "TextBox",
+            ["VolcengineAccessKeyIdPasswordBox"] = "TextBox",
             ["ProxyModeComboBox"] = "ComboBox",
             ["CustomHttpProxyUriTextBox"] = "TextBox",
             ["ProxyStatusTextBlock"] = "TextBlock",
@@ -74,7 +74,7 @@ public sealed class SettingsWindowMarkupTests
             Assert.Equal(requiredControl.Value, control.Element.Name.LocalName);
         }
 
-        Assert.Equal("TransDuck.App.Windows.SettingsWindow", document.Root!.Attributes().Single(attribute =>
+        Assert.Equal("TransDuck.UI.Views.SettingsWindowBase", document.Root!.Attributes().Single(attribute =>
             attribute.Name.LocalName == "Class").Value);
         var version = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "ProductVersionTextBlock", StringComparison.Ordinal)).Element;
@@ -94,7 +94,7 @@ public sealed class SettingsWindowMarkupTests
         Assert.Equal("3", hotkeyKeyTextBox.Attribute("MaxLength")?.Value);
         var saveHotkeyButton = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "SaveHotkeyButton", StringComparison.Ordinal)).Element;
-        Assert.Equal("SaveHotkeyButtonClick", saveHotkeyButton.Attribute("Click")?.Value);
+        Assert.Equal("HandleSaveHotkeyClick", saveHotkeyButton.Attribute("Click")?.Value);
         var proxyMode = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "ProxyModeComboBox", StringComparison.Ordinal)).Element;
         Assert.Equal(
@@ -110,7 +110,7 @@ public sealed class SettingsWindowMarkupTests
             .SingleOrDefault(attribute => attribute.Name.LocalName == "AutomationProperties.HelpText")?.Value);
         var saveProxyButton = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "SaveProxySettingsButton", StringComparison.Ordinal)).Element;
-        Assert.Equal("SaveProxySettingsButtonClick", saveProxyButton.Attribute("Click")?.Value);
+        Assert.Equal("HandleSaveProxyClick", saveProxyButton.Attribute("Click")?.Value);
         var startupStatus = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "StartupStatusTextBlock", StringComparison.Ordinal)).Element;
         Assert.Equal("{Binding Text, RelativeSource={RelativeSource Self}}", startupStatus.Attributes()
@@ -119,10 +119,10 @@ public sealed class SettingsWindowMarkupTests
             .SingleOrDefault(attribute => attribute.Name.LocalName == "AutomationProperties.HelpText")?.Value);
         var saveStartupButton = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "SaveStartupButton", StringComparison.Ordinal)).Element;
-        Assert.Equal("SaveStartupButtonClick", saveStartupButton.Attribute("Click")?.Value);
+        Assert.Equal("HandleSaveStartupClick", saveStartupButton.Attribute("Click")?.Value);
         var saveSourcesButton = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "SaveQuerySourcesButton", StringComparison.Ordinal)).Element;
-        Assert.Equal("SaveQuerySourcesButtonClick", saveSourcesButton.Attribute("Click")?.Value);
+        Assert.Equal("HandleSaveQuerySourcesClick", saveSourcesButton.Attribute("Click")?.Value);
         var providerComboBox = Assert.Single(controls, control =>
             string.Equals(control.AutomationId, "ProviderComboBox", StringComparison.Ordinal)).Element;
         Assert.Equal(
@@ -159,11 +159,10 @@ public sealed class SettingsWindowMarkupTests
             {
                 var candidate = Path.Combine(
                     directory.FullName,
-                    "windows",
-                    "src",
-                    "TransDuck.App",
-                    "Windows",
-                    "SettingsWindow.xaml");
+                    "ui",
+                    "TransDuck.UI",
+                    "Views",
+                    "SettingsWindowBase.axaml");
                 if (File.Exists(candidate))
                 {
                     return candidate;
@@ -171,6 +170,6 @@ public sealed class SettingsWindowMarkupTests
             }
         }
 
-        throw new FileNotFoundException("SettingsWindow.xaml was not found from the test host path.");
+        throw new FileNotFoundException("SettingsWindowBase.axaml was not found from the test host path.");
     }
 }

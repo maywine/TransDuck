@@ -6,7 +6,7 @@ using TransDuck.Platform.Windows.Startup;
 namespace TransDuck.App.Services;
 
 /// <summary>
-/// Coordinates the user-visible ZIP sign-in preference while keeping registry state and exception details outside WPF.
+/// Coordinates the user-visible ZIP sign-in preference while keeping registry state and exception details outside the UI.
 /// </summary>
 internal sealed class StartupSettingsController : IDisposable
 {

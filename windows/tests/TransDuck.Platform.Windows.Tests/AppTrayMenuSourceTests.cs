@@ -7,37 +7,29 @@ namespace TransDuck.Platform.Windows.Tests;
 public sealed class AppTrayMenuSourceTests
 {
     private static readonly Regex TrayMenuItemCallPattern = new(
-        "CreateMenuItem\\s*\\(\\s*\"(?<id>[A-Za-z][A-Za-z0-9]*)\"\\s*,\\s*" +
+        "ShellTrayMenuEntry\\.Command\\s*\\(\\s*" +
         "AppStrings\\.Get\\(\\s*\"(?<key>runtime\\.menu\\.[a-z_]+)\"\\s*\\)",
         RegexOptions.CultureInvariant | RegexOptions.Singleline);
 
     [Fact]
-    public void TrayMenu_UsesUniqueStableAutomationIdsAndResourceBackedLabels()
+    public void NativeTrayMenu_UsesResourceBackedLabelsAndASeparatorBeforeExit()
     {
         var source = ReadAppRuntimeCode();
-        var expected = new Dictionary<string, string>(StringComparer.Ordinal)
+        var expected = new[]
         {
-            ["OpenInputTrayMenuItem"] = "runtime.menu.open_input",
-            ["SettingsTrayMenuItem"] = "runtime.menu.settings",
-            ["HistoryTrayMenuItem"] = "runtime.menu.history",
-            ["ExitTrayMenuItem"] = "runtime.menu.exit",
+            "runtime.menu.open_input",
+            "runtime.menu.settings",
+            "runtime.menu.history",
+            "runtime.menu.exit",
         };
         var calls = TrayMenuItemCallPattern.Matches(source)
             .Cast<Match>()
             .ToArray();
 
-        Assert.Contains("AutomationProperties.SetAutomationId", source, StringComparison.Ordinal);
-        foreach (var menuItem in expected)
-        {
-            var matchingCalls = calls.Where(match => string.Equals(
-                match.Groups["id"].Value,
-                menuItem.Key,
-                StringComparison.Ordinal)).ToArray();
-
-            var call = Assert.Single(matchingCalls);
-            Assert.Equal(menuItem.Value, call.Groups["key"].Value);
-            Assert.Single(Regex.Matches(source, "\"" + Regex.Escape(menuItem.Key) + "\"").Cast<Match>());
-        }
+        Assert.Equal(expected, calls.Select(match => match.Groups["key"].Value));
+        var separator = source.IndexOf("ShellTrayMenuEntry.Separator()", StringComparison.Ordinal);
+        var exit = source.IndexOf("AppStrings.Get(\"runtime.menu.exit\")", StringComparison.Ordinal);
+        Assert.True(separator >= 0 && exit > separator);
     }
 
     private static string ReadAppRuntimeCode()

@@ -5,6 +5,7 @@ using TransDuck.Core.Translation;
 using TransDuck.Infrastructure.Proxy;
 using TransDuck.Platform.MacOS.Hotkeys;
 using TransDuck.Platform.MacOS.Startup;
+using TransDuck.UI;
 
 namespace TransDuck.MacOS.App;
 
@@ -29,18 +30,8 @@ internal sealed record MacRuntimeState(
     string Status,
     bool IsBusy,
     bool CanRetry,
-    IReadOnlyList<MacQuerySourceResult> Results,
+    IReadOnlyList<TranslationResultViewModel> Results,
     long Revision);
-
-internal sealed record MacQuerySourceResult(
-    string Key,
-    string DisplayName,
-    string Text,
-    string Status,
-    string? PronunciationTerm = null)
-{
-    public bool CanPronounce => !string.IsNullOrWhiteSpace(PronunciationTerm);
-}
 
 internal sealed record MacSettingsSnapshot(
     Configuration Configuration,

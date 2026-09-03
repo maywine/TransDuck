@@ -12,10 +12,10 @@ public sealed class ResultFloatingWindowMarkupTests
         var document = XDocument.Load(FindResultFloatingWindowPath());
         var copyButton = FindAutomationElement(document, "CopyResultButton");
 
-        Assert.Equal("TransDuck.App.Windows.ResultFloatingWindow", document.Root!.Attributes().Single(attribute =>
+        Assert.Equal("TransDuck.UI.Views.TranslationWindowBase", document.Root!.Attributes().Single(attribute =>
             attribute.Name.LocalName == "Class").Value);
         Assert.Equal("Button", copyButton.Name.LocalName);
-        Assert.Equal("CopyResultButtonClick", copyButton.Attribute("Click")?.Value);
+        Assert.Equal("HandleCopyClick", copyButton.Attribute("Click")?.Value);
     }
 
     [Fact]
@@ -52,9 +52,9 @@ public sealed class ResultFloatingWindowMarkupTests
 
         Assert.Equal("Button", retryButton.Name.LocalName);
         Assert.Equal("False", retryButton.Attribute("IsEnabled")?.Value);
-        Assert.Equal("RetryButtonClick", retryButton.Attribute("Click")?.Value);
+        Assert.Equal("HandleRetryClick", retryButton.Attribute("Click")?.Value);
         Assert.Equal("TextBlock", errorCode.Name.LocalName);
-        Assert.Equal("Collapsed", errorCode.Attribute("Visibility")?.Value);
+        Assert.Equal("False", errorCode.Attribute("IsVisible")?.Value);
         var errorCodeName = errorCode.Attributes().SingleOrDefault(attribute =>
             attribute.Name.LocalName == "AutomationProperties.Name")?.Value;
         Assert.Equal("{Binding Text, RelativeSource={RelativeSource Self}}", errorCodeName);
@@ -86,9 +86,9 @@ public sealed class ResultFloatingWindowMarkupTests
         var pronounceButton = FindAutomationElement(document, "PronounceButton");
 
         Assert.Equal("Button", pronounceButton.Name.LocalName);
-        Assert.Equal("PronounceButtonClick", pronounceButton.Attribute("Click")?.Value);
+        Assert.Equal("HandlePronounceClick", pronounceButton.Attribute("Click")?.Value);
         Assert.Equal("{Binding PronunciationTerm}", pronounceButton.Attribute("Tag")?.Value);
-        Assert.Equal("{Binding PronunciationVisibility}", pronounceButton.Attribute("Visibility")?.Value);
+        Assert.Equal("{Binding CanPronounce}", pronounceButton.Attribute("IsVisible")?.Value);
         Assert.Equal("{DynamicResource result.button.pronounce}", pronounceButton.Attribute("Content")?.Value);
     }
 
@@ -100,11 +100,10 @@ public sealed class ResultFloatingWindowMarkupTests
             {
                 var candidate = Path.Combine(
                     directory.FullName,
-                    "windows",
-                    "src",
-                    "TransDuck.App",
-                    "Windows",
-                    "ResultFloatingWindow.xaml");
+                    "ui",
+                    "TransDuck.UI",
+                    "Views",
+                    "TranslationWindowBase.axaml");
                 if (File.Exists(candidate))
                 {
                     return candidate;
@@ -112,7 +111,7 @@ public sealed class ResultFloatingWindowMarkupTests
             }
         }
 
-        throw new FileNotFoundException("ResultFloatingWindow.xaml was not found from the test host path.");
+        throw new FileNotFoundException("TranslationWindowBase.axaml was not found from the test host path.");
     }
 
     private static XElement FindAutomationElement(XDocument document, string automationId) =>

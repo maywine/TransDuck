@@ -4,7 +4,7 @@ using TransDuck.Platform.Windows.Interop;
 namespace TransDuck.Platform.Windows.Capture;
 
 /// <summary>
-/// Describes desktop geometry in virtual-screen physical pixels, never WPF device-independent units.
+/// Describes desktop geometry in virtual-screen physical pixels, never device-independent UI units.
 /// </summary>
 public readonly record struct PixelRect(int Left, int Top, int Right, int Bottom)
 {

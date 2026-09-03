@@ -1,12 +1,10 @@
 using System.Runtime.InteropServices;
-using System.Windows;
 using TransDuck.Platform.Windows.Interop;
-using WpfClipboard = System.Windows.Clipboard;
 
 namespace TransDuck.Platform.Windows.Clipboard;
 
 /// <summary>
-/// Preserves raw, self-contained clipboard format IDs without introducing WPF or OLE wrapper formats on restore.
+/// Preserves raw, self-contained clipboard format IDs without introducing framework or OLE wrapper formats on restore.
 /// HGLOBAL data is copied into managed bytes. Copied bitmap handles remain owned by this snapshot
 /// until SetClipboardData accepts ownership or the snapshot is disposed.
 /// </summary>
@@ -420,34 +418,4 @@ public sealed record ClipboardRestoreResult(
     public static ClipboardRestoreResult Failed(
         IReadOnlyList<string> unsupportedFormatNames,
         string errorMessage) => new(false, unsupportedFormatNames, errorMessage);
-}
-
-internal static class ClipboardAccess
-{
-    private const int Attempts = 5;
-
-    public static T Execute<T>(Func<T> operation)
-    {
-        ExternalException? lastException = null;
-        for (var attempt = 0; attempt < Attempts; attempt++)
-        {
-            try
-            {
-                return operation();
-            }
-            catch (ExternalException exception) when (attempt < Attempts - 1)
-            {
-                lastException = exception;
-                Thread.Sleep(40);
-            }
-        }
-
-        throw lastException ?? new ExternalException("Unable to access the clipboard.");
-    }
-
-    public static void Execute(Action operation) => Execute(() =>
-    {
-        operation();
-        return true;
-    });
 }

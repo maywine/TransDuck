@@ -29,7 +29,7 @@ public sealed class AppLifecycleSourceTests
     {
         var source = ReadAppRuntimeCode();
         var stopIndex = source.IndexOf("await StopAsync()", StringComparison.Ordinal);
-        var shutdownIndex = source.IndexOf("Application.Current.Shutdown()", StringComparison.Ordinal);
+        var shutdownIndex = source.IndexOf("desktop.Shutdown()", StringComparison.Ordinal);
 
         Assert.True(stopIndex >= 0, "The exit path must await StopAsync.");
         Assert.True(shutdownIndex > stopIndex, "Application shutdown must follow StopAsync.");

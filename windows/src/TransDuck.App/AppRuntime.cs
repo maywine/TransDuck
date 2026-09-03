@@ -1,10 +1,8 @@
 using System.Diagnostics;
 using System.IO;
-using System.Windows;
-using System.Windows.Automation;
-using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Threading;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using Microsoft.Win32;
 using TransDuck.App.Services;
 using TransDuck.App.Windows;
@@ -26,6 +24,7 @@ using TransDuck.Platform.Windows.Speech;
 using TransDuck.Platform.Windows.Startup;
 using TransDuck.Infrastructure.Translation;
 using TransDuck.Platform.Windows.Tray;
+using TransDuck.UI;
 
 namespace TransDuck.App;
 
@@ -34,7 +33,7 @@ namespace TransDuck.App;
 /// </summary>
 internal sealed class AppRuntime : IDisposable
 {
-    private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
+    private readonly Dispatcher _dispatcher = Dispatcher.UIThread;
     private readonly NativeMessageWindow _hotkeyWindow = new(NativeWindowKind.MessageOnly);
     private readonly NativeMessageWindow _trayWindow = new(NativeWindowKind.HiddenTopLevel);
     private readonly ResultFloatingWindow _resultWindow = new();
@@ -63,7 +62,7 @@ internal sealed class AppRuntime : IDisposable
     private readonly HistoryController _historyController;
     private readonly LocalDictionaryProvider _localDictionaryProvider;
     private readonly ISystemSpeechPlayer _speechPlayer = new WindowsSystemSpeechPlayer();
-    private readonly ContextMenu _trayMenu;
+    private readonly ShellTrayContextMenu _trayMenu;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly object _lifecycleGate = new();
     private readonly object _trackedOperationsGate = new();
@@ -347,6 +346,7 @@ internal sealed class AppRuntime : IDisposable
         DisposeNonFatal(_startupSettingsController);
         DisposeNonFatal(_diagnosticSink);
         DisposeNonFatal(_hotkeyService);
+        DisposeNonFatal(_trayMenu);
         DisposeNonFatal(_trayService);
         DisposeNonFatal(_hotkeyWindow);
         DisposeNonFatal(_trayWindow);
@@ -427,8 +427,9 @@ internal sealed class AppRuntime : IDisposable
 
         try
         {
-            Clipboard.SetText(text);
-            _resultWindow.SetStatus(AppStrings.Get("runtime.copy.succeeded"));
+            _resultWindow.SetStatus(WindowsClipboardText.TryWrite(text, out _)
+                ? AppStrings.Get("runtime.copy.succeeded")
+                : AppStrings.Get("runtime.copy.failed"));
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {
@@ -1074,7 +1075,7 @@ internal sealed class AppRuntime : IDisposable
             }
 
             // Let all overlay windows leave the compositor, then discard the first capture frame.
-            await _dispatcher.InvokeAsync(static () => { }, DispatcherPriority.ContextIdle);
+            await _dispatcher.InvokeAsync(static () => { }, DispatcherPriority.Background);
             var capture = (_captureService ??= new WindowsGraphicsCaptureService());
             var captureResult = await capture.CaptureAsync(
                 selection,
@@ -1199,35 +1200,37 @@ internal sealed class AppRuntime : IDisposable
             : AppStrings.Get("runtime.input.prompt.unavailable"));
     }
 
-    private ContextMenu CreateTrayMenu()
-    {
-        var menu = new ContextMenu { Placement = PlacementMode.MousePoint };
-        menu.Items.Add(CreateMenuItem(
-            "OpenInputTrayMenuItem",
-            AppStrings.Get("runtime.menu.open_input"),
-            PresentInput));
-        menu.Items.Add(CreateMenuItem(
-            "SettingsTrayMenuItem",
-            AppStrings.Get("runtime.menu.settings"),
-            ShowSettings));
-        menu.Items.Add(CreateMenuItem(
-            "HistoryTrayMenuItem",
-            AppStrings.Get("runtime.menu.history"),
-            ShowHistory));
-        menu.Items.Add(new Separator());
-        menu.Items.Add(CreateMenuItem(
-            "ExitTrayMenuItem",
-            AppStrings.Get("runtime.menu.exit"),
-            ExitApplication));
-        return menu;
-    }
+    private ShellTrayContextMenu CreateTrayMenu() => new(
+        _trayWindow,
+        [
+            ShellTrayMenuEntry.Command(
+                AppStrings.Get("runtime.menu.open_input"),
+                PresentInput),
+            ShellTrayMenuEntry.Command(
+                AppStrings.Get("runtime.menu.settings"),
+                ShowSettings),
+            ShellTrayMenuEntry.Command(
+                AppStrings.Get("runtime.menu.history"),
+                ShowHistory),
+            ShellTrayMenuEntry.Separator(),
+            ShellTrayMenuEntry.Command(
+                AppStrings.Get("runtime.menu.exit"),
+                ExitApplication),
+        ]);
 
     private void ShowTrayMenu()
     {
-        // Shell notification-area menus require their hidden top-level owner to be foreground first.
-        _trayService.TryActivateContextMenuOwner();
-        // An unseen result window has no presentation source and cannot anchor the first tray menu.
-        _trayMenu.IsOpen = true;
+        var action = _trayMenu.Show();
+        if (action is not null)
+        {
+            _dispatcher.Post(() =>
+            {
+                if (!IsDisposed && !IsStopping)
+                {
+                    action();
+                }
+            }, DispatcherPriority.Normal);
+        }
     }
 
     private void ShowSettings()
@@ -1442,7 +1445,7 @@ internal sealed class AppRuntime : IDisposable
     /// </summary>
     private void PostToUi(Action action)
     {
-        if (IsDisposed || IsStopping || _dispatcher.HasShutdownStarted || _dispatcher.HasShutdownFinished)
+        if (IsDisposed || IsStopping)
         {
             return;
         }
@@ -1459,17 +1462,17 @@ internal sealed class AppRuntime : IDisposable
 
         try
         {
-            _ = _dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+            _dispatcher.Post(() =>
             {
                 if (!IsDisposed && !IsStopping)
                 {
                     action();
                 }
-            }));
+            }, DispatcherPriority.Normal);
         }
-        catch (InvalidOperationException) when (_dispatcher.HasShutdownStarted || _dispatcher.HasShutdownFinished)
+        catch (InvalidOperationException)
         {
-            // Dispatcher shutdown races must not revive native services or touch WPF windows.
+            // Dispatcher shutdown races must not revive native services or touch Avalonia windows.
         }
     }
 
@@ -1485,16 +1488,11 @@ internal sealed class AppRuntime : IDisposable
         }
         finally
         {
-            Application.Current.Shutdown();
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown();
+            }
         }
-    }
-
-    private static MenuItem CreateMenuItem(string automationId, string label, Action action)
-    {
-        var item = new MenuItem { Header = label };
-        AutomationProperties.SetAutomationId(item, automationId);
-        item.Click += (_, _) => action();
-        return item;
     }
 
 }

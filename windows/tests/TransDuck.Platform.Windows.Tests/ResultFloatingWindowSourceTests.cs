@@ -9,18 +9,16 @@ public sealed class ResultFloatingWindowSourceTests
     [Fact]
     public void Deactivation_HidesVisibleWindowWithoutInterferingWithFinalClose()
     {
-        var source = ReadSource("TransDuck.App", "Windows", "ResultFloatingWindow.xaml.cs");
+        var source = ReadSource("TransDuck.App", "Windows", "ResultFloatingWindow.cs");
         var deactivated = Slice(
             source,
-            "protected override void OnDeactivated(EventArgs eventArgs)",
-            "private void TranslateButtonClick");
-        var baseCall = deactivated.IndexOf("base.OnDeactivated(eventArgs)", StringComparison.Ordinal);
+            "private void HandleDeactivated(object? sender, EventArgs eventArgs)",
+            "private void HandleHideRequested");
         var finalCloseGuard = deactivated.IndexOf("!_allowClose", StringComparison.Ordinal);
         var visibleGuard = deactivated.IndexOf("IsVisible", finalCloseGuard, StringComparison.Ordinal);
         var hide = deactivated.IndexOf("Hide()", visibleGuard, StringComparison.Ordinal);
 
-        Assert.True(baseCall >= 0);
-        Assert.True(finalCloseGuard > baseCall);
+        Assert.True(finalCloseGuard >= 0);
         Assert.True(visibleGuard > finalCloseGuard);
         Assert.True(hide > visibleGuard);
     }
@@ -29,19 +27,21 @@ public sealed class ResultFloatingWindowSourceTests
     public void DictionaryResultCarriesTheEntryTermWithoutParsingRenderedText()
     {
         var runtime = ReadSource("TransDuck.App", "AppRuntime.cs");
-        var window = ReadSource("TransDuck.App", "Windows", "ResultFloatingWindow.xaml.cs");
+        var window = ReadSource("TransDuck.App", "Windows", "ResultFloatingWindow.cs");
+        var sharedUi = ReadRepositoryFile("ui", "TransDuck.UI", "PresentationModels.cs") +
+            ReadRepositoryFile("ui", "TransDuck.UI", "Views", "TranslationWindowBase.axaml.cs");
 
         Assert.Contains("result.Entry?.Term", runtime, StringComparison.Ordinal);
-        Assert.Contains("PronunciationTerm", window, StringComparison.Ordinal);
-        Assert.Contains("PronunciationRequested?.Invoke(this, term)", window, StringComparison.Ordinal);
-        Assert.DoesNotContain("ToDisplayText().Split", runtime + window, StringComparison.Ordinal);
+        Assert.Contains("PronunciationTerm", sharedUi, StringComparison.Ordinal);
+        Assert.Contains("PronunciationRequested?.Invoke(this, term)", sharedUi, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToDisplayText().Split", runtime + window + sharedUi, StringComparison.Ordinal);
     }
 
     [Fact]
     public void VersionText_UsesTheSharedAssemblyDisplayWithoutHardcoding()
     {
-        var result = ReadSource("TransDuck.App", "Windows", "ResultFloatingWindow.xaml.cs");
-        var settings = ReadSource("TransDuck.App", "Windows", "SettingsWindow.xaml.cs");
+        var result = ReadSource("TransDuck.App", "Windows", "ResultFloatingWindow.cs");
+        var settings = ReadSource("TransDuck.App", "Windows", "SettingsWindow.cs");
         const string versionDisplay = "TransDuck.Core.ProductVersionDisplay.FromAssembly(typeof(App).Assembly)";
 
         Assert.Contains(versionDisplay, result, StringComparison.Ordinal);
@@ -74,6 +74,23 @@ public sealed class ResultFloatingWindowSourceTests
         }
 
         throw new FileNotFoundException("The requested Windows source file was not found from the test host path.");
+    }
+
+    private static string ReadRepositoryFile(params string[] relativePath)
+    {
+        foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            for (var directory = new DirectoryInfo(start); directory is not null; directory = directory.Parent)
+            {
+                var candidate = Path.Combine([directory.FullName, .. relativePath]);
+                if (File.Exists(candidate))
+                {
+                    return StripComments(File.ReadAllText(candidate));
+                }
+            }
+        }
+
+        throw new FileNotFoundException("The requested repository source file was not found.");
     }
 
     private static string StripComments(string source)

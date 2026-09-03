@@ -7,7 +7,7 @@ using TransDuck.Core.Persistence;
 namespace TransDuck.App.Services;
 
 /// <summary>
-/// Keeps query-source persistence out of WPF code-behind and provides single-provider migration defaults.
+/// Keeps query-source persistence out of UI code-behind and provides single-provider migration defaults.
 /// </summary>
 internal sealed class QuerySourceSettingsController
 {

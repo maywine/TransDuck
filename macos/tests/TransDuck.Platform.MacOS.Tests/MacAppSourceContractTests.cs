@@ -29,7 +29,7 @@ public sealed class MacAppSourceContractTests
     {
         var source = ReadRepositoryFile("macos", "src", "TransDuck.App", "MacAppRuntime.cs");
         var settings = ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.axaml");
+            "ui", "TransDuck.UI", "Views", "SettingsWindowBase.axaml");
 
         Assert.Contains("new LocalDictionaryProvider", source, StringComparison.Ordinal);
         Assert.Contains("new MacSystemDictionaryProvider", source, StringComparison.Ordinal);
@@ -38,7 +38,7 @@ public sealed class MacAppSourceContractTests
         Assert.Contains("await Task.WhenAll(runs)", source, StringComparison.Ordinal);
         Assert.Contains("Revision = _state.Revision + 1", source, StringComparison.Ordinal);
         Assert.Contains("state.Revision < _lastAppliedRevision", ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml.cs"),
+            "macos", "src", "TransDuck.App", "Views", "MainWindow.cs"),
             StringComparison.Ordinal);
         Assert.Contains("TranslateAsync(retry.Text, retry.QueryKind, retry.SourceKeys)", source,
             StringComparison.Ordinal);
@@ -55,7 +55,7 @@ public sealed class MacAppSourceContractTests
         Assert.Contains("new MacSystemSpeechPlayer", source, StringComparison.Ordinal);
         Assert.Contains("result.Entry?.Term", source, StringComparison.Ordinal);
         var mainWindow = ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml");
+            "ui", "TransDuck.UI", "Views", "TranslationWindowBase.axaml");
         Assert.Contains("PronunciationTerm", mainWindow, StringComparison.Ordinal);
         Assert.Contains("HandlePronounceClick", mainWindow, StringComparison.Ordinal);
         Assert.Contains(
@@ -123,18 +123,18 @@ public sealed class MacAppSourceContractTests
     public void MainAndSettingsWindows_DisplayTheSharedAppAssemblyVersionWithoutHardcodingIt()
     {
         var mainMarkup = ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml");
+            "ui", "TransDuck.UI", "Views", "TranslationWindowBase.axaml");
         var mainCode = ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml.cs");
+            "macos", "src", "TransDuck.App", "Views", "MainWindow.cs");
         var settingsMarkup = ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.axaml");
+            "ui", "TransDuck.UI", "Views", "SettingsWindowBase.axaml");
         var settingsCode = ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.axaml.cs");
+            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.cs");
         const string versionAssignment =
             "VersionTextBlock.Text = ProductVersionDisplay.FromAssembly(typeof(App).Assembly);";
 
-        Assert.Contains("x:Name=\"VersionTextBlock\"", mainMarkup, StringComparison.Ordinal);
-        Assert.Contains("x:Name=\"VersionTextBlock\"", settingsMarkup, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"VersionTextBlockElement\"", mainMarkup, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ProductVersionTextBlockElement\"", settingsMarkup, StringComparison.Ordinal);
         Assert.Contains(versionAssignment, mainCode, StringComparison.Ordinal);
         Assert.Contains(versionAssignment, settingsCode, StringComparison.Ordinal);
         Assert.DoesNotContain("VersionTextBlock.Text = \"v", mainCode + settingsCode,
@@ -171,6 +171,7 @@ public sealed class MacAppSourceContractTests
         Assert.Contains("osx-arm64", package + verify, StringComparison.Ordinal);
         Assert.Contains("libuiohook.dylib", verify, StringComparison.Ordinal);
         Assert.Contains("TransDuck.icns", package + verify, StringComparison.Ordinal);
+        Assert.Contains("Contents/MacOS/TransDuck.UI.dll", verify, StringComparison.Ordinal);
         Assert.Contains("a41658fb2bef7503a3bcb305ab8bf849755fe906", notices,
             StringComparison.Ordinal);
     }
@@ -297,11 +298,11 @@ public sealed class MacAppSourceContractTests
         var program = ReadRepositoryFile("macos", "src", "TransDuck.App", "Program.cs");
         var app = ReadRepositoryFile("macos", "src", "TransDuck.App", "App.axaml.cs");
         var mainWindow = ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "MainWindow.axaml.cs");
+            "macos", "src", "TransDuck.App", "Views", "MainWindow.cs");
         var settingsWindow = ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.axaml.cs");
+            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.cs");
         var historyWindow = ReadRepositoryFile(
-            "macos", "src", "TransDuck.App", "Views", "HistoryWindow.axaml.cs");
+            "macos", "src", "TransDuck.App", "Views", "HistoryWindow.cs");
 
         Assert.Contains("ShowInDock = false", program, StringComparison.Ordinal);
         Assert.Contains("ShutdownMode.OnExplicitShutdown", app, StringComparison.Ordinal);
@@ -310,6 +311,26 @@ public sealed class MacAppSourceContractTests
             Assert.Contains("eventArgs.Cancel = true", window, StringComparison.Ordinal);
             Assert.Contains("Hide()", window, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void App_UsesTheSharedAvaloniaWindowsWithPlatformOnlyAdapters()
+    {
+        var project = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "TransDuck.App.csproj");
+        var main = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "MainWindow.cs");
+        var settings = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "SettingsWindow.cs");
+        var history = ReadRepositoryFile(
+            "macos", "src", "TransDuck.App", "Views", "HistoryWindow.cs");
+
+        Assert.Contains("ui\\TransDuck.UI\\TransDuck.UI.csproj", project, StringComparison.Ordinal);
+        Assert.Contains("MainWindow : TranslationWindowBase", main, StringComparison.Ordinal);
+        Assert.Contains("SettingsWindow : SettingsWindowBase", settings, StringComparison.Ordinal);
+        Assert.Contains("HistoryWindow : HistoryWindowBase", history, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"TransDuck.UI.Views.TranslationWindowBase\"", ReadRepositoryFile(
+            "ui", "TransDuck.UI", "Views", "TranslationWindowBase.axaml"), StringComparison.Ordinal);
     }
 
     private static string Slice(string source, string startMarker, string endMarker)

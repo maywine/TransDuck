@@ -19,12 +19,15 @@ $script:FixedZipTimestamp = [DateTimeOffset]::new(2000, 1, 1, 0, 0, 0, [TimeSpan
 $script:RequiredPayloadFiles = @(
     'TransDuck.exe',
     'e_sqlite3.dll',
-    'D3DCompiler_47_cor3.dll', 'PenImc_cor3.dll',
-    'PresentationNative_cor3.dll', 'vcruntime140_cor3.dll', 'wpfgfx_cor3.dll',
+    'av_libglesv2.dll', 'libHarfBuzzSharp.dll', 'libSkiaSharp.dll',
     'x64/tesseract50.dll', 'x64/leptonica-1.82.0.dll',
     'tessdata/eng.traineddata', 'tessdata/chi_sim.traineddata',
     'tessdata/model-manifest.json', 'tessdata/LICENSE',
     'licenses/Apache-2.0.txt', 'licenses/Leptonica-BSD-2-Clause.txt',
+    'licenses/Avalonia-ANGLE-BSD-3-Clause.txt', 'licenses/Avalonia-MIT.txt',
+    'licenses/HarfBuzzSharp-MIT.txt', 'licenses/Inter-OFL-1.1.txt',
+    'licenses/MicroCom-MIT.txt', 'licenses/SkiaSharp-HarfBuzz-ThirdPartyNotices.txt',
+    'licenses/SkiaSharp-MIT.txt',
     'licenses/Microsoft.Data.Sqlite-MIT.txt', 'licenses/System.Speech-MIT.txt',
     'licenses/SQLite-Public-Domain.txt',
     'licenses/Microsoft-DotNet-Library-License.txt',
@@ -34,7 +37,7 @@ $script:RequiredPayloadFiles = @(
 
 $windowsRoot = Split-Path -Parent $PSScriptRoot
 $repositoryRoot = Split-Path -Parent $windowsRoot
-$projectPath = Join-Path $windowsRoot 'src\TransDuck.App\TransDuck.App.csproj'
+$projectPath = Join-Path $windowsRoot 'src/TransDuck.App/TransDuck.App.csproj'
 $readmeSource = Join-Path $PSScriptRoot 'zip-readme.txt'
 $licenseSource = Join-Path $repositoryRoot 'LICENSE'
 
@@ -53,7 +56,8 @@ function Test-ReparsePoint([string]$Path) {
 }
 
 function Get-SafeRelativePath([string]$Root, [string]$Path) {
-    $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
+    $separator = [string][IO.Path]::DirectorySeparatorChar
+    $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\', '/') + $separator
     $full = [IO.Path]::GetFullPath($Path)
     if (-not $full.StartsWith($rootFull, [StringComparison]::OrdinalIgnoreCase)) {
         throw 'publish_path_escaped_root'
@@ -72,7 +76,7 @@ function Test-ExcludedPayloadPath([string]$RelativePath) {
     if ($segments | Where-Object { $_ -ieq 'x86' -or $_ -ieq 'assets' -or $_ -ieq 'tests' -or $_ -ieq 'test' -or $_ -match '(?i)paddle' -or $_ -ieq 'credentials' }) {
         return $true
     }
-    if ($leaf -match '(?i)^(appxmanifest\.xml|.*\.(pdb|cs|csproj|sln|xaml|ps1|psm1|msix|appx|appxbundle|pfx|p12|pem|key|cer|crt|der|p7b|pvk|ppk|jks))$' -or
+    if ($leaf -match '(?i)^(appxmanifest\.xml|.*\.(pdb|cs|csproj|sln|xaml|axaml|ps1|psm1|msix|appx|appxbundle|pfx|p12|pem|key|cer|crt|der|p7b|pvk|ppk|jks))$' -or
         $leaf -match '(?i)^(configuration|provider-settings|query-sources|hotkey-settings|proxy-settings|history|diagnostics)(\.|$)' -or
         $leaf -match '(?i)(private.?key|certificate|\.credential$)') {
         return $true
@@ -123,7 +127,7 @@ function Copy-PayloadFile([string]$Source, [string]$Destination) {
 function Assert-RequiredPayload([string]$PayloadRoot) {
     if (Test-ReparsePoint $PayloadRoot) { throw 'payload_reparse_point' }
     foreach ($relative in $script:RequiredPayloadFiles) {
-        $path = Join-Path $PayloadRoot ($relative.Replace('/', '\'))
+        $path = Join-Path $PayloadRoot ($relative.Replace('/', [IO.Path]::DirectorySeparatorChar))
         if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or (Test-ReparsePoint $path)) {
             throw 'required_payload_file_missing'
         }
@@ -241,7 +245,8 @@ function Remove-OwnedStaging([string]$StagingRoot) {
 
 function Remove-OwnedBuildArtifacts([string]$BuildArtifactsRoot) {
     if (-not (Test-Path -LiteralPath $BuildArtifactsRoot)) { return }
-    $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+    $separator = [string][IO.Path]::DirectorySeparatorChar
+    $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\', '/') + $separator
     $full = [IO.Path]::GetFullPath($BuildArtifactsRoot)
     $leaf = [IO.Path]::GetFileName($full)
     if (-not $full.StartsWith($temporaryRoot, [StringComparison]::OrdinalIgnoreCase) -or
@@ -291,14 +296,20 @@ try {
     $dotnetNoticesSource = Join-Path $dotnetRoot 'ThirdPartyNotices.txt'
     if (-not (Test-Path -LiteralPath $dotnetLicenseSource -PathType Leaf) -or
         -not (Test-Path -LiteralPath $dotnetNoticesSource -PathType Leaf)) {
+        $dotnetLicenseSource = Join-Path $repositoryRoot 'macos/third_party/licenses/Microsoft-.NET-LICENSE.txt'
+        $dotnetNoticesSource = Join-Path $repositoryRoot 'macos/third_party/licenses/Microsoft-.NET-ThirdPartyNotices.txt'
+    }
+    if (-not (Test-Path -LiteralPath $dotnetLicenseSource -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $dotnetNoticesSource -PathType Leaf)) {
         throw 'dotnet_license_source_missing'
     }
-    & $dotnet publish $projectPath --configuration $Configuration --runtime win-x64 --self-contained true --output $publishRoot --artifacts-path $buildArtifactsRoot -p:PublishSingleFile=true -p:DebugSymbols=false -p:DebugType=None
+    & $dotnet publish $projectPath --configuration $Configuration --runtime win-x64 --self-contained true --output $publishRoot --artifacts-path $buildArtifactsRoot -p:PublishSingleFile=true -p:DebugSymbols=false -p:DebugType=None -p:EnableWindowsTargeting=true
     if ($LASTEXITCODE -ne 0) { throw 'dotnet_publish_failed' }
 
     [IO.Directory]::CreateDirectory($payloadRoot) | Out-Null
     foreach ($file in @(Get-SafePublishFiles $publishRoot)) {
-        Copy-PayloadFile $file.Source (Join-Path $payloadRoot ($file.Relative.Replace('/', '\')))
+        Copy-PayloadFile $file.Source (Join-Path $payloadRoot (
+            $file.Relative.Replace('/', [IO.Path]::DirectorySeparatorChar)))
     }
     if ((Test-ReparsePoint $readmeSource) -or (Test-ReparsePoint $licenseSource) -or
         (Test-ReparsePoint $dotnetLicenseSource) -or (Test-ReparsePoint $dotnetNoticesSource)) {
@@ -306,8 +317,8 @@ try {
     }
     Copy-PayloadFile $readmeSource (Join-Path $payloadRoot 'README.txt')
     Copy-PayloadFile $licenseSource (Join-Path $payloadRoot 'LICENSE.txt')
-    Copy-PayloadFile $dotnetLicenseSource (Join-Path $payloadRoot 'licenses\Microsoft-DotNet-Library-License.txt')
-    Copy-PayloadFile $dotnetNoticesSource (Join-Path $payloadRoot 'licenses\Microsoft-DotNet-Third-Party-Notices.txt')
+    Copy-PayloadFile $dotnetLicenseSource (Join-Path $payloadRoot 'licenses/Microsoft-DotNet-Library-License.txt')
+    Copy-PayloadFile $dotnetNoticesSource (Join-Path $payloadRoot 'licenses/Microsoft-DotNet-Third-Party-Notices.txt')
     Assert-RequiredPayload $payloadRoot
     New-DeterministicZip $payloadRoot $temporaryZip
     Assert-TemporaryZipAudit $temporaryZip

@@ -71,7 +71,7 @@ public sealed class ProxyIntegrationSourceTests
     [Fact]
     public void SettingsWindow_StrictlyValidatesCustomProxyAndDisablesItsInputOutsideCustomMode()
     {
-        var source = ReadSource("TransDuck.App", "Windows", "SettingsWindow.xaml.cs");
+        var source = ReadSource("TransDuck.App", "Windows", "SettingsWindow.cs");
         var create = Slice(source, "private bool TryCreateProxySettings", "private bool TryCreateProvider");
         var controls = Slice(source, "private void SetProxyControlsEnabled", "private void ApplyCredentialControlsEnabledState");
 

@@ -1,6 +1,9 @@
 using System.Runtime.InteropServices;
-using System.Windows.Automation;
+using System.Text;
 using TransDuck.Platform.Windows.Clipboard;
+using Windows.Win32;
+using Windows.Win32.System.Com;
+using Windows.Win32.UI.Accessibility;
 
 namespace TransDuck.Platform.Windows.Selection;
 
@@ -9,6 +12,7 @@ namespace TransDuck.Platform.Windows.Selection;
 /// </summary>
 public sealed class UiAutomationSelectionService
 {
+    private static readonly Guid UiAutomationClassId = new("FF48DBA4-60EF-4201-AA87-54103EEF594E");
     private readonly ClipboardCopyFallback _clipboardFallback;
 
     public UiAutomationSelectionService(ClipboardCopyFallback clipboardFallback)
@@ -43,23 +47,56 @@ public sealed class UiAutomationSelectionService
 
     private static SelectionReadResult TryReadTextPattern()
     {
+        IUIAutomation? automation = null;
+        IUIAutomationElement? focused = null;
+        object? rawPattern = null;
+        IUIAutomationTextRangeArray? ranges = null;
         try
         {
-            var focused = AutomationElement.FocusedElement;
-            if (focused is null || !focused.TryGetCurrentPattern(TextPattern.Pattern, out var rawPattern))
+            PInvoke.CoCreateInstance<IUIAutomation>(
+                    in UiAutomationClassId,
+                    null!,
+                    CLSCTX.CLSCTX_INPROC_SERVER,
+                    out automation)
+                .ThrowOnFailure();
+            focused = automation.GetFocusedElement();
+            if (focused is null)
+            {
+                return SelectionReadResult.FallbackRequired("UI Automation 没有返回焦点控件。");
+            }
+
+            rawPattern = focused.GetCurrentPattern(UIA_PATTERN_ID.UIA_TextPatternId);
+            if (rawPattern is not IUIAutomationTextPattern textPattern)
             {
                 return SelectionReadResult.FallbackRequired("焦点控件没有公开 UI Automation TextPattern。");
             }
 
-            var ranges = ((TextPattern)rawPattern).GetSelection();
-            var text = string.Concat(ranges.Select(range => range.GetText(-1)));
-            return string.IsNullOrEmpty(text)
+            ranges = textPattern.GetSelection();
+            var text = new StringBuilder();
+            for (var index = 0; index < ranges.Length; index++)
+            {
+                var range = ranges.GetElement(index);
+                try
+                {
+                    var value = range.GetText(-1);
+                    try
+                    {
+                        text.Append(value.ToString());
+                    }
+                    finally
+                    {
+                        PInvoke.SysFreeString(value);
+                    }
+                }
+                finally
+                {
+                    ReleaseComObject(range);
+                }
+            }
+
+            return text.Length == 0
                 ? SelectionReadResult.FallbackRequired("UI Automation 返回了空选区。")
-                : SelectionReadResult.FromTextPattern(text);
-        }
-        catch (ElementNotAvailableException)
-        {
-            return SelectionReadResult.FallbackRequired("焦点控件在读取过程中不可用。");
+                : SelectionReadResult.FromTextPattern(text.ToString());
         }
         catch (COMException exception)
         {
@@ -68,6 +105,25 @@ public sealed class UiAutomationSelectionService
         catch (InvalidOperationException exception)
         {
             return SelectionReadResult.FallbackRequired($"UI Automation 访问失败：{exception.Message}");
+        }
+        catch (InvalidCastException exception)
+        {
+            return SelectionReadResult.FallbackRequired($"UI Automation TextPattern 不可用：{exception.Message}");
+        }
+        finally
+        {
+            ReleaseComObject(ranges);
+            ReleaseComObject(rawPattern);
+            ReleaseComObject(focused);
+            ReleaseComObject(automation);
+        }
+    }
+
+    private static void ReleaseComObject(object? value)
+    {
+        if (value is not null && Marshal.IsComObject(value))
+        {
+            Marshal.FinalReleaseComObject(value);
         }
     }
 }

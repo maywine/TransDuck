@@ -7,35 +7,32 @@ namespace TransDuck.Platform.Windows.Tests;
 public sealed class TrayContextMenuOwnerSourceTests
 {
     [Fact]
-    public void AppRuntime_ActivatesTrayContextMenuOwnerBeforeOpeningMenu()
+    public void AppRuntime_DelegatesOpeningToTheFrameworkIndependentTrayMenu()
     {
         var source = ReadSource("TransDuck.App", "AppRuntime.cs");
         var menuMethod = source.IndexOf("private void ShowTrayMenu()", StringComparison.Ordinal);
         var nextMethod = source.IndexOf("private void ShowSettings()", menuMethod, StringComparison.Ordinal);
-        var activation = source.IndexOf("_trayService.TryActivateContextMenuOwner()", menuMethod, StringComparison.Ordinal);
-        var isOpen = source.IndexOf("_trayMenu.IsOpen = true", menuMethod, StringComparison.Ordinal);
+        var show = source.IndexOf("_trayMenu.Show()", menuMethod, StringComparison.Ordinal);
 
         Assert.True(menuMethod >= 0, "The tray menu opening path must be present.");
         Assert.True(nextMethod > menuMethod, "The tray menu opening path must have a bounded method body.");
-        Assert.True(activation > menuMethod && activation < nextMethod);
-        Assert.True(isOpen > activation && isOpen < nextMethod);
+        Assert.True(show > menuMethod && show < nextMethod);
+        Assert.Contains("_dispatcher.Post", source[menuMethod..nextMethod], StringComparison.Ordinal);
     }
 
     [Fact]
-    public void TrayService_DisposedContextMenuOwnerActivationReturnsFalseBeforeNativeAccess()
+    public void NativeTrayMenu_ActivatesItsOwnerBeforeTrackingThePopup()
     {
-        var source = ReadSource("TransDuck.Platform.Windows", "Tray", "ShellNotifyIconTrayService.cs");
-        var method = source.IndexOf("public bool TryActivateContextMenuOwner()", StringComparison.Ordinal);
+        var source = ReadSource("TransDuck.Platform.Windows", "Tray", "ShellTrayContextMenu.cs");
+        var method = source.IndexOf("public Action? Show()", StringComparison.Ordinal);
         var dispose = source.IndexOf("public void Dispose()", method, StringComparison.Ordinal);
-        var disposedGuard = source.IndexOf("if (_disposed)", method, StringComparison.Ordinal);
-        var falseReturn = source.IndexOf("return false", disposedGuard, StringComparison.Ordinal);
-        var nativeActivation = source.IndexOf("Win32ShellNative.SetForegroundWindow(_messageWindow.Handle)", method, StringComparison.Ordinal);
+        var nativeActivation = source.IndexOf("Win32ShellNative.SetForegroundWindow(_owner.Handle)", method, StringComparison.Ordinal);
+        var popup = source.IndexOf("TrackPopupMenuEx(", nativeActivation, StringComparison.Ordinal);
 
-        Assert.True(method >= 0, "The tray owner activation boundary must be public and callable.");
-        Assert.True(dispose > method, "The activation boundary must have a bounded method body.");
-        Assert.True(disposedGuard > method && disposedGuard < dispose);
-        Assert.True(falseReturn > disposedGuard && falseReturn < nativeActivation);
-        Assert.True(nativeActivation > falseReturn && nativeActivation < dispose);
+        Assert.True(method >= 0, "The native tray menu opening path must be public and callable.");
+        Assert.True(dispose > method, "The opening path must have a bounded method body.");
+        Assert.True(nativeActivation > method && nativeActivation < dispose);
+        Assert.True(popup > nativeActivation && popup < dispose);
     }
 
     private static string ReadSource(string projectDirectory, params string[] relativePath)

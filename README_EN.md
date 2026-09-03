@@ -86,6 +86,10 @@ GitHub Release is created or updated with all three ZIPs.
 
 ## Development
 
+Windows and macOS share the Avalonia windows, UI localization resources, and
+presentation models in `ui/TransDuck.UI`; platform projects retain only their
+operating-system integration adapters.
+
 Repository rules are in [AGENTS.md](AGENTS.md). The project is local by default:
 do not configure a remote or push unless the user explicitly asks.
 

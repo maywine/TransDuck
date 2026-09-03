@@ -42,7 +42,7 @@ public sealed class ProviderCredentialBoundarySourceTests
     [Fact]
     public void SettingsWindow_UsesResourceBackedCredentialStateAndProviderDefaults()
     {
-        var source = ReadSource("TransDuck.App", "Windows", "SettingsWindow.xaml.cs");
+        var source = ReadSource("TransDuck.App", "Windows", "SettingsWindow.cs");
         var defaults = Slice(source, "private static ProviderProfileSettings? CreateDefaultProfile", "private void SelectProvider");
         var refresh = Slice(source, "private async Task RefreshCredentialStatusAsync", "private bool TryCreateSettings");
         var controls = Slice(source, "private void SetCredentialControlsEnabled", "private bool SelectedProviderUsesCredential");

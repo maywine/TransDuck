@@ -5,6 +5,9 @@
   platform-neutral projects under `shared/`. Platform projects may depend on shared
   projects; shared projects must not reference WPF, Avalonia, Win32, Apple frameworks,
   OCR runtimes, or platform credential stores.
+- Keep the cross-platform Avalonia windows, localization resources, and presentation
+  models in `ui/TransDuck.UI`. Platform app projects derive narrow adapters from those
+  windows and keep native lifecycle, permission, credential, hotkey, and OCR behavior local.
 - Windows remains a self-contained portable ZIP. macOS distributions are unsigned,
   self-contained ZIPs containing one `.app` bundle per architecture. Do not add an
   installer or automatic updater without a separate product decision.

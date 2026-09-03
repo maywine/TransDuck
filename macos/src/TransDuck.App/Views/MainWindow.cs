@@ -2,13 +2,13 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input.Platform;
-using Avalonia.Interactivity;
 using Avalonia.Threading;
 using TransDuck.Core;
+using TransDuck.UI.Views;
 
 namespace TransDuck.MacOS.App.Views;
 
-internal partial class MainWindow : Window
+internal sealed class MainWindow : TranslationWindowBase
 {
     private readonly MacAppRuntime _runtime;
     private long _lastAppliedRevision = -1;
@@ -17,8 +17,17 @@ internal partial class MainWindow : Window
     public MainWindow(MacAppRuntime runtime)
     {
         _runtime = runtime;
-        InitializeComponent();
+        ConfigureForMacDesktopWindow();
         VersionTextBlock.Text = ProductVersionDisplay.FromAssembly(typeof(App).Assembly);
+        TranslationRequested += HandleTranslationRequested;
+        SelectedTextRequested += HandleSelectedTextRequested;
+        CaptureOcrRequested += HandleCaptureOcrRequested;
+        CancellationRequested += HandleCancellationRequested;
+        RetryRequested += HandleRetryRequested;
+        PronunciationRequested += HandlePronunciationRequested;
+        ResultCopyRequested += HandleResultCopyRequested;
+        SettingsRequested += HandleSettingsRequested;
+        HistoryRequested += HandleHistoryRequested;
         _runtime.StateChanged += HandleRuntimeStateChanged;
         Closing += HandleClosing;
         ApplyState(_runtime.State);
@@ -57,35 +66,26 @@ internal partial class MainWindow : Window
         CopyButton.IsEnabled = state.Results.Any(static result => !string.IsNullOrWhiteSpace(result.Text));
     }
 
-    private void HandleTranslateClick(object? sender, RoutedEventArgs eventArgs) =>
-        _ = _runtime.TranslateAsync(InputTextBox.Text ?? string.Empty);
+    private void HandleTranslationRequested(object? sender, string text) =>
+        _ = _runtime.TranslateAsync(text);
 
-    private void HandleSelectedTextClick(object? sender, RoutedEventArgs eventArgs) =>
+    private void HandleSelectedTextRequested(object? sender, EventArgs eventArgs) =>
         _ = _runtime.TranslateSelectedTextAsync(promptForPermission: true);
 
-    private void HandleOcrClick(object? sender, RoutedEventArgs eventArgs)
-    {
-        var language = (OcrLanguageComboBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "en-US";
+    private void HandleCaptureOcrRequested(object? sender, string language) =>
         _ = _runtime.CaptureOcrAndTranslateAsync(language);
-    }
 
-    private void HandleCancelClick(object? sender, RoutedEventArgs eventArgs) =>
+    private void HandleCancellationRequested(object? sender, EventArgs eventArgs) =>
         _runtime.CancelCurrentOperation();
 
-    private void HandleRetryClick(object? sender, RoutedEventArgs eventArgs) => _ = _runtime.RetryAsync();
+    private void HandleRetryRequested(object? sender, EventArgs eventArgs) => _ = _runtime.RetryAsync();
 
-    private void HandlePronounceClick(object? sender, RoutedEventArgs eventArgs)
-    {
-        if (sender is Control { Tag: string term } && !string.IsNullOrWhiteSpace(term))
-        {
-            _ = _runtime.PronounceAsync(term);
-        }
-    }
+    private void HandlePronunciationRequested(object? sender, string term) =>
+        _ = _runtime.PronounceAsync(term);
 
-    private async void HandleCopyClick(object? sender, RoutedEventArgs eventArgs)
+    private async void HandleResultCopyRequested(object? sender, string output)
     {
         var clipboard = GetTopLevel(this)?.Clipboard;
-        var output = _runtime.State.Output;
         if (clipboard is null || string.IsNullOrEmpty(output))
         {
             return;
@@ -102,10 +102,10 @@ internal partial class MainWindow : Window
         }
     }
 
-    private void HandleSettingsClick(object? sender, RoutedEventArgs eventArgs) =>
+    private void HandleSettingsRequested(object? sender, EventArgs eventArgs) =>
         (Application.Current as App)?.ShowSettingsWindow();
 
-    private void HandleHistoryClick(object? sender, RoutedEventArgs eventArgs) =>
+    private void HandleHistoryRequested(object? sender, EventArgs eventArgs) =>
         (Application.Current as App)?.ShowHistoryWindow();
 
     private void HandleClosing(object? sender, WindowClosingEventArgs eventArgs)

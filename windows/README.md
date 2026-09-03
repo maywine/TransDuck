@@ -1,7 +1,9 @@
 # TransDuck for Windows
 
-This directory contains the Windows implementation of TransDuck: a WPF desktop
-application for selected-text translation and screenshot OCR translation.
+This directory contains the Windows implementation of TransDuck: an Avalonia desktop
+application for selected-text translation and screenshot OCR translation. Its windows,
+localization resources, and presentation models come from `../ui/TransDuck.UI`; this
+directory keeps the Windows lifecycle and native adapters.
 
 TransDuck targets Windows 10 x64 desktop sessions. The validated release
 baseline is a single display. Public distribution is the self-contained
@@ -48,7 +50,7 @@ service.
 
 Package only with the ZIP workflow under `windows/packaging/`. Keep every
 published file from the self-contained single-file output together. Managed
-.NET assemblies are bundled into `TransDuck.exe`; required native WPF and
+.NET assemblies are bundled into `TransDuck.exe`; required native Avalonia graphics and
 Tesseract libraries remain external. Users must not launch only a copied
 executable. The portable package is unsigned and can trigger Windows publisher
 or SmartScreen warnings.
@@ -59,8 +61,8 @@ Volcengine AK/SK, and an optional Bing Cookie use CurrentUser Windows DPAPI.
 Translation text is sent to the provider currently selected by the user.
 
 TransDuck is licensed under the repository-root MIT License. The portable ZIP
-includes that license together with the Microsoft .NET, Tesseract, Leptonica,
-and model notices required by its binary payload.
+includes that license together with the Microsoft .NET, Avalonia, SkiaSharp,
+HarfBuzzSharp, ANGLE, Tesseract, Leptonica, and model notices required by its binary payload.
 
 The application and tray use the original duck-and-bilingual-speech-bubbles icon
 generated for TransDuck. Multi-size resources are embedded in the executable.

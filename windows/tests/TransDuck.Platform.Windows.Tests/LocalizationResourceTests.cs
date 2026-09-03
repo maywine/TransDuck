@@ -19,8 +19,8 @@ public sealed class LocalizationResourceTests
     [Fact]
     public void ResourceDictionaries_HaveExactNonEmptyAndWellFormedKeySets()
     {
-        var english = ReadResourceDictionary("Strings.en-US.xaml");
-        var chinese = ReadResourceDictionary("Strings.zh-CN.xaml");
+        var english = ReadResourceDictionary("Strings.en-US.axaml");
+        var chinese = ReadResourceDictionary("Strings.zh-CN.axaml");
 
         Assert.NotEmpty(english);
         Assert.Equal(
@@ -36,8 +36,8 @@ public sealed class LocalizationResourceTests
     [Fact]
     public void TranslationErrorCodeResources_AreStableCamelCaseAcrossLocales()
     {
-        var english = ReadResourceDictionary("Strings.en-US.xaml");
-        var chinese = ReadResourceDictionary("Strings.zh-CN.xaml");
+        var english = ReadResourceDictionary("Strings.en-US.axaml");
+        var chinese = ReadResourceDictionary("Strings.zh-CN.axaml");
         var expected = Enum.GetValues<QueryErrorCode>()
             .Select(errorCode => new
             {
@@ -62,8 +62,8 @@ public sealed class LocalizationResourceTests
     [Fact]
     public void ResourceDictionaries_HaveCompatibleCompositeFormatPlaceholders()
     {
-        var english = ReadResourceDictionary("Strings.en-US.xaml");
-        var chinese = ReadResourceDictionary("Strings.zh-CN.xaml");
+        var english = ReadResourceDictionary("Strings.en-US.axaml");
+        var chinese = ReadResourceDictionary("Strings.zh-CN.axaml");
 
         foreach (var key in english.Keys)
         {
@@ -77,18 +77,15 @@ public sealed class LocalizationResourceTests
     }
 
     [Fact]
-    public void AppAndPrimaryWindows_UseFallbackAndDeclaredResourceKeys()
+    public void SharedUi_UsesFallbackAndDeclaredResourceKeys()
     {
-        var english = ReadResourceDictionary("Strings.en-US.xaml");
-        var app = XDocument.Load(FindAppFile("App.xaml"));
-        var result = XDocument.Load(FindAppFile("Windows", "ResultFloatingWindow.xaml"));
-        var settings = XDocument.Load(FindAppFile("Windows", "SettingsWindow.xaml"));
-        var history = XDocument.Load(FindAppFile("Windows", "HistoryWindow.xaml"));
-        var fallback = Assert.Single(app.Descendants(), element =>
-            element.Name.LocalName == "ResourceDictionary" &&
-            string.Equals(element.Attribute("Source")?.Value, "Resources/Strings.en-US.xaml", StringComparison.Ordinal));
+        var english = ReadResourceDictionary("Strings.en-US.axaml");
+        var appStrings = File.ReadAllText(FindAppFile("Services", "AppStrings.cs"));
+        var result = XDocument.Load(FindUiFile("Views", "TranslationWindowBase.axaml"));
+        var settings = XDocument.Load(FindUiFile("Views", "SettingsWindowBase.axaml"));
+        var history = XDocument.Load(FindUiFile("Views", "HistoryWindowBase.axaml"));
 
-        Assert.Equal("Resources/Strings.en-US.xaml", fallback.Attribute("Source")?.Value);
+        Assert.Contains("UiStrings.InitializeForCurrentCulture()", appStrings, StringComparison.Ordinal);
         AssertResourceReference(result.Root!, "Title", "result.window.title");
         AssertResourceReference(FindAutomationElement(result, "RetryButton"), "Content", "result.button.retry");
         AssertResourceReference(FindAutomationElement(result, "PronounceButton"), "Content",
@@ -112,7 +109,8 @@ public sealed class LocalizationResourceTests
             var referencedKeys = document.Root!.DescendantsAndSelf()
                 .Attributes()
                 .Select(attribute => TryGetResourceKey(attribute.Value, out var key) ? key : null)
-                .Where(key => key is not null)
+                .Where(key => key is not null &&
+                    !key.StartsWith("SystemControl", StringComparison.Ordinal))
                 .Cast<string>()
                 .ToArray();
 
@@ -124,9 +122,9 @@ public sealed class LocalizationResourceTests
     [Fact]
     public void EditableControls_HaveNonEmptyDynamicResourceAutomationNames()
     {
-        var english = ReadResourceDictionary("Strings.en-US.xaml");
-        var settings = XDocument.Load(FindAppFile("Windows", "SettingsWindow.xaml"));
-        var result = XDocument.Load(FindAppFile("Windows", "ResultFloatingWindow.xaml"));
+        var english = ReadResourceDictionary("Strings.en-US.axaml");
+        var settings = XDocument.Load(FindUiFile("Views", "SettingsWindowBase.axaml"));
+        var result = XDocument.Load(FindUiFile("Views", "TranslationWindowBase.axaml"));
         var settingsEditableControls = new[]
         {
             "ProviderComboBox",
@@ -161,8 +159,8 @@ public sealed class LocalizationResourceTests
     [Fact]
     public void StartupResources_AreDeclaredInBothLocalesWithoutLockingNaturalLanguage()
     {
-        var english = ReadResourceDictionary("Strings.en-US.xaml");
-        var chinese = ReadResourceDictionary("Strings.zh-CN.xaml");
+        var english = ReadResourceDictionary("Strings.en-US.axaml");
+        var chinese = ReadResourceDictionary("Strings.zh-CN.axaml");
         var expectedKeys = new[]
         {
             "settings.heading.startup",
@@ -193,8 +191,8 @@ public sealed class LocalizationResourceTests
     [Fact]
     public void ProviderResources_AreDeclaredInBothLocalesWithoutLockingNaturalLanguage()
     {
-        var english = ReadResourceDictionary("Strings.en-US.xaml");
-        var chinese = ReadResourceDictionary("Strings.zh-CN.xaml");
+        var english = ReadResourceDictionary("Strings.en-US.axaml");
+        var chinese = ReadResourceDictionary("Strings.zh-CN.axaml");
         var expectedKeys = new[]
         {
             "provider.name.bing",
@@ -215,8 +213,8 @@ public sealed class LocalizationResourceTests
     [Fact]
     public void ProductVersionResources_AreDeclaredInBothLocales()
     {
-        var english = ReadResourceDictionary("Strings.en-US.xaml");
-        var chinese = ReadResourceDictionary("Strings.zh-CN.xaml");
+        var english = ReadResourceDictionary("Strings.en-US.axaml");
+        var chinese = ReadResourceDictionary("Strings.zh-CN.axaml");
         var expectedKeys = new[]
         {
             "result.automation.product_version.help",
@@ -235,8 +233,8 @@ public sealed class LocalizationResourceTests
     [Fact]
     public void ProxyResources_AreDeclaredInBothLocalesWithoutLockingNaturalLanguage()
     {
-        var english = ReadResourceDictionary("Strings.en-US.xaml");
-        var chinese = ReadResourceDictionary("Strings.zh-CN.xaml");
+        var english = ReadResourceDictionary("Strings.en-US.axaml");
+        var chinese = ReadResourceDictionary("Strings.zh-CN.axaml");
         var expectedKeys = new[]
         {
             "settings.heading.proxy",
@@ -269,7 +267,7 @@ public sealed class LocalizationResourceTests
 
     private static IReadOnlyDictionary<string, string> ReadResourceDictionary(string fileName)
     {
-        var document = XDocument.Load(FindAppFile("Resources", fileName));
+        var document = XDocument.Load(FindUiFile("Resources", fileName));
         var entries = document.Root!
             .Elements()
             .Select(element => new ResourceEntry(
@@ -359,6 +357,24 @@ public sealed class LocalizationResourceTests
         }
 
         throw new FileNotFoundException("The TransDuck.App source file was not found from the test host path.");
+    }
+
+    private static string FindUiFile(params string[] relativePath)
+    {
+        foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            for (var directory = new DirectoryInfo(start); directory is not null; directory = directory.Parent)
+            {
+                var candidate = Path.Combine(
+                    [directory.FullName, "ui", "TransDuck.UI", .. relativePath]);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        throw new FileNotFoundException("The shared TransDuck.UI source file was not found from the test host path.");
     }
 
     private static string ToLowerCamelCase(string value) =>

@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using TransDuck.MacOS.App.Views;
+using TransDuck.UI;
 
 namespace TransDuck.MacOS.App;
 
@@ -25,6 +26,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            UiStrings.InitializeForCurrentCulture();
             _desktop = desktop;
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _runtime = new MacAppRuntime();

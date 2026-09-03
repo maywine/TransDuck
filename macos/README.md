@@ -3,6 +3,8 @@
 This directory contains the macOS implementation of TransDuck. It is a .NET 10
 Avalonia menu-bar application with narrow adapters for Accessibility, Keychain,
 Vision OCR, interactive screen capture, global keyboard hooks, and LaunchAgents.
+Its windows, localization resources, and presentation models are shared with Windows
+from `../ui/TransDuck.UI`.
 
 ## Supported systems and packages
 

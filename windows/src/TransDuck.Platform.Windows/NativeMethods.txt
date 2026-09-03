@@ -1,0 +1,6 @@
+CoCreateInstance
+IUIAutomation
+IUIAutomationElement
+IUIAutomationTextPattern
+IUIAutomationTextRangeArray
+IUIAutomationTextRange

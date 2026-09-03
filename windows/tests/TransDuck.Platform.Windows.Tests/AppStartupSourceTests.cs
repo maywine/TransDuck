@@ -9,22 +9,24 @@ public sealed class AppStartupSourceTests
     [Fact]
     public void App_AcquiresTheSingleInstanceGuardBeforeConstructingAppRuntime()
     {
-        var source = ReadSource("TransDuck.App", "App.xaml.cs");
-        var startup = source.IndexOf("protected override async void OnStartup", StringComparison.Ordinal);
-        var exit = source.IndexOf("protected override void OnExit", startup, StringComparison.Ordinal);
+        var source = ReadSource("TransDuck.App", "App.axaml.cs");
+        var startup = source.IndexOf("public override void OnFrameworkInitializationCompleted", StringComparison.Ordinal);
+        var startRuntimeMethod = source.IndexOf("private async Task StartRuntimeAsync", startup, StringComparison.Ordinal);
         var guard = source.IndexOf("TryAcquireSessionMutex()", startup, StringComparison.Ordinal);
-        var runtime = source.IndexOf("new AppRuntime()", startup, StringComparison.Ordinal);
+        var startRuntime = source.IndexOf("StartRuntimeAsync()", guard, StringComparison.Ordinal);
+        var runtime = source.IndexOf("new AppRuntime()", startRuntimeMethod, StringComparison.Ordinal);
 
         Assert.True(startup >= 0, "The application startup path must be present.");
-        Assert.True(exit > startup, "The startup path must be bounded before OnExit.");
-        Assert.True(guard > startup && guard < runtime);
-        Assert.True(runtime > guard && runtime < exit);
+        Assert.True(startRuntimeMethod > startup, "The framework initialization path must be bounded before runtime startup.");
+        Assert.True(guard > startup && guard < startRuntime);
+        Assert.True(startRuntime > guard && startRuntime < startRuntimeMethod);
+        Assert.True(runtime > startRuntimeMethod);
     }
 
     [Fact]
     public void App_UsesTheDedicatedTransDuckSessionMutex()
     {
-        var source = ReadSource("TransDuck.App", "App.xaml.cs");
+        var source = ReadSource("TransDuck.App", "App.axaml.cs");
 
         Assert.Contains("Local\\\\TransDuck.Windows.", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Local\\\\Easydict.Windows.", source, StringComparison.Ordinal);

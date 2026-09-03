@@ -1,18 +1,20 @@
 // Copyright (c) 2026 maywine. All rights reserved.
 
-using System.Windows;
-using System.Windows.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Platform;
 using TransDuck.App.Services;
 using TransDuck.Core.Contracts.V1;
 using TransDuck.Core.Lookup;
 using TransDuck.Core.Persistence;
+using TransDuck.UI;
+using TransDuck.UI.Views;
 
 namespace TransDuck.App.Windows;
 
 /// <summary>
-/// Presents local query history while keeping persistence and diagnostics outside WPF event handlers.
+/// Presents local query history while keeping persistence and diagnostics outside Avalonia event handlers.
 /// </summary>
-public partial class HistoryWindow : Window
+public sealed class HistoryWindow : HistoryWindowBase
 {
     private readonly HistoryController _controller;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -24,17 +26,17 @@ public partial class HistoryWindow : Window
     internal HistoryWindow(HistoryController controller)
     {
         _controller = controller;
-        InitializeComponent();
+        ConfigureForWindowsHistoryWindow();
+        RefreshRequested += RefreshHistoryButtonClick;
+        ClearRequested += ClearHistoryButtonClick;
+        CloseRequested += CloseHistoryButtonClick;
         Loaded += HandleLoaded;
         Closed += HandleClosed;
     }
 
-    private async void HandleLoaded(object sender, RoutedEventArgs eventArgs) => await RefreshAsync();
+    private async void HandleLoaded(object? sender, RoutedEventArgs eventArgs) => await RefreshAsync();
 
-    private void HistorySelectionChanged(object sender, SelectionChangedEventArgs eventArgs) =>
-        DisplayEntry(HistoryListBox.SelectedItem as HistoryListItem);
-
-    private async void RefreshHistoryButtonClick(object sender, RoutedEventArgs eventArgs)
+    private async void RefreshHistoryButtonClick(object? sender, EventArgs eventArgs)
     {
         if (_isLoading || _isClearing || _isClosed)
         {
@@ -44,21 +46,18 @@ public partial class HistoryWindow : Window
         await RefreshAsync();
     }
 
-    private async void ClearHistoryButtonClick(object sender, RoutedEventArgs eventArgs)
+    private async void ClearHistoryButtonClick(object? sender, EventArgs eventArgs)
     {
         if (_isLoading || _isClearing || _isClosed)
         {
             return;
         }
 
-        var confirmation = MessageBox.Show(
-            this,
+        var confirmation = NativeMessageBox.Confirm(
+            this.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero,
             AppStrings.Get("history.confirm.clear_message"),
-            AppStrings.Get("history.confirm.clear_title"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-        if (confirmation != MessageBoxResult.Yes)
+            AppStrings.Get("history.confirm.clear_title"));
+        if (!confirmation)
         {
             return;
         }
@@ -107,7 +106,7 @@ public partial class HistoryWindow : Window
         }
     }
 
-    private void CloseHistoryButtonClick(object sender, RoutedEventArgs eventArgs) => Close();
+    private void CloseHistoryButtonClick(object? sender, EventArgs eventArgs) => Close();
 
     private async Task RefreshAsync()
     {
@@ -122,16 +121,11 @@ public partial class HistoryWindow : Window
                 return;
             }
 
-            var items = loaded.Entries.Select(entry => new HistoryListItem(entry, DescribeListItem(entry))).ToArray();
-            HistoryListBox.ItemsSource = items;
-            if (items.Length > 0)
-            {
-                HistoryListBox.SelectedIndex = 0;
-            }
-            else
-            {
-                DisplayEntry(null);
-            }
+            var items = loaded.Entries.Select(entry => new HistoryItemViewModel(
+                DescribeListItem(entry),
+                entry.Request.Text,
+                DescribeResult(entry.Result))).ToArray();
+            SetHistoryItems(items);
 
             HistoryStatusTextBlock.Text = DescribeLoadStatus(loaded);
         }
@@ -142,8 +136,7 @@ public partial class HistoryWindow : Window
         {
             if (IsCurrentLoad(generation))
             {
-                HistoryListBox.ItemsSource = Array.Empty<HistoryListItem>();
-                DisplayEntry(null);
+                SetHistoryItems([]);
                 HistoryStatusTextBlock.Text = AppStrings.Get("history.status.load_failed");
             }
         }
@@ -155,12 +148,6 @@ public partial class HistoryWindow : Window
                 UpdateCommandState();
             }
         }
-    }
-
-    private void DisplayEntry(HistoryListItem? item)
-    {
-        HistorySourceTextBox.Text = item?.Entry.Request.Text ?? string.Empty;
-        HistoryResultTextBox.Text = item is null ? string.Empty : DescribeResult(item.Entry.Result);
     }
 
     private void HandleClosed(object? sender, EventArgs eventArgs)
@@ -256,6 +243,4 @@ public partial class HistoryWindow : Window
         var singleLine = text.ReplaceLineEndings(" ").Trim();
         return singleLine.Length <= 72 ? singleLine : singleLine[..72] + "…";
     }
-
-    private sealed record HistoryListItem(HistoryEntry Entry, string Label);
 }

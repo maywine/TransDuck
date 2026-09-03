@@ -30,14 +30,14 @@ public sealed class HistoryWindowMarkupTests
         };
         var requiredHandlers = new Dictionary<string, (string AttributeName, string Handler)>(StringComparer.Ordinal)
         {
-            ["HistoryListBox"] = ("SelectionChanged", "HistorySelectionChanged"),
-            ["RefreshHistoryButton"] = ("Click", "RefreshHistoryButtonClick"),
-            ["ClearHistoryButton"] = ("Click", "ClearHistoryButtonClick"),
-            ["CloseHistoryButton"] = ("Click", "CloseHistoryButtonClick"),
+            ["HistoryListBox"] = ("SelectionChanged", "HandleSelectionChanged"),
+            ["RefreshHistoryButton"] = ("Click", "HandleRefreshClick"),
+            ["ClearHistoryButton"] = ("Click", "HandleClearClick"),
+            ["CloseHistoryButton"] = ("Click", "HandleCloseClick"),
         };
 
         Assert.Equal(automationIds.Length, automationIds.Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal("TransDuck.App.Windows.HistoryWindow", document.Root!.Attributes().Single(attribute =>
+        Assert.Equal("TransDuck.UI.Views.HistoryWindowBase", document.Root!.Attributes().Single(attribute =>
             attribute.Name.LocalName == "Class").Value);
         foreach (var requiredControl in requiredControls)
         {
@@ -81,11 +81,10 @@ public sealed class HistoryWindowMarkupTests
             {
                 var candidate = Path.Combine(
                     directory.FullName,
-                    "windows",
-                    "src",
-                    "TransDuck.App",
-                    "Windows",
-                    "HistoryWindow.xaml");
+                    "ui",
+                    "TransDuck.UI",
+                    "Views",
+                    "HistoryWindowBase.axaml");
                 if (File.Exists(candidate))
                 {
                     return candidate;
@@ -93,7 +92,7 @@ public sealed class HistoryWindowMarkupTests
             }
         }
 
-        throw new FileNotFoundException("HistoryWindow.xaml was not found from the test host path.");
+        throw new FileNotFoundException("HistoryWindowBase.axaml was not found from the test host path.");
     }
 
     private sealed record AutomationControl(XElement Element, string? AutomationId);

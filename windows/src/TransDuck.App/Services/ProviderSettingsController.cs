@@ -7,7 +7,7 @@ using TransDuck.Core.Translation;
 namespace TransDuck.App.Services;
 
 /// <summary>
-/// Coordinates non-secret provider settings, credentials, and configuration without exposing storage to WPF code-behind.
+/// Coordinates non-secret provider settings, credentials, and configuration without exposing storage to UI code-behind.
 /// </summary>
 internal sealed class ProviderSettingsController
 {

@@ -1,0 +1,173 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TransDuck.UI.Views.TranslationWindowBase"
+        Title="{DynamicResource result.window.title}"
+        Icon="avares://TransDuck.UI/Assets/TransDuck.png"
+        Width="760"
+        Height="650"
+        MinWidth="520"
+        MinHeight="420"
+        WindowStartupLocation="CenterScreen">
+  <Border x:Name="RootBorderElement"
+          Margin="8"
+          Padding="14"
+          CornerRadius="10"
+          Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+          BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+          BorderThickness="1">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" RowSpacing="10">
+      <Grid x:Name="HeaderPanelElement" Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+        <Image Source="avares://TransDuck.UI/Assets/TransDuck.png" Width="38" Height="38" Margin="0,0,10,0" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock FontWeight="SemiBold" FontSize="18"
+                     Text="{DynamicResource result.heading.brand}" />
+          <TextBlock x:Name="VersionTextBlockElement"
+                     FontSize="11"
+                     Opacity="0.65"
+                     AutomationProperties.AutomationId="ProductVersionTextBlock"
+                     AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}"
+                     AutomationProperties.HelpText="{DynamicResource result.automation.product_version.help}" />
+        </StackPanel>
+        <Button x:Name="HistoryButtonElement"
+                Grid.Column="2"
+                Margin="8,0,0,0"
+                Content="{DynamicResource result.button.history}"
+                Click="HandleHistoryClick"
+                AutomationProperties.AutomationId="HistoryButton" />
+        <Button x:Name="SettingsButtonElement"
+                Grid.Column="3"
+                Margin="8,0,0,0"
+                Content="{DynamicResource result.button.settings}"
+                Click="HandleSettingsClick"
+                AutomationProperties.AutomationId="SettingsButton" />
+        <Button x:Name="HideButtonElement"
+                Grid.Column="4"
+                Margin="8,0,0,0"
+                Width="30"
+                Height="26"
+                Content="×"
+                Click="HandleHideClick"
+                AutomationProperties.AutomationId="HideButton"
+                AutomationProperties.Name="{DynamicResource result.button.hide}" />
+      </Grid>
+
+      <TextBox x:Name="InputTextBoxElement"
+               Grid.Row="1"
+               MinHeight="64"
+               AcceptsReturn="True"
+               TextWrapping="Wrap"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
+               AutomationProperties.AutomationId="InputTextBox"
+               AutomationProperties.Name="{DynamicResource result.automation.input.name}"
+               AutomationProperties.HelpText="{DynamicResource result.automation.input.help}" />
+
+      <WrapPanel Grid.Row="2">
+        <Button x:Name="TranslateButtonElement"
+                Margin="0,0,8,0"
+                Content="{DynamicResource result.button.translate}"
+                Click="HandleTranslateClick"
+                AutomationProperties.AutomationId="TranslateButton" />
+        <Button x:Name="SelectedTextButtonElement"
+                Margin="0,0,8,0"
+                Content="{DynamicResource result.button.selected_text}"
+                Click="HandleSelectedTextClick"
+                AutomationProperties.AutomationId="SelectedTextButton" />
+        <Button x:Name="CaptureOcrButtonElement"
+                Margin="0,0,8,0"
+                Content="{DynamicResource result.button.capture_ocr}"
+                Click="HandleCaptureOcrClick"
+                AutomationProperties.AutomationId="CaptureOcrButton" />
+        <ComboBox x:Name="OcrLanguageComboBoxElement"
+                  Width="110"
+                  SelectedIndex="0"
+                  AutomationProperties.AutomationId="OcrLanguageBox"
+                  AutomationProperties.Name="{DynamicResource result.automation.ocr_language.name}"
+                  AutomationProperties.HelpText="{DynamicResource result.automation.ocr_language.help}">
+          <ComboBoxItem Tag="en-US" Content="{DynamicResource result.ocr_language.english}" />
+          <ComboBoxItem Tag="zh-Hans" Content="{DynamicResource result.ocr_language.simplified_chinese}" />
+        </ComboBox>
+        <Button x:Name="CancelButtonElement"
+                Margin="8,0,0,0"
+                Content="{DynamicResource result.button.cancel}"
+                Click="HandleCancelClick"
+                AutomationProperties.AutomationId="CancelButton" />
+        <Button x:Name="RetryButtonElement"
+                Margin="8,0,0,0"
+                IsEnabled="False"
+                Content="{DynamicResource result.button.retry}"
+                Click="HandleRetryClick"
+                AutomationProperties.AutomationId="RetryButton" />
+      </WrapPanel>
+
+      <TextBlock x:Name="SelectionHintTextBlockElement"
+                 Grid.Row="3"
+                 Opacity="0.7"
+                 TextWrapping="Wrap"
+                 Text="{DynamicResource result.hint.default}" />
+      <TextBlock x:Name="TranslationErrorCodeTextBlockElement"
+                 Grid.Row="4"
+                 Foreground="#9B2C2C"
+                 TextWrapping="Wrap"
+                 IsVisible="False"
+                 AutomationProperties.AutomationId="TranslationErrorCodeTextBlock"
+                 AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}"
+                 AutomationProperties.HelpText="{DynamicResource result.automation.error_code.help}" />
+
+      <ScrollViewer Grid.Row="5"
+                    VerticalScrollBarVisibility="Auto"
+                    AutomationProperties.Name="{DynamicResource result.automation.output.name}"
+                    AutomationProperties.HelpText="{DynamicResource result.automation.output.help}">
+        <ItemsControl x:Name="ResultsItemsControlElement"
+                      AutomationProperties.AutomationId="ResultItemsControl">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Margin="0,0,0,10"
+                      Padding="10"
+                      CornerRadius="6"
+                      Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                      BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                      BorderThickness="1">
+                <StackPanel Spacing="6">
+                  <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                    <Button Grid.Column="1"
+                            Margin="8,0"
+                            Padding="8,2"
+                            Content="{DynamicResource result.button.pronounce}"
+                            Tag="{Binding PronunciationTerm}"
+                            IsVisible="{Binding CanPronounce}"
+                            Click="HandlePronounceClick"
+                            AutomationProperties.AutomationId="PronounceButton"
+                            AutomationProperties.HelpText="{DynamicResource result.automation.pronounce.help}" />
+                    <TextBlock Grid.Column="2" Opacity="0.7" Text="{Binding Status}" />
+                  </Grid>
+                  <TextBox Text="{Binding Text}"
+                           IsReadOnly="True"
+                           TextWrapping="Wrap"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Padding="0" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <Grid Grid.Row="6" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <TextBlock x:Name="StatusTextBlockElement"
+                   VerticalAlignment="Center"
+                   Opacity="0.75"
+                   TextWrapping="Wrap"
+                   AutomationProperties.AutomationId="StatusTextBlock"
+                   AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}"
+                   AutomationProperties.HelpText="{DynamicResource result.automation.status.help}" />
+        <Button x:Name="CopyResultButtonElement"
+                Grid.Column="1"
+                Content="{DynamicResource result.button.copy}"
+                Click="HandleCopyClick"
+                AutomationProperties.AutomationId="CopyResultButton" />
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

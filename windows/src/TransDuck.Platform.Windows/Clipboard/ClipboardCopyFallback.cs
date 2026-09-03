@@ -1,7 +1,5 @@
 using System.Runtime.InteropServices;
-using System.Windows;
 using TransDuck.Platform.Windows.Interop;
-using WpfClipboard = System.Windows.Clipboard;
 
 namespace TransDuck.Platform.Windows.Clipboard;
 
@@ -136,11 +134,7 @@ public sealed class ClipboardCopyFallback
                 }
                 else
                 {
-                    var text = ClipboardAccess.Execute(() => WpfClipboard.ContainsText(TextDataFormat.UnicodeText)
-                        ? WpfClipboard.GetText(TextDataFormat.UnicodeText)
-                        : WpfClipboard.ContainsText(TextDataFormat.Text)
-                            ? WpfClipboard.GetText(TextDataFormat.Text)
-                            : string.Empty);
+                    WindowsClipboardText.TryRead(out var text, out _);
 
                     result = string.IsNullOrEmpty(text)
                         ? ClipboardCopyResult.Failed(

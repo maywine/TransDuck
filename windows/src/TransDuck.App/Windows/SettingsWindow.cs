@@ -1,9 +1,10 @@
 // Copyright (c) 2026 maywine. All rights reserved.
 
 using System.IO;
-using System.Windows;
-using System.Windows.Controls;
-using Microsoft.Win32;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using TransDuck.App.Services;
 using TransDuck.Core.Contracts.V1;
 using TransDuck.Core.Lookup;
@@ -13,13 +14,14 @@ using TransDuck.Platform.Windows.Hotkeys;
 using TransDuck.Infrastructure.Proxy;
 using TransDuck.Platform.Windows.Startup;
 using TransDuck.Infrastructure.Translation;
+using TransDuck.UI.Views;
 
 namespace TransDuck.App.Windows;
 
 /// <summary>
-/// Hosts the Windows MVP provider settings form without allowing code-behind to touch storage directly.
+/// Hosts the Windows MVP provider settings form without allowing Avalonia code-behind to touch storage directly.
 /// </summary>
-public partial class SettingsWindow : Window
+public sealed class SettingsWindow : SettingsWindowBase
 {
     private readonly ProviderSettingsController _controller;
     private readonly QuerySourceSettingsController _querySourceController;
@@ -54,7 +56,17 @@ public partial class SettingsWindow : Window
         _proxyController = proxyController;
         _hotkeyController = hotkeyController;
         _startupController = startupController;
-        InitializeComponent();
+        ConfigureForWindowsSettingsWindow();
+        ProviderSelectionRequested += ProviderSelectionChanged;
+        BrowseLocalDictionaryRequested += BrowseLocalDictionaryButtonClick;
+        SaveQuerySourcesRequested += SaveQuerySourcesButtonClick;
+        SaveProviderRequested += SaveButtonClick;
+        ClearCredentialRequested += ClearCredentialButtonClick;
+        CloseRequested += CloseButtonClick;
+        SaveHotkeyRequested += SaveHotkeyButtonClick;
+        ProxyModeSelectionRequested += ProxyModeSelectionChanged;
+        SaveProxyRequested += SaveProxySettingsButtonClick;
+        SaveStartupRequested += SaveStartupButtonClick;
         ProductVersionTextBlock.Text = TransDuck.Core.ProductVersionDisplay.FromAssembly(typeof(App).Assembly);
         Loaded += HandleLoaded;
         Closed += HandleClosed;
@@ -66,7 +78,7 @@ public partial class SettingsWindow : Window
         ApplyStartupControllerState();
     }
 
-    private async void HandleLoaded(object sender, RoutedEventArgs eventArgs)
+    private async void HandleLoaded(object? sender, RoutedEventArgs eventArgs)
     {
         ApplyHotkeyControllerState();
         ApplyProxyControllerState();
@@ -74,7 +86,7 @@ public partial class SettingsWindow : Window
         await Task.WhenAll(LoadAsync(), LoadProxyAsync(), LoadStartupAsync());
     }
 
-    private async void ProviderSelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
+    private async void ProviderSelectionChanged(object? sender, SelectionChangedEventArgs eventArgs)
     {
         if (_isLoading || _isBusy || _isProxySaving || _isClosed)
         {
@@ -85,7 +97,7 @@ public partial class SettingsWindow : Window
         await RefreshCredentialStatusAsync();
     }
 
-    private async void SaveButtonClick(object sender, RoutedEventArgs eventArgs)
+    private async void SaveButtonClick(object? sender, EventArgs eventArgs)
     {
         if (_isLoading || _isBusy || _isProxySaving || _isClosed)
         {
@@ -158,23 +170,30 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void BrowseLocalDictionaryButtonClick(object sender, RoutedEventArgs eventArgs)
+    private async void BrowseLocalDictionaryButtonClick(object? sender, EventArgs eventArgs)
     {
-        var dialog = new OpenFileDialog
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = AppStrings.Get("settings.label.local_dictionary_file"),
-            CheckFileExists = true,
-            Multiselect = false,
-            Filter = "Local dictionary (*.csv;*.db;*.sqlite;*.sqlite3)|*.csv;*.db;*.sqlite;*.sqlite3|All files (*.*)|*.*",
-        };
-        if (dialog.ShowDialog(this) == true)
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Local dictionary")
+                {
+                    Patterns = ["*.csv", "*.db", "*.sqlite", "*.sqlite3"],
+                },
+                FilePickerFileTypes.All,
+            ],
+        });
+        var path = files.FirstOrDefault()?.TryGetLocalPath();
+        if (!string.IsNullOrWhiteSpace(path))
         {
-            LocalDictionaryPathTextBox.Text = dialog.FileName;
+            LocalDictionaryPathTextBox.Text = path;
             LocalDictionaryEnabledCheckBox.IsChecked = true;
         }
     }
 
-    private async void SaveQuerySourcesButtonClick(object sender, RoutedEventArgs eventArgs)
+    private async void SaveQuerySourcesButtonClick(object? sender, EventArgs eventArgs)
     {
         if (_isLoading || _isBusy || _isClosed ||
             !TryCreateQuerySourceSettings(currentProfile: null, out var querySources))
@@ -222,7 +241,7 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private async void ClearCredentialButtonClick(object sender, RoutedEventArgs eventArgs)
+    private async void ClearCredentialButtonClick(object? sender, EventArgs eventArgs)
     {
         if (_isLoading || _isBusy || _isProxySaving || _isClosed)
         {
@@ -271,9 +290,9 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void CloseButtonClick(object sender, RoutedEventArgs eventArgs) => Close();
+    private void CloseButtonClick(object? sender, EventArgs eventArgs) => Close();
 
-    private async void SaveHotkeyButtonClick(object sender, RoutedEventArgs eventArgs)
+    private async void SaveHotkeyButtonClick(object? sender, EventArgs eventArgs)
     {
         if (_isLoading || _isBusy || _isHotkeySaving || _isProxySaving || _isClosed ||
             !_hotkeyController.IsInitialized)
@@ -318,7 +337,7 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void ProxyModeSelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
+    private void ProxyModeSelectionChanged(object? sender, SelectionChangedEventArgs eventArgs)
     {
         if (_isLoading || _isBusy || _isHotkeySaving || _isStartupSaving || _isProxySaving || _isClosed)
         {
@@ -328,7 +347,7 @@ public partial class SettingsWindow : Window
         ApplyProxyModeInputState();
     }
 
-    private async void SaveProxySettingsButtonClick(object sender, RoutedEventArgs eventArgs)
+    private async void SaveProxySettingsButtonClick(object? sender, EventArgs eventArgs)
     {
         if (_isLoading || _isBusy || _isHotkeySaving || _isStartupSaving || _isProxySaving || _isClosed ||
             !_proxyController.IsInitialized)
@@ -373,7 +392,7 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private async void SaveStartupButtonClick(object sender, RoutedEventArgs eventArgs)
+    private async void SaveStartupButtonClick(object? sender, EventArgs eventArgs)
     {
         if (_isLoading || _isBusy || _isHotkeySaving || _isProxySaving || _isStartupSaving || _isClosed ||
             !_startupController.IsInitialized)
@@ -608,7 +627,7 @@ public partial class SettingsWindow : Window
             endpoint,
             NullIfWhiteSpace(ModelTextBox.Text),
             NullIfWhiteSpace(SourceLanguageTextBox.Text),
-            TargetLanguageTextBox.Text,
+            TargetLanguageTextBox.Text ?? string.Empty,
             timeoutSeconds);
         retention = new HistoryRetention(maxEntries, maxAgeDays);
         try
@@ -892,7 +911,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        if (Dispatcher.CheckAccess())
+        if (Dispatcher.UIThread.CheckAccess())
         {
             ApplyHotkeyControllerState(generation);
             return;
@@ -900,7 +919,7 @@ public partial class SettingsWindow : Window
 
         try
         {
-            _ = Dispatcher.BeginInvoke(new Action(() => ApplyHotkeyControllerState(generation)));
+            Dispatcher.UIThread.Post(() => ApplyHotkeyControllerState(generation));
         }
         catch (InvalidOperationException)
         {
@@ -916,7 +935,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        if (Dispatcher.CheckAccess())
+        if (Dispatcher.UIThread.CheckAccess())
         {
             ApplyProxyControllerState(generation);
             return;
@@ -924,7 +943,7 @@ public partial class SettingsWindow : Window
 
         try
         {
-            _ = Dispatcher.BeginInvoke(new Action(() => ApplyProxyControllerState(generation)));
+            Dispatcher.UIThread.Post(() => ApplyProxyControllerState(generation));
         }
         catch (InvalidOperationException)
         {
@@ -967,7 +986,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        if (Dispatcher.CheckAccess())
+        if (Dispatcher.UIThread.CheckAccess())
         {
             ApplyStartupControllerState(generation);
             return;
@@ -975,7 +994,7 @@ public partial class SettingsWindow : Window
 
         try
         {
-            _ = Dispatcher.BeginInvoke(new Action(() => ApplyStartupControllerState(generation)));
+            Dispatcher.UIThread.Post(() => ApplyStartupControllerState(generation));
         }
         catch (InvalidOperationException)
         {
@@ -1083,9 +1102,7 @@ public partial class SettingsWindow : Window
     private void ApplyCredentialLayout()
     {
         var usesVolcengineKeyPair = SelectedProviderIsVolcengine();
-        VolcengineAccessKeyPanel.Visibility = usesVolcengineKeyPair
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        VolcengineAccessKeyPanel.IsVisible = usesVolcengineKeyPair;
         CredentialLabelTextBlock.Text = AppStrings.Get(usesVolcengineKeyPair
             ? "settings.label.volcengine_secret_access_key"
             : "settings.label.credential");
@@ -1096,14 +1113,14 @@ public partial class SettingsWindow : Window
         value = null;
         if (!string.Equals(providerId, TranslationProviderIds.Volcengine, StringComparison.Ordinal))
         {
-            value = string.IsNullOrEmpty(CredentialPasswordBox.Password)
+            value = string.IsNullOrEmpty(CredentialPasswordBox.Text)
                 ? null
-                : CredentialPasswordBox.Password;
+                : CredentialPasswordBox.Text;
             return true;
         }
 
-        var accessKeyId = VolcengineAccessKeyIdPasswordBox.Password;
-        var secretAccessKey = CredentialPasswordBox.Password;
+        var accessKeyId = VolcengineAccessKeyIdPasswordBox.Text;
+        var secretAccessKey = CredentialPasswordBox.Text;
         if (string.IsNullOrEmpty(accessKeyId) && string.IsNullOrEmpty(secretAccessKey))
         {
             return true;
@@ -1147,7 +1164,7 @@ public partial class SettingsWindow : Window
         ? provider.ProviderId
         : provider.ProviderId + ":" + provider.InstanceId;
 
-    private static string? NullIfWhiteSpace(string value) =>
+    private static string? NullIfWhiteSpace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value;
 
     private IReadOnlyList<CheckBox> SourceCheckBoxes() =>

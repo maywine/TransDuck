@@ -25,6 +25,7 @@ $report = [ordered]@{
     AuditScriptAstClean = $false
     ExactArtifactAndRootPinned = $false
     ReleaseWinX64SelfContainedPinned = $false
+    CrossPlatformLocalPackagingPinned = $false
     SingleFileManagedPayloadPinned = $false
     ApplicationAndDotNetLicensesPinned = $false
     DefaultNoOverwriteAndAtomicForce = $false
@@ -60,12 +61,22 @@ try {
     $report.ReleaseWinX64SelfContainedPinned = $packageSource.Contains("ValidateSet('Release')") -and
         $packageSource.Contains('--runtime win-x64 --self-contained true') -and
         $packageSource.Contains('-p:PublishSingleFile=true')
+    $report.CrossPlatformLocalPackagingPinned =
+        $packageSource.Contains("src/TransDuck.App/TransDuck.App.csproj") -and
+        $packageSource.Contains('[IO.Path]::DirectorySeparatorChar') -and
+        $packageSource.Contains('-p:EnableWindowsTargeting=true') -and
+        $packageSource.Contains('macos/third_party/licenses/Microsoft-.NET-LICENSE.txt') -and
+        $packageSource.Contains('macos/third_party/licenses/Microsoft-.NET-ThirdPartyNotices.txt')
     $report.SingleFileManagedPayloadPinned = $auditSource.Contains('BundledManagedEntriesAbsent') -and
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Core.dll') -and
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Infrastructure.dll') -and
         $auditSource.Contains('TransDuck-Windows-x64/TransDuck.Platform.Windows.dll') -and
+        $auditSource.Contains('TransDuck-Windows-x64/TransDuck.UI.dll') -and
         $auditSource.Contains('TransDuck-Windows-x64/Tesseract.dll') -and
-        $auditSource.Contains('TransDuck-Windows-x64/System.Speech.dll')
+        $auditSource.Contains('TransDuck-Windows-x64/System.Speech.dll') -and
+        $auditSource.Contains('TransDuck-Windows-x64/Avalonia.Win32.dll') -and
+        $auditSource.Contains('TransDuck-Windows-x64/SkiaSharp.dll') -and
+        $auditSource.Contains('TransDuck-Windows-x64/PresentationFramework.dll')
     $report.ApplicationAndDotNetLicensesPinned = $packageSource.Contains("licenseSource = Join-Path `$repositoryRoot 'LICENSE'") -and
         $packageSource.Contains("dotnetLicenseSource = Join-Path `$dotnetRoot 'LICENSE.txt'") -and
         $packageSource.Contains("dotnetNoticesSource = Join-Path `$dotnetRoot 'ThirdPartyNotices.txt'") -and
@@ -82,7 +93,8 @@ try {
         $packageSource.Contains("`$failureCode = 'build_artifacts_cleanup_failed'")
     $report.PublishExclusionsPinned = $packageSource.Contains("'x86'") -and $packageSource.Contains("'assets'") -and
         $packageSource.Contains('paddle') -and $packageSource.Contains('pdb') -and
-        $packageSource.Contains('appxmanifest') -and $packageSource.Contains('credentials')
+        $packageSource.Contains('appxmanifest') -and $packageSource.Contains('axaml') -and
+        $packageSource.Contains('credentials')
     $packageExclusions = ''
     $packageExclusionsStart = $packageSource.IndexOf('function Test-ExcludedPayloadPath')
     $packageExclusionsEnd = $packageSource.IndexOf('function Sort-RelativeItemsOrdinal')
@@ -103,10 +115,16 @@ try {
         $auditForbiddenEntries.Contains('proxy-settings')
     $report.QuerySourceSettingsPayloadForbiddenPinned = $packageExclusions.Contains('query-sources') -and
         $auditForbiddenEntries.Contains('query-sources')
-    $report.RequiredRuntimeAndOcrClosurePinned = $packageSource.Contains('D3DCompiler_47_cor3.dll') -and
-        $packageSource.Contains('PenImc_cor3.dll') -and
-        $packageSource.Contains('PresentationNative_cor3.dll') -and
-        $packageSource.Contains('vcruntime140_cor3.dll') -and $packageSource.Contains('wpfgfx_cor3.dll') -and
+    $report.RequiredRuntimeAndOcrClosurePinned = $packageSource.Contains('av_libglesv2.dll') -and
+        $packageSource.Contains('libHarfBuzzSharp.dll') -and
+        $packageSource.Contains('libSkiaSharp.dll') -and
+        $packageSource.Contains('Avalonia-ANGLE-BSD-3-Clause.txt') -and
+        $packageSource.Contains('Avalonia-MIT.txt') -and
+        $packageSource.Contains('HarfBuzzSharp-MIT.txt') -and
+        $packageSource.Contains('Inter-OFL-1.1.txt') -and
+        $packageSource.Contains('MicroCom-MIT.txt') -and
+        $packageSource.Contains('SkiaSharp-HarfBuzz-ThirdPartyNotices.txt') -and
+        $packageSource.Contains('SkiaSharp-MIT.txt') -and
         $packageSource.Contains('e_sqlite3.dll') -and $auditSource.Contains('SQLiteNativeX64') -and
         $packageSource.Contains('x64/tesseract50.dll') -and $packageSource.Contains('x64/leptonica-1.82.0.dll') -and
         $packageSource.Contains('tessdata/eng.traineddata') -and $packageSource.Contains('tessdata/chi_sim.traineddata') -and
@@ -123,13 +141,14 @@ try {
     $report.AuditCoversPeTreeAndStaging = $auditSource.Contains('Test-PeX64') -and
         $auditSource.Contains('0x8664') -and $auditSource.Contains('Get-ZipTreeHash') -and
         $auditSource.Contains('StagingDirectoryCount') -and $auditSource.Contains('ForbiddenEntriesAbsent') -and
-        $auditSource.Contains('WpfNativeRuntimeX64') -and $auditSource.Contains('BundledManagedEntriesAbsent')
+        $auditSource.Contains('AvaloniaNativeRuntimeX64') -and $auditSource.Contains('BundledManagedEntriesAbsent')
     $report.PeInspectionAvoidsZipSeek = $auditSource.Contains('$remaining = $peOffset - 64') -and
         -not $auditSource.Contains('$stream.Position =')
     $chineseLabel = [string][char]0x4e2d + [char]0x6587
     $report.BilingualReadmeComplete = $readmeSource.Contains('English') -and $readmeSource.Contains($chineseLabel) -and
         $readmeSource.Contains('TransDuck.exe') -and $readmeSource.Contains('%LocalAppData%\TransDuck') -and
-        $readmeSource.Contains('login-startup') -and $readmeSource.Contains('Tesseract') -and
+        $readmeSource.Contains('login-startup') -and $readmeSource.Contains('Avalonia') -and
+        $readmeSource.Contains('Tesseract') -and
         $readmeSource.Contains('LICENSE.txt') -and $readmeSource.Contains('Microsoft-DotNet-Library-License.txt')
     $report.FinalArchiveAbsent = -not (Test-Path -LiteralPath $finalArchive)
     $report.NoRecursiveRemoveItem = -not $packageSource.Contains('Remove-Item -Recurse')
@@ -146,7 +165,8 @@ try {
         $packageSource.Contains('[IO.File]::Delete($replacementBackup)')
     foreach ($name in @(
         'PackageScriptAstClean', 'AuditScriptAstClean', 'ExactArtifactAndRootPinned',
-        'ReleaseWinX64SelfContainedPinned', 'SingleFileManagedPayloadPinned',
+        'ReleaseWinX64SelfContainedPinned', 'CrossPlatformLocalPackagingPinned',
+        'SingleFileManagedPayloadPinned',
         'ApplicationAndDotNetLicensesPinned',
         'DefaultNoOverwriteAndAtomicForce',
         'UniqueStagingAndFinallyCleanup', 'IsolatedBuildArtifactsCleanup', 'PublishExclusionsPinned',

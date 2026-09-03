@@ -3,7 +3,7 @@ TransDuck for Windows (x64) / TransDuck Windows 版（x64）
 English
 1. Extract the entire TransDuck-Windows-x64 directory. Do not run from the ZIP or
    move only selected files: TransDuck.exe contains the managed .NET assemblies,
-   while the remaining native WPF/Tesseract libraries, tessdata models, licenses,
+   while the remaining native Avalonia graphics/Tesseract libraries, tessdata models, licenses,
    and notices must stay together.
 2. Run TransDuck.exe from the extracted directory.
 3. Move the whole directory to its final location before enabling the app's
@@ -30,7 +30,7 @@ English
 
 中文
 1. 请完整解压 TransDuck-Windows-x64 目录。不要在 ZIP 内运行，也不要只移动部分文件：
-   TransDuck.exe 已包含托管 .NET 程序集；其余 WPF/Tesseract 原生库、tessdata 模型、许可证和
+   TransDuck.exe 已包含托管 .NET 程序集；其余 Avalonia 图形/Tesseract 原生库、tessdata 模型、许可证和
    notices 必须保持在一起。
 2. 在解压后的目录中运行 TransDuck.exe。
 3. 请先将整个目录移动到最终位置，再启用应用的登录启动选项；之后再移动目录可能留下失效的启动项。
