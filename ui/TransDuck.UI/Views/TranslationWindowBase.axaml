@@ -8,6 +8,28 @@
         MinWidth="520"
         MinHeight="420"
         WindowStartupLocation="CenterScreen">
+  <Window.Styles>
+    <Style Selector="TextBox.resultText">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Style Selector="^ /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+      </Style>
+      <Style Selector="^:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+      </Style>
+      <Style Selector="^:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+      </Style>
+    </Style>
+  </Window.Styles>
   <Border x:Name="RootBorderElement"
           Margin="8"
           Padding="14"
@@ -141,7 +163,8 @@
                             AutomationProperties.HelpText="{DynamicResource result.automation.pronounce.help}" />
                     <TextBlock Grid.Column="2" Opacity="0.7" Text="{Binding Status}" />
                   </Grid>
-                  <TextBox Text="{Binding Text}"
+                  <TextBox Classes="resultText"
+                           Text="{Binding Text}"
                            IsReadOnly="True"
                            TextWrapping="Wrap"
                            Background="Transparent"

@@ -92,6 +92,37 @@ public sealed class ResultFloatingWindowMarkupTests
         Assert.Equal("{DynamicResource result.button.pronounce}", pronounceButton.Attribute("Content")?.Value);
     }
 
+    [Fact]
+    public void ResultText_RemainsSelectableWithoutPointerOrFocusBackgrounds()
+    {
+        var document = XDocument.Load(FindResultFloatingWindowPath());
+        var resultText = Assert.Single(document.Descendants(), element =>
+            element.Name.LocalName == "TextBox" &&
+            string.Equals(element.Attribute("Text")?.Value, "{Binding Text}", StringComparison.Ordinal));
+        var selectors = document.Descendants()
+            .Where(element => element.Name.LocalName == "Style")
+            .Select(element => element.Attribute("Selector")?.Value)
+            .Where(static selector => selector is not null)
+            .ToArray();
+
+        Assert.Equal("True", resultText.Attribute("IsReadOnly")?.Value);
+        Assert.Equal("resultText", resultText.Attribute("Classes")?.Value);
+        Assert.Contains("TextBox.resultText", selectors);
+        Assert.Contains("^:pointerover /template/ Border#PART_BorderElement", selectors);
+        Assert.Contains("^:focus /template/ Border#PART_BorderElement", selectors);
+        Assert.All(document.Descendants().Where(element =>
+            element.Name.LocalName == "Style" &&
+            element.Attribute("Selector")?.Value is
+                "^:pointerover /template/ Border#PART_BorderElement" or
+                "^:focus /template/ Border#PART_BorderElement"), style =>
+        {
+            Assert.Contains(style.Elements(), setter =>
+                setter.Name.LocalName == "Setter" &&
+                setter.Attribute("Property")?.Value == "Background" &&
+                setter.Attribute("Value")?.Value == "Transparent");
+        });
+    }
+
     private static string FindResultFloatingWindowPath()
     {
         foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
