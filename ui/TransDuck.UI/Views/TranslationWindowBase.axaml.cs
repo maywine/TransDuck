@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 
 namespace TransDuck.UI.Views;
@@ -58,7 +59,7 @@ public partial class TranslationWindowBase : Window
         Background = Brushes.Transparent;
         Topmost = true;
         ShowInTaskbar = false;
-        RootBorderElement.Background = new SolidColorBrush(Color.Parse("#FDFDFD"));
+        RootBorderElement.Bind(Border.BackgroundProperty, new DynamicResourceExtension("SystemRegionBrush"));
         RootBorderElement.BorderBrush = new SolidColorBrush(Color.Parse("#2A6D9D"));
         HistoryButtonElement.IsVisible = false;
         SettingsButtonElement.IsVisible = false;

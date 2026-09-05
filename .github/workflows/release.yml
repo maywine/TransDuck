@@ -81,7 +81,8 @@ jobs:
           $projects = @(
             @{ Name = 'core'; Path = 'shared\tests\TransDuck.Core.Tests\TransDuck.Core.Tests.csproj' },
             @{ Name = 'infrastructure'; Path = 'shared\tests\TransDuck.Infrastructure.Tests\TransDuck.Infrastructure.Tests.csproj' },
-            @{ Name = 'platform-windows'; Path = 'windows\tests\TransDuck.Platform.Windows.Tests\TransDuck.Platform.Windows.Tests.csproj' }
+            @{ Name = 'platform-windows'; Path = 'windows\tests\TransDuck.Platform.Windows.Tests\TransDuck.Platform.Windows.Tests.csproj' },
+            @{ Name = 'ui'; Path = 'ui\TransDuck.UI.Tests\TransDuck.UI.Tests.csproj' }
           )
           $failed = $false
 
