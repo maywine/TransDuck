@@ -12,9 +12,10 @@ from `../ui/TransDuck.UI`.
 - Intel x64: `TransDuck-macOS-x64.zip`
 - Apple Silicon arm64: `TransDuck-macOS-arm64.zip`
 
-Each ZIP contains one unsigned, self-contained `TransDuck.app`. There is no DMG,
-PKG, installer, or automatic updater. Signing and notarization require a separate
-Apple Developer configuration and are not silently bypassed.
+Each ZIP contains one self-contained `TransDuck.app` with an ad-hoc signature
+that seals its contents. It is not Developer ID signed or notarized. There is no
+DMG, PKG, installer, or automatic updater. Developer ID signing and notarization
+require a separate Apple Developer configuration.
 
 ## Build and test locally
 
@@ -26,7 +27,8 @@ dotnet build macos/TransDuck.MacOS.sln --configuration Release --no-restore
 dotnet test macos/TransDuck.MacOS.sln --configuration Release --no-restore --no-build
 ```
 
-Build and audit both architecture-specific bundles:
+Build and audit both architecture-specific bundles on macOS (required for
+`codesign` and native ZIP extraction checks):
 
 ```bash
 ./macos/packaging/package-app.sh osx-x64
@@ -40,9 +42,20 @@ Build and audit both architecture-specific bundles:
 Set `TRANSDUCK_DOTNET` to an explicit local `dotnet` executable when it is not on
 `PATH`. The scripts inherit standard proxy environment variables; they do not
 store proxy values.
-On macOS, packaging also launches the newly built app in bounded smoke-test mode
-when the host architecture matches the target RID. The process must initialize
-and cleanly exit before the ZIP is created.
+Packaging moves managed assemblies and other non-Mach-O payloads into
+`Contents/Resources/Runtime`, with relative links preserving .NET's dependency
+lookup paths. Native code stays in `Contents/MacOS`. `sign-app.sh` signs native
+dependencies and then seals the complete app, without extended-attribute
+signatures on managed DLLs. The ZIP preserves Unix file types, execute bits,
+and symbolic links.
+
+After creating the ZIP, packaging runs `test-package.sh`: it audits the archive,
+extracts it with macOS `ditto`, checks the executable permission, and verifies
+the complete signature with `codesign --verify --deep --strict`. It also runs
+the extracted app's bounded smoke test when the host architecture matches the
+target RID. These checks verify bundle integrity and local runtime startup;
+they do not establish Gatekeeper approval or notarization. On other operating
+systems, `test-package.sh` performs only the static archive audit.
 
 ## Platform behavior
 

@@ -8,8 +8,11 @@ macOS is distributed as architecture-specific ZIPs containing `TransDuck.app`:
 `TransDuck-macOS-x64.zip` and `TransDuck-macOS-arm64.zip`. Do not add MSIX, a
 platform installer, or an automatic update channel as a release target. The
 Windows baseline is Windows 10 on x64. The macOS baseline is macOS 14 or later
-on Intel x64 and Apple Silicon arm64. macOS ZIPs are unsigned and self-contained,
-with one `.app` bundle per architecture.
+on Intel x64 and Apple Silicon arm64. macOS ZIPs are self-contained, with one
+ad-hoc-signed `.app` bundle per architecture. Ad-hoc signing seals bundle contents;
+it does not establish a Developer ID identity or Apple notarization. Preserve Unix
+file types, executable permissions, and relative symbolic links in ZIPs, and verify
+the complete app signature after native macOS extraction.
 
 ## Working rules
 

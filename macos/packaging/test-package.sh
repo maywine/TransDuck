@@ -17,3 +17,23 @@ version=$(sed -n 's:.*<VersionPrefix>\([^<]*\)</VersionPrefix>.*:\1:p' "$reposit
   --project "$script_directory/TransDuck.Packaging/TransDuck.Packaging.csproj" \
   --configuration Release \
   -- verify "$zip_path" "$runtime_identifier" "$version"
+
+if [[ $(uname -s) == Darwin ]]; then
+  extraction_root=$(mktemp -d /tmp/transduck-macos-verify.XXXXXX)
+  trap 'rm -rf -- "$extraction_root"' EXIT
+  /usr/bin/ditto -x -k "$zip_path" "$extraction_root"
+  app_directory="$extraction_root/TransDuck.app"
+  if [[ ! -x "$app_directory/Contents/MacOS/TransDuck" ]]; then
+    echo "extracted_app_is_not_executable" >&2
+    exit 1
+  fi
+  /usr/bin/codesign --verify --deep --strict --all-architectures "$app_directory"
+  host_architecture=$(uname -m)
+  if [[ ( "$runtime_identifier" == "osx-x64" && "$host_architecture" == "x86_64" ) ||
+        ( "$runtime_identifier" == "osx-arm64" && "$host_architecture" == "arm64" ) ]]; then
+    "$app_directory/Contents/MacOS/TransDuck" --smoke-test
+  fi
+  echo "native_package_verified: $zip_path"
+else
+  echo "native_package_verification_requires_macOS" >&2
+fi

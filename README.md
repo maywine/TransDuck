@@ -59,7 +59,8 @@ TransDuck 使用原创的“鸭子 + 双语对话气泡”图标。多尺寸图�
 
 ## 安全提示
 
-发布 ZIP 未签名；macOS 包也未 notarize。Windows 可能显示发布者或 SmartScreen 提示，
+Windows 包未签名；macOS 打包使用 ad-hoc 签名，未使用 Developer ID 签名，也未公证。
+Windows 可能显示发布者或 SmartScreen 提示，
 macOS 可能显示 Gatekeeper 提示。运行前请核实发布来源，并使用系统提供的“打开”或
 “仍要打开”流程；不要为了跳过提示而关闭系统安全防护。
 

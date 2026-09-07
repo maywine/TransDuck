@@ -68,7 +68,8 @@ icon resources are embedded in the application and require no runtime download.
 
 ## Security notice
 
-The release ZIPs are unsigned, and the macOS app is not notarized. Windows may
+The Windows package is unsigned. macOS packaging uses ad-hoc signing without
+a Developer ID signature or notarization. Windows may
 show publisher or SmartScreen warnings; macOS may show a Gatekeeper warning.
 Verify the release source and use the operating system's supported Open or Open
 Anyway flow. Do not disable security controls merely to bypass a warning.

@@ -253,7 +253,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_REPOSITORY: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.version.outputs.release_tag }}
-          RELEASE_NOTES: Verified portable packages for Windows x64, macOS x64, and macOS arm64.
+          RELEASE_NOTES: >-
+            Verified portable packages for Windows x64, macOS x64, and macOS arm64.
+            macOS packages preserve executable permissions and symbolic links and
+            pass signature verification after ZIP extraction. macOS apps are
+            ad-hoc signed, not Developer ID signed or notarized; first launch may
+            require Open Anyway in System Settings > Privacy & Security.
         run: |
           set -euo pipefail
           assets=(

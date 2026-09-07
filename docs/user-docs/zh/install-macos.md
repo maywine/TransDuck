@@ -7,8 +7,9 @@ TransDuck 支持 macOS 14 或更高版本。请根据 Mac 的处理器下载对�
 - Apple Silicon（M 系列）：`TransDuck-macOS-arm64.zip`
 - Intel：`TransDuck-macOS-x64.zip`
 
-每个 ZIP 内只有一个自包含的 `TransDuck.app`。当前包未签名、未 notarize，且没有
-DMG、PKG、安装程序或自动更新。
+每个 ZIP 内只有一个自包含的 `TransDuck.app`。本仓库的打包流程使用临时签名（ad-hoc）
+校验应用内容完整性，但没有 Apple Developer ID 签名，也未公证（notarize）。没有 DMG、
+PKG、安装程序或自动更新。
 
 ## 安装与首次打开
 
@@ -16,12 +17,26 @@ DMG、PKG、安装程序或自动更新。
 2. 将 `TransDuck.app` 移到固定位置，例如 `/Applications` 或用户自己的
    `Applications` 目录。启用登录启动后不要再移动它。
 3. 在 Finder 中打开应用。若 Gatekeeper 阻止首次启动，请核实下载来源，然后使用
-   Finder 的 Control-click ->“打开”，或“系统设置”->“隐私与安全性”中系统提供的
-   “仍要打开”。不要关闭 Gatekeeper，也不要删除 quarantine 属性来绕过检查。
+   “系统设置”->“隐私与安全性”中系统提供的“仍要打开”。不同 macOS 版本提供的
+   操作可能不同。不要关闭 Gatekeeper，也不要删除 quarantine 属性来绕过检查。
 4. 从菜单栏的 TransDuck 图标打开 Settings，配置翻译服务。
 
 TransDuck 只在菜单栏显示图标，不在程序坞保留图标。关闭应用窗口只会隐藏窗口，程序仍在
 后台运行；需要完全退出时，请从菜单栏菜单选择 **Quit TransDuck**。
+
+### 提示“已损坏，无法打开”
+
+这个提示也可能由应用包签名不完整或解压后丢失执行权限引起。不要将它直接当作普通的
+“无法验证开发者”提示。可在终端检查已安装的应用（按实际位置替换路径）：
+
+```bash
+codesign --verify --deep --strict --all-architectures "/Applications/TransDuck.app"
+test -x "/Applications/TransDuck.app/Contents/MacOS/TransDuck" && echo executable
+```
+
+若签名检查报告 `code has no resources but signature indicates they must be present`，
+或第二条命令没有输出 `executable`，请获取修复打包流程后生成的完整 ZIP，并完整替换
+旧应用。签名校验通过只说明包内容完整；未公证的应用仍可能需要系统提供的“仍要打开”。
 
 ## 翻译选中文本
 

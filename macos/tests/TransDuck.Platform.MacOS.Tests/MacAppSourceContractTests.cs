@@ -157,7 +157,8 @@ public sealed class MacAppSourceContractTests
         Assert.Contains("--background", ReadRepositoryFile(
             "macos", "src", "TransDuck.Platform.MacOS", "Startup", "LaunchAgentStartupService.cs"),
             StringComparison.Ordinal);
-        Assert.Contains("--smoke-test", package, StringComparison.Ordinal);
+        Assert.Contains("--smoke-test", ReadRepositoryFile("macos", "packaging", "test-package.sh"),
+            StringComparison.Ordinal);
         var program = ReadRepositoryFile("macos", "src", "TransDuck.App", "Program.cs");
         Assert.Contains("RunSmokeTest()", program, StringComparison.Ordinal);
         Assert.Contains(".With(new MacOSPlatformOptions { ShowInDock = false })", program,

@@ -17,5 +17,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\TransDuck.Platform.MacOS\TransDuck.Platform.MacOS.csproj" />
+    <ProjectReference Include="..\..\packaging\TransDuck.Packaging\TransDuck.Packaging.csproj" />
   </ItemGroup>
 </Project>

@@ -8,8 +8,9 @@ processor:
 - Apple Silicon (M-series): `TransDuck-macOS-arm64.zip`
 - Intel: `TransDuck-macOS-x64.zip`
 
-Each ZIP contains one self-contained `TransDuck.app`. The current package is
-unsigned and not notarized, and there is no DMG, PKG, installer, or automatic
+Each ZIP contains one self-contained `TransDuck.app`. This repository's packaging
+process uses an ad-hoc signature to seal the app's contents, but the app is not
+Developer ID signed or notarized. There is no DMG, PKG, installer, or automatic
 updater.
 
 ## Install and open it for the first time
@@ -19,14 +20,31 @@ updater.
 2. Move `TransDuck.app` to a permanent location such as `/Applications` or your
    user Applications folder. Do not move it after enabling login startup.
 3. Open the app in Finder. If Gatekeeper blocks the first launch, verify the
-   download source, then use Finder's Control-click -> **Open** or the operating
-   system's **Open Anyway** action under System Settings -> Privacy & Security.
+   download source, then use the operating system's **Open Anyway** action under
+   System Settings -> Privacy & Security. Available actions vary by macOS version.
    Do not disable Gatekeeper or remove quarantine attributes to bypass the check.
 4. Open Settings from the TransDuck menu-bar icon and configure a provider.
 
 TransDuck runs from its menu-bar icon without keeping an icon in the Dock.
 Closing an application window hides it while TransDuck continues running; use
 **Quit TransDuck** from the menu-bar menu to stop the application.
+
+### “App is damaged and can't be opened”
+
+An incomplete bundle signature or a lost executable permission after extraction
+can also cause this warning. Treat it separately from an unidentified-developer
+warning. Check the installed app in Terminal, adjusting the path as needed:
+
+```bash
+codesign --verify --deep --strict --all-architectures "/Applications/TransDuck.app"
+test -x "/Applications/TransDuck.app/Contents/MacOS/TransDuck" && echo executable
+```
+
+If signature verification reports `code has no resources but signature indicates
+they must be present`, or the second command does not print `executable`, obtain
+a complete ZIP generated with the corrected packaging process and replace the
+old app as a whole. A valid signature confirms bundle integrity; an app without
+notarization may still require the system's **Open Anyway** action.
 
 ## Translate selected text
 

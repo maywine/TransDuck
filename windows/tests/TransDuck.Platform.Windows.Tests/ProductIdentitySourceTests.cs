@@ -57,10 +57,10 @@ public sealed class ProductIdentitySourceTests
             .SelectMany(group => group.Elements())
             .ToDictionary(element => element.Name.LocalName, element => element.Value, StringComparer.Ordinal);
 
-        Assert.Equal("0.0.9", properties["VersionPrefix"]);
+        Assert.Equal("0.0.10", properties["VersionPrefix"]);
         Assert.Equal("$(VersionPrefix)", properties["Version"]);
-        Assert.Equal("0.0.9.0", properties["AssemblyVersion"]);
-        Assert.Equal("0.0.9.0", properties["FileVersion"]);
+        Assert.Equal("0.0.10.0", properties["AssemblyVersion"]);
+        Assert.Equal("0.0.10.0", properties["FileVersion"]);
         Assert.Equal("$(VersionPrefix)", properties["InformationalVersion"]);
         Assert.Equal("false", properties["IncludeSourceRevisionInInformationalVersion"]);
     }
@@ -70,7 +70,8 @@ public sealed class ProductIdentitySourceTests
     {
         var workflow = ReadRepositoryFile(".github", "workflows", "release.yml");
 
-        Assert.Contains("RELEASE_NOTES: Verified portable packages", workflow, StringComparison.Ordinal);
+        Assert.Contains("RELEASE_NOTES:", workflow, StringComparison.Ordinal);
+        Assert.Contains("Verified portable packages", workflow, StringComparison.Ordinal);
         Assert.Contains("--notes \"$RELEASE_NOTES\"", workflow, StringComparison.Ordinal);
         Assert.Contains("--json body", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("--generate-notes", workflow, StringComparison.Ordinal);

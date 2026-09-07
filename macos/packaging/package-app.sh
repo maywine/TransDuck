@@ -6,6 +6,11 @@ if [[ $# -ne 1 || ( "$1" != "osx-x64" && "$1" != "osx-arm64" ) ]]; then
   exit 2
 fi
 
+if [[ $(uname -s) != Darwin ]]; then
+  echo "macOS_required_for_bundle_signing" >&2
+  exit 1
+fi
+
 runtime_identifier=$1
 script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repository_root=$(cd -- "$script_directory/../.." && pwd)
@@ -54,18 +59,14 @@ cp -R -p "$repository_root/macos/third_party/licenses/." "$resources_directory/l
 cp "$repository_root/windows/third_party/licenses/Apache-2.0.txt" \
   "$resources_directory/licenses/SQLitePCLRaw-Apache-2.0.txt"
 
-if [[ $(uname -s) == Darwin ]]; then
-  /usr/bin/plutil -lint "$contents_directory/Info.plist"
-  host_architecture=$(uname -m)
-  if [[ ( "$runtime_identifier" == "osx-x64" && "$host_architecture" == "x86_64" ) ||
-        ( "$runtime_identifier" == "osx-arm64" && "$host_architecture" == "arm64" ) ]]; then
-    "$macos_directory/TransDuck" --smoke-test
-  fi
-fi
+/usr/bin/plutil -lint "$contents_directory/Info.plist"
+"$script_directory/sign-app.sh" "$app_directory"
 
 "$dotnet_command" run \
   --project "$script_directory/TransDuck.Packaging/TransDuck.Packaging.csproj" \
   --configuration Release \
   -- pack "$app_directory" "$zip_path"
+
+"$script_directory/test-package.sh" "$zip_path" "$runtime_identifier"
 
 echo "$zip_path"

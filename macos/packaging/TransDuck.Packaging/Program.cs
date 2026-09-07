@@ -58,13 +58,14 @@ internal static class Program
         File.Delete(destination);
         using var stream = new FileStream(destination, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
         using var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: false);
-        foreach (var filePath in Directory.EnumerateFiles(appRoot, "*", SearchOption.AllDirectories)
+        foreach (var filePath in EnumeratePayload(appRoot)
                      .OrderBy(static path => path, StringComparer.Ordinal))
         {
             var relative = Path.GetRelativePath(Path.GetDirectoryName(appRoot)!, filePath)
                 .Replace(Path.DirectorySeparatorChar, '/');
             var entry = archive.CreateEntry(relative, CompressionLevel.Optimal);
-            var mode = (int)(OperatingSystem.IsWindows()
+            var linkTarget = new FileInfo(filePath).LinkTarget;
+            var mode = linkTarget is not null ? 0xa1ff : 0x8000 | (int)(OperatingSystem.IsWindows()
                 ? string.Equals(Path.GetFileName(filePath), "TransDuck", StringComparison.Ordinal)
                     ? UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
                       UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
@@ -74,13 +75,39 @@ internal static class Program
                 : File.GetUnixFileMode(filePath));
             entry.ExternalAttributes = unchecked(mode << 16);
             entry.LastWriteTime = File.GetLastWriteTimeUtc(filePath);
-            using var input = File.OpenRead(filePath);
             using var output = entry.Open();
-            input.CopyTo(output);
+            if (linkTarget is not null)
+            {
+                output.Write(StrictUtf8.GetBytes(linkTarget));
+            }
+            else
+            {
+                using var input = File.OpenRead(filePath);
+                input.CopyTo(output);
+            }
         }
 
         Console.WriteLine(destination);
         return 0;
+    }
+
+    private static IEnumerable<string> EnumeratePayload(string directory)
+    {
+        foreach (var path in Directory.EnumerateFileSystemEntries(directory))
+        {
+            // Do not follow directory symlinks: archive the link itself.
+            if (new FileInfo(path).LinkTarget is not null || !Directory.Exists(path))
+            {
+                yield return path;
+            }
+            else
+            {
+                foreach (var child in EnumeratePayload(path))
+                {
+                    yield return child;
+                }
+            }
+        }
     }
 
     private static int Verify(string zipPath, string runtimeIdentifier, string version)
@@ -94,12 +121,15 @@ internal static class Program
         using var archive = ZipFile.OpenRead(path);
         var names = archive.Entries.Select(static entry => entry.FullName).ToArray();
         if (names.Length == 0 || names.Any(IsUnsafeEntry) ||
+            names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Length ||
             names.Any(name => !name.StartsWith(AppName + "/", StringComparison.Ordinal)))
         {
             throw new InvalidDataException("The ZIP contains an unsafe or unexpected top-level entry.");
         }
 
         RequireEntry(archive, AppName + "/Contents/Info.plist");
+        RequireEntry(archive, AppName + "/Contents/_CodeSignature/CodeResources");
+        VerifyUnixEntries(archive);
         var executable = RequireEntry(archive, AppName + "/Contents/MacOS/TransDuck");
         RequireEntry(archive, AppName + "/Contents/MacOS/TransDuck.UI.dll");
         var uioHook = RequireEntry(archive, AppName + "/Contents/MacOS/libuiohook.dylib");
@@ -127,7 +157,7 @@ internal static class Program
             "a41658fb2bef7503a3bcb305ab8bf849755fe906");
 
         var executableMode = (executable.ExternalAttributes >> 16) & 0xffff;
-        if ((executableMode & 0x40) == 0)
+        if ((executableMode & 0xf000) != 0x8000 || (executableMode & 0x40) == 0)
         {
             throw new InvalidDataException("The app executable does not retain its owner execute bit.");
         }
@@ -186,6 +216,89 @@ internal static class Program
 
         Console.WriteLine("package_verified: " + path);
         return 0;
+    }
+
+    private static void VerifyUnixEntries(ZipArchive archive)
+    {
+        var links = archive.Entries
+            .Where(static entry => ((entry.ExternalAttributes >> 16) & 0xf000) == 0xa000)
+            .Select(static entry => entry.FullName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in archive.Entries)
+        {
+            // Extraction must not write files through an archived directory link.
+            var parent = entry.FullName;
+            while (parent.LastIndexOf('/') is var separator && separator > 0)
+            {
+                parent = parent[..separator];
+                if (links.Contains(parent))
+                {
+                    throw new InvalidDataException(entry.FullName + " traverses a symbolic link.");
+                }
+            }
+
+            var type = (entry.ExternalAttributes >> 16) & 0xf000;
+            if (type == 0x8000 || (type == 0x4000 && entry.FullName.EndsWith('/')))
+            {
+                continue;
+            }
+
+            if (type != 0xa000 || entry.Length > 4096)
+            {
+                throw new InvalidDataException(entry.FullName + " has an unsupported Unix file type.");
+            }
+
+            var target = StrictUtf8.GetString(ReadEntry(entry));
+            if (string.IsNullOrEmpty(target) || target.StartsWith('/') ||
+                target.Contains('\\') || target.Contains(':') || target.Contains('\0'))
+            {
+                throw new InvalidDataException(entry.FullName + " has an unsafe symbolic link.");
+            }
+
+            var components = entry.FullName.Split('/').SkipLast(1).ToList();
+            foreach (var component in target.Split('/'))
+            {
+                if (component is "" or ".")
+                {
+                    continue;
+                }
+
+                if (component == "..")
+                {
+                    if (components.Count <= 1)
+                    {
+                        throw new InvalidDataException(entry.FullName + " links outside the app.");
+                    }
+
+                    components.RemoveAt(components.Count - 1);
+                }
+                else
+                {
+                    components.Add(component);
+                    // Check before collapsing a later '..': traversing a directory
+                    // link first could change the actual destination of that '..'.
+                    if (links.Contains(string.Join('/', components)))
+                    {
+                        throw new InvalidDataException(entry.FullName + " traverses a symbolic link.");
+                    }
+                }
+            }
+
+            var resolved = string.Join('/', components);
+            var targetEntry = archive.GetEntry(resolved);
+            if (targetEntry is not null && ((targetEntry.ExternalAttributes >> 16) & 0xf000) == 0x8000)
+            {
+                continue;
+            }
+
+            if (targetEntry is null && archive.Entries.Any(candidate =>
+                    candidate.FullName.StartsWith(resolved + "/", StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            throw new InvalidDataException(entry.FullName + " has a missing or indirect symbolic link target.");
+        }
     }
 
     private static void VerifyNativeDependencyClosure(ZipArchive archive, string runtimeIdentifier)
