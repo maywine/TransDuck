@@ -18,8 +18,14 @@ the complete app signature after native macOS extraction.
 
 - Keep changes scoped to the request and preserve unrelated working-tree
   changes.
-- Build, test, lint, and package locally. Do not use SSH, remote builders,
-  remote CI, or external provider endpoints unless the user explicitly asks.
+- Build, test, lint, and package locally during development. Do not use remote
+  builders, remote CI, or external provider endpoints unless explicitly requested.
+- When the user requests a release, push through the configured Git remote and use
+  the existing tag-triggered [Release workflow](.github/workflows/release.yml) for
+  native Windows/macOS verification, packaging, and publication. Do not suppress
+  that workflow with CI-skip markers on release commits. Use the existing
+  `release-retry/<version-tag>` mechanism when a release needs another run.
+  Other SSH use still requires an explicit request.
 - Do not configure a Git remote, push, create a release, or commit unless the
   user explicitly authorizes that action. A required local commit uses
   `git commit -s`.
