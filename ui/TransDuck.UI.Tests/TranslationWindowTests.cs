@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Automation;
@@ -33,6 +34,11 @@ public sealed class TranslationWindowTests
             input.Text = "Example input";
             var modifier = mac ? RawInputModifiers.Meta : RawInputModifiers.Control;
             input.Focus();
+            window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
+            window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
+            Assert.Empty(calls);
+            Assert.Contains("\n", input.Text!);
+            input.Text = "Example input";
             window.KeyPress(Key.Enter, modifier, PhysicalKey.Enter, "\r");
             window.KeyRelease(Key.Enter, modifier, PhysicalKey.Enter, "\r");
             Assert.Equal(new[] { "Example input" }, calls);
@@ -75,10 +81,15 @@ public sealed class TranslationWindowTests
     }
 
     [AvaloniaTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CompactLayout_KeepsResultsVisibleAndShowsOnlyRelevantRecoveryActions(bool mac)
+    [InlineData(false, "en-US")]
+    [InlineData(true, "en-US")]
+    [InlineData(false, "zh-CN")]
+    [InlineData(true, "zh-CN")]
+    public void CompactLayout_KeepsResultsVisibleAndShowsOnlyRelevantRecoveryActions(bool mac, string culture)
     {
+        var originalCulture = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+        UiStrings.InitializeForCurrentCulture();
         var window = new TestTranslationWindow(mac);
         window.Width = window.MinWidth;
         window.Height = window.MinHeight;
@@ -100,9 +111,18 @@ public sealed class TranslationWindowTests
             window.UpdateLayout();
             var results = window.FindControl<ItemsControl>("ResultsItemsControlElement")!;
             var viewport = results.GetVisualAncestors().OfType<ScrollViewer>().First();
-            Assert.True(viewport.Bounds.Height >= 64, $"Result viewport is only {viewport.Bounds.Height} high.");
+            // Keep room for two 24-DIP result lines at the smallest supported size.
+            // CJK fallback font metrics differ between Windows and macOS.
+            const double minimumReadableViewportHeight = 48;
+            Assert.True(viewport.Bounds.Height >= minimumReadableViewportHeight,
+                $"Result viewport is only {viewport.Bounds.Height} high; two result lines require {minimumReadableViewportHeight}.");
         }
-        finally { window.Close(); }
+        finally
+        {
+            window.Close();
+            CultureInfo.CurrentUICulture = originalCulture;
+            UiStrings.InitializeForCurrentCulture();
+        }
     }
 
     [AvaloniaTheory]

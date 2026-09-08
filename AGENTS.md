@@ -24,7 +24,8 @@ the complete app signature after native macOS extraction.
   the existing tag-triggered [Release workflow](.github/workflows/release.yml) for
   native Windows/macOS verification, packaging, and publication. Do not suppress
   that workflow with CI-skip markers on release commits. Use the existing
-  `release-retry/<version-tag>` mechanism when a release needs another run.
+  `release-retry/<version-tag>` mechanism when a release needs another run; use
+  `release-retry-N/<version-tag>` for further attempts without moving existing tags.
   Other SSH use still requires an explicit request.
 - Do not configure a Git remote, push, create a release, or commit unless the
   user explicitly authorizes that action. A required local commit uses

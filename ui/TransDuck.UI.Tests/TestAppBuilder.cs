@@ -9,7 +9,12 @@ namespace TransDuck.UI.Tests;
 public static class TestAppBuilder
 {
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<TestApplication>()
-        .UseHeadless(new AvaloniaHeadlessPlatformOptions());
+        // Match the app's text measurement; the headless drawing stub overestimates
+        // Latin glyph widths and gives misleading layout results for English UI.
+        .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
+        .UseSkia()
+        .UseHarfBuzz()
+        .WithInterFont();
 }
 
 public sealed class TestApplication : Application

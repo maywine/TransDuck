@@ -37,8 +37,8 @@ jobs:
           version=$(sed -n 's:.*<VersionPrefix>\([^<]*\)</VersionPrefix>.*:\1:p' Directory.Build.props)
           expected_tag="v$version"
           release_tag=$RELEASE_TRIGGER_TAG
-          if [[ $release_tag == release-retry/* ]]; then
-            release_tag=${release_tag#release-retry/}
+          if [[ $release_tag =~ ^release-retry(-[0-9]+)?/ ]]; then
+            release_tag=${release_tag#*/}
           fi
           if [[ $release_tag != "$expected_tag" ]]; then
             echo "tag_version_mismatch: expected $expected_tag" >&2

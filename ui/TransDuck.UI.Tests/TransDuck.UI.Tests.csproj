@@ -17,6 +17,9 @@
     </PackageReference>
     <PackageReference Include="Avalonia.Headless.XUnit" Version="12.1.1" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Skia" Version="12.1.1" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TransDuck.UI\TransDuck.UI.csproj" />
