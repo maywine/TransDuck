@@ -9,7 +9,7 @@
         MinHeight="520"
         WindowStartupLocation="CenterScreen">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="20" Spacing="8">
+    <StackPanel x:Name="SettingsContentElement" Margin="20" Spacing="8">
       <Grid ColumnDefinitions="*,Auto">
         <TextBlock FontSize="18" FontWeight="SemiBold"
                    Text="{DynamicResource settings.heading.provider}" />
@@ -21,7 +21,7 @@
                    AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}"
                    AutomationProperties.HelpText="{DynamicResource settings.automation.product_version.help}" />
       </Grid>
-      <TextBlock TextWrapping="Wrap" Text="{DynamicResource settings.description.credential}" />
+      <TextBlock x:Name="CredentialDescriptionElement" TextWrapping="Wrap" Text="{DynamicResource settings.description.credential}" />
 
       <TextBlock FontSize="16" FontWeight="SemiBold" Text="{DynamicResource settings.heading.sources}" />
       <TextBlock TextWrapping="Wrap" Text="{DynamicResource settings.description.sources}" />
@@ -80,6 +80,8 @@
         <ComboBoxItem Tag="volcengine" Content="{DynamicResource provider.name.volcengine}" />
       </ComboBox>
 
+      <TextBlock x:Name="ProviderDraftStatusElement" TextWrapping="Wrap" FontSize="12"
+                 AutomationProperties.AutomationId="ProviderDraftStatus" />
       <StackPanel x:Name="InstanceIdPanelElement" Spacing="4">
         <TextBlock Text="{DynamicResource settings.label.instance_id}" />
         <TextBox x:Name="InstanceIdTextBoxElement"
@@ -171,14 +173,14 @@
 
       <Separator Margin="0,6" />
       <TextBlock FontSize="16" FontWeight="SemiBold" Text="{DynamicResource settings.heading.proxy}" />
-      <TextBlock TextWrapping="Wrap" Text="{DynamicResource settings.description.proxy}" />
+      <TextBlock x:Name="ProxyDescriptionElement" TextWrapping="Wrap" Text="{DynamicResource settings.description.proxy}" />
       <TextBlock Text="{DynamicResource settings.label.proxy_mode}" />
       <ComboBox x:Name="ProxyModeComboBoxElement"
                 SelectionChanged="HandleProxyModeSelectionChanged"
                 AutomationProperties.AutomationId="ProxyModeComboBox"
                 AutomationProperties.Name="{DynamicResource settings.automation.proxy_mode.name}"
                 AutomationProperties.HelpText="{DynamicResource settings.automation.proxy_mode.help}">
-        <ComboBoxItem Tag="SystemDefault" Content="{DynamicResource settings.proxy.mode.system_default}" />
+        <ComboBoxItem x:Name="SystemProxyModeElement" Tag="SystemDefault" Content="{DynamicResource settings.proxy.mode.system_default}" />
         <ComboBoxItem Tag="CustomHttp" Content="{DynamicResource settings.proxy.mode.custom_http}" />
         <ComboBoxItem Tag="Disabled" Content="{DynamicResource settings.proxy.mode.disabled}" />
       </ComboBox>
@@ -291,11 +293,11 @@
         <Button x:Name="SaveAllButtonElement"
                 IsVisible="False"
                 Margin="0,0,8,0"
-                Content="{DynamicResource settings.button.save}"
+                Content="{DynamicResource settings.button.save_current}"
                 Click="HandleSaveAllClick" />
         <Button x:Name="SaveProviderSettingsButtonElement"
                 Margin="0,0,8,0"
-                Content="{DynamicResource settings.button.save}"
+                Content="{DynamicResource settings.button.save_current}"
                 Click="HandleSaveProviderClick"
                 AutomationProperties.AutomationId="SaveProviderSettingsButton" />
         <Button x:Name="ClearCredentialButtonElement"

@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using TransDuck.Core;
+using TransDuck.UI;
 using TransDuck.UI.Views;
 
 namespace TransDuck.MacOS.App.Views;
@@ -61,6 +62,7 @@ internal sealed class MainWindow : TranslationWindowBase
         TranslateButton.IsEnabled = !state.IsBusy;
         SelectedTextButton.IsEnabled = !state.IsBusy;
         OcrButton.IsEnabled = !state.IsBusy;
+        OcrLanguageComboBox.IsEnabled = !state.IsBusy;
         CancelButton.IsEnabled = state.IsBusy;
         RetryButton.IsEnabled = !state.IsBusy && state.CanRetry;
         CopyButton.IsEnabled = state.Results.Any(static result => !string.IsNullOrWhiteSpace(result.Text));
@@ -94,11 +96,11 @@ internal sealed class MainWindow : TranslationWindowBase
         try
         {
             await clipboard.SetTextAsync(output);
-            StatusTextBlock.Text = "Result copied.";
+            StatusTextBlock.Text = UiStrings.Get("runtime.copy.succeeded");
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {
-            StatusTextBlock.Text = "The result could not be copied.";
+            StatusTextBlock.Text = UiStrings.Get("runtime.copy.failed");
         }
     }
 

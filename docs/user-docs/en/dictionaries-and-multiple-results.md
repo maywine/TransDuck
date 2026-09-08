@@ -18,6 +18,27 @@ remain in Windows DPAPI-protected storage or macOS Keychain, but the text must s
 be disclosed to each selected provider for translation. Disable any service that
 should not receive the text.
 
+
+Switching providers keeps unsaved fields in the current settings window, including
+unfinished values. Save each provider separately; saving one does not discard
+another provider's draft. Drafts are held only in memory and are discarded when
+the settings window closes or **Reload and discard drafts** is selected on macOS.
+Saved credentials are never filled back into the form.
+
+## Translate and copy results
+
+Type or paste text, then choose **Translate**. The input also supports
+**Ctrl+Enter** on Windows and **Command+Return** on macOS; Enter alone inserts a
+line break. **Cancel** appears while an operation is running, and **Retry failed
+sources** appears when retryable failures are available.
+
+**Recognize** beside Screenshot OCR selects the recognition language, not the
+translation target. Configure each provider's target language in Settings; it
+appears on that provider's result card when the query starts.
+
+Each result card has a **Copy** button for that card's text. **Copy all results**
+combines all nonempty cards with their source names.
+
 ## Use a local dictionary
 
 TransDuck accepts user-supplied UTF-8 CSV or SQLite dictionary files on Windows

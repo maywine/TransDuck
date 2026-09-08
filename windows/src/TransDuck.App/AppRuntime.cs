@@ -488,6 +488,10 @@ internal sealed class AppRuntime : IDisposable
                 _resultWindow.SetStatus(AppStrings.Get("selection.failure.exception"));
             });
         }
+        finally
+        {
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetBusy(false));
+        }
     }
 
     private Task TranslateAsync(
@@ -506,6 +510,7 @@ internal sealed class AppRuntime : IDisposable
     {
         if (string.IsNullOrWhiteSpace(text))
         {
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetBusy(false));
             SetStatusForCurrentOperation(operation, AppStrings.Get("translation.input.empty"));
             return;
         }
@@ -542,7 +547,9 @@ internal sealed class AppRuntime : IDisposable
             var presentations = providerSources
                 .Select(provider => new QuerySourcePresentation(
                     CanonicalProviderKey(provider),
-                    DescribeProvider(provider)))
+                    DescribeProvider(provider),
+                    providerSettings.ProviderSettings.Profiles.FirstOrDefault(profile =>
+                        profile.CanonicalProviderKey == CanonicalProviderKey(provider))?.TargetLanguage))
                 .ToList();
             if (includeLocalDictionary)
             {
@@ -612,6 +619,10 @@ internal sealed class AppRuntime : IDisposable
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {
             SetStatusForCurrentOperation(operation, AppStrings.Get("translation.status.failed"));
+        }
+        finally
+        {
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetBusy(false));
         }
     }
 
@@ -1133,6 +1144,10 @@ internal sealed class AppRuntime : IDisposable
                 _resultWindow.SetStatus(AppStrings.Get("capture.status.exception"));
             });
         }
+        finally
+        {
+            PostCurrentOperationToUi(operation, () => _resultWindow.SetBusy(false));
+        }
     }
 
     private void HandlePowerModeChanged(object? sender, PowerModeChangedEventArgs eventArgs)
@@ -1170,6 +1185,7 @@ internal sealed class AppRuntime : IDisposable
         var cancellation = new CancellationTokenSource();
         _operationCancellation = cancellation;
         previousCancellation?.Dispose();
+        PostCurrentOperationToUi(nextOperation, () => _resultWindow.SetBusy(true));
         return (nextOperation, cancellation.Token);
     }
 
@@ -1186,6 +1202,7 @@ internal sealed class AppRuntime : IDisposable
         {
             PostToUi(() =>
             {
+                _resultWindow.SetBusy(false);
                 _resultWindow.MarkActiveSourcesCancelled();
                 _resultWindow.SetStatus(AppStrings.Get("runtime.operation.cancelled"));
             });

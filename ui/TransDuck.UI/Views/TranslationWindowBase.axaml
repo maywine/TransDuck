@@ -8,6 +8,20 @@
         MinWidth="520"
         MinHeight="420"
         WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="ResultCardSurfaceBrush" Color="#F7F7F9" />
+          <SolidColorBrush x:Key="ResultCardBorderBrush" Color="#DCDCE0" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="ResultCardSurfaceBrush" Color="#29292C" />
+          <SolidColorBrush x:Key="ResultCardBorderBrush" Color="#48484D" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
   <Window.Styles>
     <Style Selector="TextBox.resultText">
       <Setter Property="Background" Value="Transparent" />
@@ -75,7 +89,10 @@
 
       <TextBox x:Name="InputTextBoxElement"
                Grid.Row="1"
-               MinHeight="64"
+               MinHeight="80"
+               MaxHeight="112"
+               FontSize="15"
+               PlaceholderText="{DynamicResource result.input.placeholder}"
                AcceptsReturn="True"
                TextWrapping="Wrap"
                ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -83,52 +100,58 @@
                AutomationProperties.Name="{DynamicResource result.automation.input.name}"
                AutomationProperties.HelpText="{DynamicResource result.automation.input.help}" />
 
-      <WrapPanel Grid.Row="2">
-        <Button x:Name="TranslateButtonElement"
-                Margin="0,0,8,0"
-                Content="{DynamicResource result.button.translate}"
-                Click="HandleTranslateClick"
-                AutomationProperties.AutomationId="TranslateButton" />
-        <Button x:Name="SelectedTextButtonElement"
-                Margin="0,0,8,0"
-                Content="{DynamicResource result.button.selected_text}"
-                Click="HandleSelectedTextClick"
-                AutomationProperties.AutomationId="SelectedTextButton" />
-        <Button x:Name="CaptureOcrButtonElement"
-                Margin="0,0,8,0"
-                Content="{DynamicResource result.button.capture_ocr}"
-                Click="HandleCaptureOcrClick"
-                AutomationProperties.AutomationId="CaptureOcrButton" />
-        <ComboBox x:Name="OcrLanguageComboBoxElement"
-                  Width="110"
-                  SelectedIndex="0"
-                  AutomationProperties.AutomationId="OcrLanguageBox"
-                  AutomationProperties.Name="{DynamicResource result.automation.ocr_language.name}"
-                  AutomationProperties.HelpText="{DynamicResource result.automation.ocr_language.help}">
-          <ComboBoxItem Tag="en-US" Content="{DynamicResource result.ocr_language.english}" />
-          <ComboBoxItem Tag="zh-Hans" Content="{DynamicResource result.ocr_language.simplified_chinese}" />
-        </ComboBox>
-        <Button x:Name="CancelButtonElement"
-                Margin="8,0,0,0"
-                Content="{DynamicResource result.button.cancel}"
-                Click="HandleCancelClick"
-                AutomationProperties.AutomationId="CancelButton" />
-        <Button x:Name="RetryButtonElement"
-                Margin="8,0,0,0"
-                IsEnabled="False"
-                Content="{DynamicResource result.button.retry}"
-                Click="HandleRetryClick"
-                AutomationProperties.AutomationId="RetryButton" />
-      </WrapPanel>
+      <StackPanel Grid.Row="2" Spacing="12">
+        <WrapPanel>
+          <Button x:Name="TranslateButtonElement" Classes="accent"
+                  Margin="0,0,8,4" Padding="14,8"
+                  Click="HandleTranslateClick"
+                  AutomationProperties.Name="{DynamicResource result.button.translate}"
+                  AutomationProperties.AutomationId="TranslateButton">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="{DynamicResource result.button.translate}" FontWeight="SemiBold" />
+              <TextBlock x:Name="TranslateShortcutTextBlockElement" Text="Ctrl Enter" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="CancelButtonElement" Margin="0,0,8,4" IsEnabled="False"
+                  IsVisible="{Binding IsEnabled, RelativeSource={RelativeSource Self}}"
+                  Content="{DynamicResource result.button.cancel}" Click="HandleCancelClick"
+                  AutomationProperties.AutomationId="CancelButton" />
+          <Button x:Name="RetryButtonElement" Margin="0,0,8,4" IsEnabled="False"
+                  IsVisible="{Binding IsEnabled, RelativeSource={RelativeSource Self}}"
+                  Content="{DynamicResource result.button.retry}" Click="HandleRetryClick"
+                  AutomationProperties.AutomationId="RetryButton" />
+        </WrapPanel>
+        <WrapPanel>
+          <Button x:Name="SelectedTextButtonElement" Margin="0,0,12,6"
+                  Content="{DynamicResource result.button.selected_text}" Click="HandleSelectedTextClick"
+                  AutomationProperties.AutomationId="SelectedTextButton" />
+          <WrapPanel>
+            <Button x:Name="CaptureOcrButtonElement" Margin="0,0,8,6"
+                    Content="{DynamicResource result.button.capture_ocr}" Click="HandleCaptureOcrClick"
+                    AutomationProperties.AutomationId="CaptureOcrButton" />
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,6">
+              <TextBlock Text="{DynamicResource result.label.ocr_language}" VerticalAlignment="Center" />
+              <ComboBox x:Name="OcrLanguageComboBoxElement" Width="116" SelectedIndex="0"
+                        AutomationProperties.AutomationId="OcrLanguageBox"
+                        AutomationProperties.Name="{DynamicResource result.automation.ocr_language.name}"
+                        AutomationProperties.HelpText="{DynamicResource result.automation.ocr_language.help}">
+                <ComboBoxItem Tag="en-US" Content="{DynamicResource result.ocr_language.english}" />
+                <ComboBoxItem Tag="zh-Hans" Content="{DynamicResource result.ocr_language.simplified_chinese}" />
+              </ComboBox>
+            </StackPanel>
+          </WrapPanel>
+        </WrapPanel>
+      </StackPanel>
 
-      <TextBlock x:Name="SelectionHintTextBlockElement"
-                 Grid.Row="3"
-                 Opacity="0.7"
-                 TextWrapping="Wrap"
-                 Text="{DynamicResource result.hint.default}" />
+      <StackPanel Grid.Row="3" Spacing="4">
+        <TextBlock FontSize="12" Opacity="0.8" TextWrapping="Wrap"
+                   Text="{DynamicResource result.target.hint}" />
+        <TextBlock x:Name="SelectionHintTextBlockElement" FontSize="12" Opacity="0.8"
+                   TextWrapping="Wrap" Text="{DynamicResource result.hint.default}" />
+      </StackPanel>
       <TextBlock x:Name="TranslationErrorCodeTextBlockElement"
                  Grid.Row="4"
-                 Foreground="#9B2C2C"
+                 Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                  TextWrapping="Wrap"
                  IsVisible="False"
                  AutomationProperties.AutomationId="TranslationErrorCodeTextBlock"
@@ -144,16 +167,27 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <Border Margin="0,0,0,10"
-                      Padding="10"
-                      CornerRadius="6"
-                      Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                      BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                      Padding="16"
+                      CornerRadius="8"
+                      Background="{DynamicResource ResultCardSurfaceBrush}"
+                      BorderBrush="{DynamicResource ResultCardBorderBrush}"
                       BorderThickness="1">
-                <StackPanel Spacing="6">
-                  <Grid ColumnDefinitions="*,Auto,Auto">
-                    <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
-                    <Button Grid.Column="1"
-                            Margin="8,0"
+                <StackPanel Spacing="10">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="3">
+                      <TextBlock FontWeight="Medium" FontSize="13" TextWrapping="Wrap" Text="{Binding DisplayName}" />
+                      <TextBlock FontSize="12" Opacity="0.8" TextWrapping="Wrap"
+                                 Text="{Binding TargetLanguageLabel}" IsVisible="{Binding HasTargetLanguage}" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Margin="8,0,0,0" FontSize="12" Opacity="0.8" Text="{Binding Status}" />
+                  </Grid>
+                  <TextBox Classes="resultText"
+                           Text="{Binding Text}" FontSize="16" LineHeight="24"
+                           IsReadOnly="True" TextWrapping="Wrap"
+                           ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                           Background="Transparent" BorderThickness="0" Padding="0" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button
                             Padding="8,2"
                             Content="{DynamicResource result.button.pronounce}"
                             Tag="{Binding PronunciationTerm}"
@@ -161,15 +195,11 @@
                             Click="HandlePronounceClick"
                             AutomationProperties.AutomationId="PronounceButton"
                             AutomationProperties.HelpText="{DynamicResource result.automation.pronounce.help}" />
-                    <TextBlock Grid.Column="2" Opacity="0.7" Text="{Binding Status}" />
-                  </Grid>
-                  <TextBox Classes="resultText"
-                           Text="{Binding Text}"
-                           IsReadOnly="True"
-                           TextWrapping="Wrap"
-                           Background="Transparent"
-                           BorderThickness="0"
-                           Padding="0" />
+                    <Button Padding="8,2" Content="{DynamicResource result.button.copy_source}"
+                            Tag="{Binding Text}" IsEnabled="{Binding CanCopy}"
+                            Click="HandleCopySourceClick"
+                            AutomationProperties.AutomationId="CopySourceButton" />
+                  </StackPanel>
                 </StackPanel>
               </Border>
             </DataTemplate>

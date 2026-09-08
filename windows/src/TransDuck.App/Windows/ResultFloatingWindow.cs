@@ -70,11 +70,13 @@ public sealed class ResultFloatingWindow : TranslationWindowBase
                     source.DisplayName,
                     string.Empty,
                     AppStrings.Get("result.source.waiting"),
-                    pronunciationTerm: null));
+                    pronunciationTerm: null,
+                    targetLanguage: source.TargetLanguage));
             }
             else
             {
                 existing.DisplayName = source.DisplayName;
+                existing.TargetLanguage = source.TargetLanguage;
                 existing.Text = string.Empty;
                 existing.Status = AppStrings.Get("result.source.waiting");
                 existing.PronunciationTerm = null;
@@ -125,6 +127,14 @@ public sealed class ResultFloatingWindow : TranslationWindowBase
         {
             result.Status = cancelled;
         }
+    }
+
+    public void SetBusy(bool busy)
+    {
+        TranslateButton.IsEnabled = !busy;
+        CaptureOcrButton.IsEnabled = !busy;
+        CancelButton.IsEnabled = busy;
+        OcrLanguageBox.IsEnabled = !busy;
     }
 
     public void SetStatus(string text) => StatusTextBlock.Text = text;

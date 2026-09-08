@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Automation;
 using Avalonia.Headless.XUnit;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -14,6 +17,94 @@ namespace TransDuck.UI.Tests;
 
 public sealed class TranslationWindowTests
 {
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void KeyboardTranslation_UsesPlatformModifierAndRespectsBusyState(bool mac)
+    {
+        var window = new TestTranslationWindow(mac);
+        var input = window.FindControl<TextBox>("InputTextBoxElement")!;
+        var translate = window.FindControl<Button>("TranslateButtonElement")!;
+        var calls = new List<string>();
+        window.TranslationRequested += (_, text) => calls.Add(text);
+        try
+        {
+            window.Show();
+            input.Text = "Example input";
+            var modifier = mac ? RawInputModifiers.Meta : RawInputModifiers.Control;
+            input.Focus();
+            window.KeyPress(Key.Enter, modifier, PhysicalKey.Enter, "\r");
+            window.KeyRelease(Key.Enter, modifier, PhysicalKey.Enter, "\r");
+            Assert.Equal(new[] { "Example input" }, calls);
+            translate.IsEnabled = false;
+            window.KeyPress(Key.Enter, modifier, PhysicalKey.Enter, "\r");
+            window.KeyRelease(Key.Enter, modifier, PhysicalKey.Enter, "\r");
+            Assert.Single(calls);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SourceCopy_CopiesOnlyThatCardAndTracksStreamingText(bool mac)
+    {
+        var window = new TestTranslationWindow(mac);
+        var first = new TranslationResultViewModel("first", "First", "", "Waiting", targetLanguage: "zh-Hans");
+        window.Results.Add(first);
+        window.Results.Add(new TranslationResultViewModel("second", "Second", "Other result", ""));
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var copy = window.GetVisualDescendants().OfType<Button>().Single(button =>
+                button.DataContext == first && AutomationProperties.GetAutomationId(button) == "CopySourceButton");
+            Assert.False(copy.IsEnabled);
+            first.Text = "First result";
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(copy.IsEnabled);
+            string? copied = null;
+            window.ResultCopyRequested += (_, text) => copied = text;
+            copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal("First result", copied);
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                text.Text == first.TargetLanguageLabel && text.IsEffectivelyVisible);
+            Assert.Equal(first.TargetLanguage, first.WithStatus("Cancelled").TargetLanguage);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CompactLayout_KeepsResultsVisibleAndShowsOnlyRelevantRecoveryActions(bool mac)
+    {
+        var window = new TestTranslationWindow(mac);
+        window.Width = window.MinWidth;
+        window.Height = window.MinHeight;
+        window.FindControl<TextBox>("InputTextBoxElement")!.Text = string.Join("\n", Enumerable.Repeat("Long input", 30));
+        window.Results.Add(new TranslationResultViewModel("test", "Test", "A readable result", ""));
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var cancel = window.FindControl<Button>("CancelButtonElement")!;
+            var retry = window.FindControl<Button>("RetryButtonElement")!;
+            Assert.False(cancel.IsVisible);
+            Assert.False(retry.IsVisible);
+            cancel.IsEnabled = true;
+            Assert.True(cancel.IsVisible);
+            cancel.IsEnabled = false;
+            retry.IsEnabled = true;
+            Assert.True(retry.IsVisible);
+            window.UpdateLayout();
+            var results = window.FindControl<ItemsControl>("ResultsItemsControlElement")!;
+            var viewport = results.GetVisualAncestors().OfType<ScrollViewer>().First();
+            Assert.True(viewport.Bounds.Height >= 64, $"Result viewport is only {viewport.Bounds.Height} high.");
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -141,9 +232,10 @@ public sealed class TranslationWindowTests
 
     private sealed class TestTranslationWindow : TranslationWindowBase
     {
-        public TestTranslationWindow()
+        public TestTranslationWindow(bool mac = false)
         {
-            ConfigureForWindowsFloatingWindow();
+            if (mac) ConfigureForMacDesktopWindow();
+            else ConfigureForWindowsFloatingWindow();
             ResultItemsControl.ItemsSource = Results;
         }
 

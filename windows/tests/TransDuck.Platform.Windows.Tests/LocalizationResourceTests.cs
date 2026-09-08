@@ -114,8 +114,13 @@ public sealed class LocalizationResourceTests
                 .Cast<string>()
                 .ToArray();
 
+            var localKeys = document.Descendants().Attributes()
+                .Where(attribute => attribute.Name == XName.Get("Key", "http://schemas.microsoft.com/winfx/2006/xaml"))
+                .Select(attribute => attribute.Value)
+                .ToHashSet(StringComparer.Ordinal);
             Assert.NotEmpty(referencedKeys);
-            Assert.All(referencedKeys, key => Assert.True(english.ContainsKey(key)));
+            Assert.All(referencedKeys, key => Assert.True(english.ContainsKey(key) || localKeys.Contains(key),
+                $"Resource '{key}' must be localized or declared in the window."));
         }
     }
 

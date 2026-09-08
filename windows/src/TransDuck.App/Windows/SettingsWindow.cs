@@ -30,7 +30,6 @@ public sealed class SettingsWindow : SettingsWindowBase
     private readonly StartupSettingsController _startupController;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private IReadOnlyList<ProviderProfileSettings> _profiles = [];
-    private Configuration? _configuration;
     private QuerySourceSettings? _querySources;
     private int _credentialStatusGeneration;
     private int _hotkeyStateGeneration;
@@ -139,6 +138,7 @@ public sealed class SettingsWindow : SettingsWindowBase
                 : result.StatusMessage;
             if (result.RequiresSettingsReload)
             {
+                if (result.Succeeded) AcceptCurrentProviderDraft();
                 var statusMessage = SettingsStatusTextBlock.Text;
                 await LoadAsync(profile.Provider);
                 if (CanUpdateUi())
@@ -159,8 +159,6 @@ public sealed class SettingsWindow : SettingsWindowBase
         }
         finally
         {
-            CredentialPasswordBox.Clear();
-            VolcengineAccessKeyIdPasswordBox.Clear();
             _isBusy = false;
             if (CanUpdateUi())
             {
@@ -437,6 +435,7 @@ public sealed class SettingsWindow : SettingsWindowBase
         var generation = ++_loadGeneration;
         ++_credentialStatusGeneration;
         _isLoading = true;
+        SetPersistenceControlsEnabled(false);
         try
         {
             var loaded = await _controller.LoadAsync(_lifetimeCancellation.Token);
@@ -446,7 +445,8 @@ public sealed class SettingsWindow : SettingsWindowBase
             }
 
             _profiles = loaded.ProviderSettings.Profiles;
-            _configuration = loaded.Configuration;
+            HistoryMaxEntriesTextBox.Text = loaded.Configuration.HistoryRetention.MaxEntries.ToString();
+            HistoryMaxAgeDaysTextBox.Text = loaded.Configuration.HistoryRetention.MaxAgeDays.ToString();
             var querySources = await _querySourceController.LoadAsync(
                 loaded.Configuration.DefaultProvider,
                 _lifetimeCancellation.Token);
@@ -481,7 +481,7 @@ public sealed class SettingsWindow : SettingsWindowBase
             SelectProvider(selectedProvider.ProviderId);
             var selected = _profiles.FirstOrDefault(profile =>
                 string.Equals(profile.CanonicalProviderKey, CanonicalKey(selectedProvider), StringComparison.Ordinal));
-            ApplyProfile(selected ?? CreateDefaultProfile(selectedProvider.ProviderId), loaded.Configuration);
+            ApplyProfile(selected ?? CreateDefaultProfile(selectedProvider.ProviderId));
             var credentialStatus = selected is not null && !string.Equals(
                 selected.CanonicalProviderKey,
                 CanonicalKey(loaded.Configuration.DefaultProvider),
@@ -511,6 +511,7 @@ public sealed class SettingsWindow : SettingsWindowBase
             if (IsCurrentLoad(generation))
             {
                 _isLoading = false;
+                SetPersistenceControlsEnabled(!_isBusy);
                 ApplyHotkeyControllerState();
                 ApplyProxyControllerState();
                 ApplyStartupControllerState();
@@ -788,7 +789,7 @@ public sealed class SettingsWindow : SettingsWindowBase
 
         var profile = _profiles.FirstOrDefault(profile =>
             string.Equals(profile.Provider.ProviderId, providerId, StringComparison.Ordinal));
-        ApplyProfile(profile ?? CreateDefaultProfile(providerId), _configuration);
+        ApplyProfile(profile ?? CreateDefaultProfile(providerId));
     }
 
     private void ApplyQuerySourceSettings(QuerySourceSettings settings)
@@ -805,18 +806,20 @@ public sealed class SettingsWindow : SettingsWindowBase
         LocalDictionaryPathTextBox.Text = settings.LocalDictionary.DataFilePath ?? string.Empty;
     }
 
-    private void ApplyProfile(ProviderProfileSettings? profile, Configuration? configuration)
+    private void ApplyProfile(ProviderProfileSettings? profile)
     {
+        BeginProviderChange();
+        CredentialPasswordBox.Clear();
+        VolcengineAccessKeyIdPasswordBox.Clear();
         InstanceIdTextBox.Text = profile?.Provider.InstanceId ?? string.Empty;
         EndpointTextBox.Text = profile?.Endpoint.AbsoluteUri ?? string.Empty;
         ModelTextBox.Text = profile?.Model ?? string.Empty;
         SourceLanguageTextBox.Text = profile?.SourceLanguage ?? string.Empty;
         TargetLanguageTextBox.Text = profile?.TargetLanguage ?? "zh-Hans";
         TimeoutSecondsTextBox.Text = (profile?.TimeoutSeconds ?? 30).ToString();
-        HistoryMaxEntriesTextBox.Text = (configuration?.HistoryRetention.MaxEntries ?? 100).ToString();
-        HistoryMaxAgeDaysTextBox.Text = (configuration?.HistoryRetention.MaxAgeDays ?? 30).ToString();
         ApplyCredentialLayout();
         ApplyCredentialControlsEnabledState();
+        CompleteProviderChange((ProviderComboBox.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty);
     }
 
     private static ProviderProfileSettings? CreateDefaultProfile(string providerId)
@@ -886,6 +889,12 @@ public sealed class SettingsWindow : SettingsWindowBase
     private void SetPersistenceControlsEnabled(bool isEnabled)
     {
         ProviderComboBox.IsEnabled = isEnabled;
+        foreach (var field in new[] { InstanceIdTextBox, EndpointTextBox, ModelTextBox,
+                     SourceLanguageTextBox, TargetLanguageTextBox, TimeoutSecondsTextBox,
+                     HistoryMaxEntriesTextBox, HistoryMaxAgeDaysTextBox })
+        {
+            field.IsEnabled = isEnabled;
+        }
         foreach (var checkBox in SourceCheckBoxes())
         {
             checkBox.IsEnabled = isEnabled;
@@ -1088,15 +1097,6 @@ public sealed class SettingsWindow : SettingsWindowBase
         VolcengineAccessKeyIdPasswordBox.IsEnabled = isEnabled && usesVolcengineKeyPair;
         CredentialPasswordBox.IsEnabled = isEnabled;
         ClearCredentialButton.IsEnabled = isEnabled;
-        if (!isEnabled)
-        {
-            CredentialPasswordBox.Clear();
-            VolcengineAccessKeyIdPasswordBox.Clear();
-        }
-        else if (!usesVolcengineKeyPair)
-        {
-            VolcengineAccessKeyIdPasswordBox.Clear();
-        }
     }
 
     private void ApplyCredentialLayout()

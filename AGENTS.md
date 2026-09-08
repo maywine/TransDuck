@@ -48,6 +48,14 @@ the complete app signature after native macOS extraction.
 - Display the current product version in each platform's primary and settings
   windows, derived from assembly informational metadata rather than hard-coded
   UI text.
+- Keep primary translation actions, per-source copy controls, and result typography
+  in the shared UI so Windows and macOS stay consistent. Distinguish OCR recognition
+  language from translation targets, and show configured targets on source cards.
+  Use Command+Return on macOS and Control+Enter on Windows for manual translation.
+- Preserve unsaved provider edits when switching providers within a settings window.
+  Drafts, including newly typed credentials, stay in memory only and are discarded
+  when the settings window closes or the user explicitly reloads. Saving one provider
+  must preserve other providers' drafts; never refill stored credentials.
 - Store macOS non-secret data in the per-user application-support directory and
   credentials in macOS Keychain. Never fall back to plaintext credential files.
 - macOS global selection requires Accessibility permission and screenshot OCR

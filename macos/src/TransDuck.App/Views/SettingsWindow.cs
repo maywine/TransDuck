@@ -8,6 +8,7 @@ using TransDuck.Core.Translation;
 using TransDuck.Infrastructure.Proxy;
 using TransDuck.Platform.MacOS.Hotkeys;
 using TransDuck.Platform.MacOS.Startup;
+using TransDuck.UI;
 using TransDuck.UI.Views;
 
 namespace TransDuck.MacOS.App.Views;
@@ -18,6 +19,7 @@ internal sealed class SettingsWindow : SettingsWindowBase
     private readonly Dictionary<string, ProviderProfileSettings> _profiles = new(StringComparer.Ordinal);
     private bool _loading;
     private bool _allowClose;
+    private int _credentialStatusGeneration;
 
     public SettingsWindow(MacAppRuntime runtime)
     {
@@ -44,9 +46,11 @@ internal sealed class SettingsWindow : SettingsWindowBase
 
     private async Task LoadAsync()
     {
+        if (_loading) return;
         _loading = true;
+        SetFormBusy(true);
         SaveButton.IsEnabled = false;
-        StatusTextBlock.Text = "Loading settings...";
+        StatusTextBlock.Text = UiStrings.Get("mac.settings.loading");
         try
         {
             var snapshot = await _runtime.LoadSettingsAsync(CancellationToken.None);
@@ -75,14 +79,16 @@ internal sealed class SettingsWindow : SettingsWindowBase
             MaxAgeNumericUpDown.Value = snapshot.Configuration.HistoryRetention.MaxAgeDays;
             StartAtLoginCheckBox.IsChecked = snapshot.StartupResult.IsEnabled;
             StatusTextBlock.Text = snapshot.StartupResult.Status == MacStartupStatus.Conflict
-                ? "A conflicting login-start entry exists; it will not be overwritten."
-                : "Settings loaded.";
+                ? UiStrings.Get("mac.settings.startup_conflict")
+                : UiStrings.Get("mac.settings.loaded");
             await RefreshCredentialStatusAsync();
         }
         finally
         {
             _loading = false;
             SaveButton.IsEnabled = true;
+            ProviderComboBox.IsEnabled = true;
+            SetFormBusy(false);
         }
     }
 
@@ -99,6 +105,7 @@ internal sealed class SettingsWindow : SettingsWindowBase
 
     private void ApplySelectedProvider()
     {
+        BeginProviderChange();
         var providerId = SelectedProviderId();
         var definition = MacAppRuntime.ProviderDefinitions.First(candidate => candidate.ProviderId == providerId);
         if (_profiles.TryGetValue(providerId, out var profile))
@@ -126,35 +133,38 @@ internal sealed class SettingsWindow : SettingsWindowBase
         SecondaryCredentialTextBox.IsVisible = pair;
         CredentialLabel.Text = definition.CredentialKind switch
         {
-            ProviderCredentialKind.None => "Credential (not required)",
+            ProviderCredentialKind.None => UiStrings.Get("mac.credential.none_label"),
             ProviderCredentialKind.Optional when providerId == TranslationProviderIds.Bing =>
-                "Optional Bing Cookie",
-            ProviderCredentialKind.Optional => "Optional API Key",
-            ProviderCredentialKind.VolcenginePair => "Volcengine AccessKey ID",
+                UiStrings.Get("mac.credential.bing_label"),
+            ProviderCredentialKind.Optional => UiStrings.Get("mac.credential.optional_label"),
+            ProviderCredentialKind.VolcenginePair => UiStrings.Get("mac.credential.volcengine_label"),
             _ => "API Key",
         };
         var credentialEnabled = definition.CredentialKind != ProviderCredentialKind.None;
         CredentialTextBox.IsEnabled = credentialEnabled;
         SecondaryCredentialTextBox.IsEnabled = credentialEnabled;
         ClearCredentialCheckBox.IsEnabled = credentialEnabled;
+        CompleteProviderChange(providerId);
     }
 
     private async Task RefreshCredentialStatusAsync()
     {
+        var generation = ++_credentialStatusGeneration;
         var definition = MacAppRuntime.ProviderDefinitions.First(candidate =>
             candidate.ProviderId == SelectedProviderId());
         if (definition.CredentialKind == ProviderCredentialKind.None)
         {
-            CredentialStatusTextBlock.Text = "This provider does not use a credential.";
+            CredentialStatusTextBlock.Text = UiStrings.Get("provider.status.credential_not_required");
             return;
         }
 
         var status = await _runtime.GetCredentialStatusAsync(definition.ProviderId, CancellationToken.None);
+        if (generation != _credentialStatusGeneration) return;
         CredentialStatusTextBlock.Text = status switch
         {
-            PersistenceStatus.Succeeded => "A credential is saved in macOS Keychain.",
-            PersistenceStatus.NotFound => "No credential is saved.",
-            _ => "The Keychain credential status is unavailable.",
+            PersistenceStatus.Succeeded => UiStrings.Get("mac.credential.saved"),
+            PersistenceStatus.NotFound => UiStrings.Get("mac.credential.not_found"),
+            _ => UiStrings.Get("mac.credential.status_unavailable"),
         };
     }
 
@@ -168,11 +178,15 @@ internal sealed class SettingsWindow : SettingsWindowBase
     {
         var ready = await _runtime.EnsureAccessibilityAndHotkeyAsync(prompt: true);
         StatusTextBlock.Text = ready
-            ? "Accessibility permission and global hotkey are ready."
-            : "Approve the macOS Accessibility request; permission refreshes when you return.";
+            ? UiStrings.Get("mac.status.accessibility_ready")
+            : UiStrings.Get("mac.settings.accessibility_pending");
     }
 
-    private void HandleReloadRequested(object? sender, EventArgs eventArgs) => _ = LoadAsync();
+    private void HandleReloadRequested(object? sender, EventArgs eventArgs)
+    {
+        ClearProviderDrafts();
+        _ = LoadAsync();
+    }
 
     private async void HandleBrowseLocalDictionaryRequested(object? sender, EventArgs eventArgs)
     {
@@ -180,11 +194,11 @@ internal sealed class SettingsWindow : SettingsWindowBase
         {
             var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Choose a supported local dictionary CSV or SQLite file",
+                Title = UiStrings.Get("mac.dictionary.choose"),
                 AllowMultiple = false,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("Local dictionary data")
+                    new FilePickerFileType(UiStrings.Get("mac.dictionary.file_type"))
                     {
                         Patterns = ["*.csv", "*.db", "*.sqlite", "*.sqlite3"],
                     },
@@ -199,7 +213,7 @@ internal sealed class SettingsWindow : SettingsWindowBase
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {
-            StatusTextBlock.Text = "The local dictionary file could not be selected.";
+            StatusTextBlock.Text = UiStrings.Get("mac.dictionary.select_failed");
         }
     }
 
@@ -226,6 +240,8 @@ internal sealed class SettingsWindow : SettingsWindowBase
     private async void HandleSaveRequested(object? sender, EventArgs eventArgs)
     {
         SaveButton.IsEnabled = false;
+        ProviderComboBox.IsEnabled = false;
+        SetFormBusy(true);
         try
         {
             if (!TryCreateInput(out var input, out var error))
@@ -238,12 +254,15 @@ internal sealed class SettingsWindow : SettingsWindowBase
             StatusTextBlock.Text = result.Message;
             if (result.Succeeded)
             {
+                AcceptCurrentProviderDraft();
                 await LoadAsync();
             }
         }
         finally
         {
             SaveButton.IsEnabled = true;
+            ProviderComboBox.IsEnabled = true;
+            SetFormBusy(false);
         }
     }
 
@@ -253,7 +272,7 @@ internal sealed class SettingsWindow : SettingsWindowBase
         error = string.Empty;
         if (!Enum.TryParse<ProxyMode>(SelectedTag(ProxyModeComboBox), out var proxyMode))
         {
-            error = "Choose a proxy mode.";
+            error = UiStrings.Get("mac.settings.proxy_choose");
             return false;
         }
 
@@ -261,7 +280,7 @@ internal sealed class SettingsWindow : SettingsWindowBase
         if (proxyMode == ProxyMode.CustomHttp &&
             !Uri.TryCreate(ProxyUriTextBox.Text, UriKind.Absolute, out proxyUri))
         {
-            error = "Enter a valid custom HTTP proxy URI.";
+            error = UiStrings.Get("mac.settings.proxy_invalid");
             return false;
         }
 
@@ -272,7 +291,7 @@ internal sealed class SettingsWindow : SettingsWindowBase
         if (ShiftCheckBox.IsChecked == true) modifiers |= MacHotkeyModifiers.Shift;
         if ((HotkeyKeyComboBox.SelectedItem as ComboBoxItem)?.Tag is not MacVirtualKey key)
         {
-            error = "Choose a hotkey key.";
+            error = UiStrings.Get("mac.settings.hotkey_choose");
             return false;
         }
 
@@ -329,7 +348,7 @@ internal sealed class SettingsWindow : SettingsWindowBase
 
             if (!_profiles.TryGetValue(providerId, out var profile))
             {
-                error = "Configure and save each enabled translation provider first.";
+                error = UiStrings.Get("mac.settings.configure_each");
                 return false;
             }
 
@@ -343,7 +362,7 @@ internal sealed class SettingsWindow : SettingsWindowBase
         if (localDictionaryEnabled &&
             (localDictionaryPath is null || !Path.IsPathFullyQualified(localDictionaryPath) || !File.Exists(localDictionaryPath)))
         {
-            error = "Choose an existing local dictionary CSV or SQLite file.";
+            error = UiStrings.Get("mac.settings.dictionary_file");
             return false;
         }
 
@@ -360,7 +379,7 @@ internal sealed class SettingsWindow : SettingsWindowBase
         }
         catch (ContractValidationException)
         {
-            error = "Enable at least one configured translation or dictionary source.";
+            error = UiStrings.Get("mac.settings.enable_source");
             return false;
         }
     }
@@ -431,9 +450,14 @@ internal sealed class SettingsWindow : SettingsWindowBase
         if (!_allowClose)
         {
             eventArgs.Cancel = true;
+            ClearProviderDrafts();
             Hide();
         }
     }
 
-    internal void PrepareForShutdown() => _allowClose = true;
+    internal void PrepareForShutdown()
+    {
+        ClearProviderDrafts();
+        _allowClose = true;
+    }
 }

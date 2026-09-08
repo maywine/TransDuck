@@ -9,6 +9,7 @@ public partial class SettingsWindowBase : Window
     public SettingsWindowBase()
     {
         InitializeComponent();
+        InitializeProviderDraftTracking();
     }
 
     public event EventHandler<SelectionChangedEventArgs>? ProviderSelectionRequested;
@@ -24,6 +25,8 @@ public partial class SettingsWindowBase : Window
     public event EventHandler? SaveProviderRequested;
     public event EventHandler? ClearCredentialRequested;
     public event EventHandler? CloseRequested;
+
+    protected void SetFormBusy(bool busy) => SettingsContentElement.IsEnabled = !busy;
 
     protected TextBlock ProductVersionTextBlock => ProductVersionTextBlockElement;
     protected TextBlock VersionTextBlock => ProductVersionTextBlockElement;
@@ -121,6 +124,10 @@ public partial class SettingsWindowBase : Window
 
     protected void ConfigureForMacSettingsWindow()
     {
+        SaveAllButtonElement.Content = UiStrings.Get("settings.button.save_current_and_general");
+        CredentialDescriptionElement.Text = UiStrings.Get("settings.description.credential_mac");
+        ProxyDescriptionElement.Text = UiStrings.Get("settings.description.proxy_mac");
+        SystemProxyModeElement.Content = UiStrings.Get("settings.proxy.mode.system_default_mac");
         Width = 700;
         Height = 820;
         MinWidth = 560;

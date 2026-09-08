@@ -56,8 +56,13 @@ public sealed class ProviderCredentialBoundarySourceTests
         Assert.Contains("provider.status.credential_not_required", refresh, StringComparison.Ordinal);
         Assert.Contains("CredentialPasswordBox.IsEnabled = isEnabled", controls, StringComparison.Ordinal);
         Assert.Contains("ClearCredentialButton.IsEnabled = isEnabled", controls, StringComparison.Ordinal);
-        Assert.True(controls.IndexOf("if (!isEnabled)", StringComparison.Ordinal) <
-            controls.IndexOf("CredentialPasswordBox.Clear()", StringComparison.Ordinal));
+        // Disabling controls during a save must not discard the user's draft.
+        Assert.DoesNotContain("CredentialPasswordBox.Clear()", controls, StringComparison.Ordinal);
+        var apply = Slice(source, "private void ApplyProfile", "private static ProviderProfileSettings? CreateDefaultProfile");
+        Assert.True(apply.IndexOf("BeginProviderChange()", StringComparison.Ordinal) <
+            apply.IndexOf("CredentialPasswordBox.Clear()", StringComparison.Ordinal));
+        Assert.True(apply.IndexOf("CredentialPasswordBox.Clear()", StringComparison.Ordinal) <
+            apply.IndexOf("CompleteProviderChange(", StringComparison.Ordinal));
         Assert.Contains("!string.Equals(providerId, TranslationProviderIds.Google, StringComparison.Ordinal)", selection,
             StringComparison.Ordinal);
     }

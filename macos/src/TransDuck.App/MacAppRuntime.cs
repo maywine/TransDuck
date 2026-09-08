@@ -50,7 +50,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     private MacRuntimeState _state = new(
         string.Empty,
         string.Empty,
-        "Starting TransDuck...",
+        UiStrings.Get("mac.status.starting"),
         false,
         false,
         [],
@@ -109,19 +109,19 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             ProviderCredentialKind.Optional),
         new(
             TranslationProviderIds.Bing,
-            "Bing (unofficial web)",
+            UiStrings.Get("provider.name.bing"),
             BingWebProvider.DefaultEndpoint,
             ModelRequired: false,
             ProviderCredentialKind.Optional),
         new(
             TranslationProviderIds.Google,
-            "Google (unofficial web)",
+            UiStrings.Get("provider.name.google"),
             GoogleWebProvider.DefaultEndpoint,
             ModelRequired: false,
             ProviderCredentialKind.None),
         new(
             TranslationProviderIds.Volcengine,
-            "Volcengine Translate",
+            UiStrings.Get("provider.name.volcengine"),
             VolcengineProvider.DefaultEndpoint,
             ModelRequired: false,
             ProviderCredentialKind.VolcenginePair),
@@ -143,7 +143,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     }
 
     internal void ReportStartupFailure() => PublishState(
-        status: "TransDuck could not finish startup initialization.",
+        status: UiStrings.Get("mac.status.startup_failed"),
         isBusy: false);
 
     public Task InitializeAsync() => TrackOperation(InitializeCoreAsync);
@@ -158,16 +158,16 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             try
             {
                 _httpClientPool.Update(proxyRead.Value!);
-                status.Add("proxy settings loaded");
+                status.Add(UiStrings.Get("mac.status.proxy_loaded"));
             }
             catch (ArgumentException)
             {
-                status.Add("proxy settings invalid; using system default");
+                status.Add(UiStrings.Get("mac.status.proxy_invalid"));
             }
         }
         else if (proxyRead.Status != PersistenceStatus.NotFound)
         {
-            status.Add("proxy settings unavailable; using system default");
+            status.Add(UiStrings.Get("mac.status.proxy_unavailable"));
         }
 
         var hotkeyRead = await _hotkeySettingsStore.ReadAsync(cancellationToken);
@@ -176,12 +176,12 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         {
             var hotkeyStatus = await _hotkeyService.StartAsync(hotkey, cancellationToken);
             _hotkeyStarted = hotkeyStatus == MacGlobalHotkeyStatus.Registered;
-            status.Add(_hotkeyStarted ? "global hotkey ready" : "global hotkey unavailable");
+            status.Add(_hotkeyStarted ? UiStrings.Get("mac.status.hotkey_ready") : UiStrings.Get("mac.status.hotkey_unavailable"));
         }
         else
         {
             _hotkeyService.TrySetSettings(hotkey);
-            status.Add("Accessibility permission is required for selected-text translation");
+            status.Add(UiStrings.Get("mac.status.accessibility_needed"));
         }
 
         var configuration = await _configurationStore.ReadAsync(cancellationToken);
@@ -202,7 +202,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                  configuredProviderKeys.Contains(CanonicalProviderKey(provider))));
         if (!hasUsableSource)
         {
-            status.Add("open Settings to configure a translation or dictionary source");
+            status.Add(UiStrings.Get("mac.status.configure_sources"));
         }
 
         PublishState(status: string.Join("; ", status) + ".");
@@ -228,8 +228,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         }
 
         PublishState(status: result.Status == SpeechPlaybackStatus.Unavailable
-            ? "System pronunciation is unavailable."
-            : "The dictionary entry could not be pronounced.");
+            ? UiStrings.Get("pronunciation.status.unavailable")
+            : UiStrings.Get("pronunciation.status.failed"));
     }
 
     private async Task TranslateSelectedTextCoreAsync(bool promptForPermission)
@@ -257,7 +257,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     {
         PresentationRequested?.Invoke(this, EventArgs.Empty);
         var (generation, cancellationToken) = BeginOperation();
-        PublishCurrentState(generation, status: "Select a screen region...", isBusy: true);
+        PublishCurrentState(generation, status: UiStrings.Get("mac.status.select_region"), isBusy: true);
         using var capture = await _captureService.CaptureRegionAsync(cancellationToken);
         if (!IsCurrent(generation))
         {
@@ -269,15 +269,15 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             PublishCurrentState(
                 generation,
                 status: capture.Status == MacScreenCaptureStatus.Cancelled
-                    ? "Screen capture cancelled."
+                    ? UiStrings.Get("mac.status.capture_cancelled")
                     : capture.Status == MacScreenCaptureStatus.PermissionRequired
-                        ? "Grant Screen Recording permission in System Settings, then try again."
-                    : "Screen capture failed. Check Screen Recording permission.",
+                        ? UiStrings.Get("mac.status.screen_permission")
+                    : UiStrings.Get("mac.status.capture_failed"),
                 isBusy: false);
             return;
         }
 
-        PublishCurrentState(generation, status: "Recognizing text locally with macOS Vision...", isBusy: true);
+        PublishCurrentState(generation, status: UiStrings.Get("mac.status.recognizing"), isBusy: true);
         var ocr = await _ocrService.RecognizeAsync(capture.ImagePath!, languageTag, cancellationToken);
         if (!IsCurrent(generation))
         {
@@ -386,13 +386,13 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         }
         catch (ContractValidationException)
         {
-            return new MacSettingsSaveResult(false, "The selected result sources are invalid.");
+            return new MacSettingsSaveResult(false, UiStrings.Get("mac.settings.invalid_sources"));
         }
 
         var write = await _querySourceSettingsStore.WriteAsync(settings, cancellationToken);
         return write.Succeeded
-            ? new MacSettingsSaveResult(true, "Result sources saved.")
-            : new MacSettingsSaveResult(false, "The selected result sources could not be saved.");
+            ? new MacSettingsSaveResult(true, UiStrings.Get("settings.status.sources_saved"))
+            : new MacSettingsSaveResult(false, UiStrings.Get("mac.settings.sources_save_failed"));
     }
 
     public Task<MacSettingsSaveResult> SaveSettingsAsync(
@@ -412,7 +412,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         var providerRead = await _providerSettingsStore.ReadAsync(cancellationToken);
         if (providerRead.Status is not (PersistenceStatus.Succeeded or PersistenceStatus.NotFound))
         {
-            return new MacSettingsSaveResult(false, "Provider settings could not be read.");
+            return new MacSettingsSaveResult(false, UiStrings.Get("provider.status.settings_unavailable"));
         }
 
         var profiles = providerRead.Succeeded
@@ -425,7 +425,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             cancellationToken);
         if (!providerWrite.Succeeded)
         {
-            return new MacSettingsSaveResult(false, "Provider settings could not be saved.");
+            return new MacSettingsSaveResult(false, UiStrings.Get("provider.save.write_failed"));
         }
 
         var configuration = new Configuration(
@@ -436,7 +436,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         var configurationWrite = await _configurationStore.WriteAsync(configuration, cancellationToken);
         if (!configurationWrite.Succeeded)
         {
-            return new MacSettingsSaveResult(false, "General settings could not be saved.");
+            return new MacSettingsSaveResult(false, UiStrings.Get("mac.settings.general_save_failed"));
         }
 
         var querySourceWrite = await _querySourceSettingsStore.WriteAsync(
@@ -444,7 +444,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             cancellationToken);
         if (!querySourceWrite.Succeeded)
         {
-            return new MacSettingsSaveResult(false, "The selected result sources could not be saved.");
+            return new MacSettingsSaveResult(false, UiStrings.Get("mac.settings.sources_save_failed"));
         }
 
         var credentialResult = await SaveCredentialAsync(input, cancellationToken);
@@ -456,7 +456,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         var proxyWrite = await _proxySettingsStore.WriteAsync(input.ProxySettings, cancellationToken);
         if (!proxyWrite.Succeeded)
         {
-            return new MacSettingsSaveResult(false, "Proxy settings could not be saved.");
+            return new MacSettingsSaveResult(false, UiStrings.Get("mac.settings.proxy_save_failed"));
         }
 
         try
@@ -465,13 +465,13 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         }
         catch (ArgumentException)
         {
-            return new MacSettingsSaveResult(false, "Proxy settings were saved but could not be applied.");
+            return new MacSettingsSaveResult(false, UiStrings.Get("mac.settings.proxy_apply_failed"));
         }
 
         var hotkeyWrite = await _hotkeySettingsStore.WriteAsync(input.HotkeySettings, cancellationToken);
         if (!hotkeyWrite.Succeeded || !_hotkeyService.TrySetSettings(input.HotkeySettings))
         {
-            return new MacSettingsSaveResult(false, "Hotkey settings could not be saved.");
+            return new MacSettingsSaveResult(false, UiStrings.Get("mac.settings.hotkey_save_failed"));
         }
 
         var startup = input.StartAtLogin
@@ -481,11 +481,11 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         {
             return new MacSettingsSaveResult(
                 false,
-                "Settings were saved, but the login-start entry is unavailable or owned by another file.");
+                UiStrings.Get("mac.settings.startup_failed"));
         }
 
-        PublishState(status: "Settings saved.");
-        return new MacSettingsSaveResult(true, "Settings saved.");
+        PublishState(status: UiStrings.Get("mac.settings.saved"));
+        return new MacSettingsSaveResult(true, UiStrings.Get("mac.settings.saved"));
     }
 
     public Task<bool> EnsureAccessibilityAndHotkeyAsync(bool prompt) =>
@@ -496,8 +496,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         if (!_selectionService.EnsurePermission(prompt))
         {
             PublishState(status: prompt
-                ? "Approve the macOS Accessibility request; the global hotkey will activate when you return."
-                : "Accessibility permission is required for selected-text translation.");
+                ? UiStrings.Get("mac.status.accessibility_pending")
+                : UiStrings.Get("mac.status.accessibility_required"));
             return false;
         }
 
@@ -511,8 +511,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         var status = await _hotkeyService.StartAsync(settings, _lifetimeCancellation.Token);
         _hotkeyStarted = status == MacGlobalHotkeyStatus.Registered;
         PublishState(status: _hotkeyStarted
-            ? "Accessibility permission and global hotkey are ready."
-            : "The global hotkey could not be registered.");
+            ? UiStrings.Get("mac.status.accessibility_ready")
+            : UiStrings.Get("mac.status.hotkey_failed"));
         return _hotkeyStarted;
     }
 
@@ -583,7 +583,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     {
         if (string.IsNullOrWhiteSpace(text))
         {
-            PublishCurrentState(generation, input: text, status: "Enter text to translate.", isBusy: false);
+            PublishCurrentState(generation, input: text, status: UiStrings.Get("translation.input.empty"), isBusy: false);
             return;
         }
 
@@ -591,7 +591,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             generation,
             input: text,
             output: sourceFilter is null ? string.Empty : null,
-            status: "Loading result sources...",
+            status: UiStrings.Get("mac.status.loading_sources"),
             isBusy: true,
             canRetry: false,
             results: sourceFilter is null ? [] : null);
@@ -610,7 +610,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         {
             PublishCurrentState(
                 generation,
-                status: "The selected result sources are unavailable. Open Settings and save them again.",
+                status: UiStrings.Get("mac.status.sources_unavailable"),
                 isBusy: false);
             return;
         }
@@ -631,24 +631,26 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 CanonicalProviderKey(provider),
                 DescribeProvider(provider),
                 string.Empty,
-                "Waiting"))
+                UiStrings.Get("result.source.waiting"),
+                targetLanguage: providerRead.Value?.Profiles.FirstOrDefault(profile =>
+                    profile.CanonicalProviderKey == CanonicalProviderKey(provider))?.TargetLanguage))
             .ToList();
         if (includeLocalDictionary)
         {
             presentations.Add(new TranslationResultViewModel(
                 LocalDictionaryIds.File,
-                _localDictionaryProvider.Registration.DisplayName,
+                UiStrings.Get("result.source.local_dictionary"),
                 string.Empty,
-                "Waiting"));
+                UiStrings.Get("result.source.waiting")));
         }
 
         if (includeMacSystem)
         {
             presentations.Add(new TranslationResultViewModel(
                 LocalDictionaryIds.MacSystem,
-                _systemDictionaryProvider.Registration.DisplayName,
+                UiStrings.Get("result.source.mac_system_dictionary"),
                 string.Empty,
-                "Waiting"));
+                UiStrings.Get("result.source.waiting")));
         }
 
         var preparedResults = sourceFilter is null
@@ -657,7 +659,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         PublishCurrentState(
             generation,
             output: CombineResults(preparedResults),
-            status: "Receiving results...",
+            status: UiStrings.Get("mac.status.receiving"),
             isBusy: true,
             results: preparedResults);
         var providerDocument = providerRead.Succeeded ? providerRead.Value : null;
@@ -713,7 +715,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             generation,
             status: terminals.Any(static terminal => terminal.Succeeded)
                 ? string.Empty
-                : "No enabled source returned a result.",
+                : UiStrings.Get("mac.status.no_results"),
             isBusy: false,
             canRetry: retryableKeys.Count > 0);
     }
@@ -749,7 +751,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 CanonicalProviderKey(selectedProvider),
                 DescribeProvider(selectedProvider),
                 DescribeQueryError(QueryErrorCode.Internal),
-                "Failed");
+                UiStrings.Get("result.source.failed"));
             return MacSourceTerminal.Failed(
                 CanonicalProviderKey(selectedProvider),
                 QueryErrorCode.Internal,
@@ -782,7 +784,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 key,
                 displayName,
                 settings.Error!,
-                "Not configured");
+                UiStrings.Get("mac.source.not_configured"));
             return MacSourceTerminal.Failed(key, QueryErrorCode.InvalidRequest, retryable: false);
         }
 
@@ -794,8 +796,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 generation,
                 key,
                 displayName,
-                "The selected provider is unavailable.",
-                "Failed");
+                UiStrings.Get("mac.provider.unavailable"),
+                UiStrings.Get("result.source.failed"));
             return MacSourceTerminal.Failed(key, QueryErrorCode.ProviderUnavailable, retryable: false);
         }
 
@@ -814,8 +816,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                     generation,
                     key,
                     displayName,
-                    "The saved Volcengine credential is invalid.",
-                    "Failed");
+                    UiStrings.Get("mac.credential.invalid_pair"),
+                    UiStrings.Get("result.source.failed"));
                 return MacSourceTerminal.Failed(key, QueryErrorCode.Authentication, retryable: false);
             }
         }
@@ -842,7 +844,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             requestId,
             null,
             null);
-        PublishCurrentSourceResult(generation, key, displayName, string.Empty, "Receiving");
+        PublishCurrentSourceResult(generation, key, displayName, string.Empty, UiStrings.Get("result.source.receiving"));
         var result = await TranslationProviderRunner.RunAsync(
             provider,
             request,
@@ -851,7 +853,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
                 key,
                 displayName,
                 output,
-                "Receiving"),
+                UiStrings.Get("result.source.receiving")),
             cancellationToken);
         stopwatch.Stop();
         var output = string.IsNullOrWhiteSpace(result.Text) && result.ErrorCode is { } error
@@ -927,9 +929,9 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             PublishCurrentSourceResult(
                 generation,
                 provider.Registration.ProviderId,
-                provider.Registration.DisplayName,
-                "The dictionary source is unavailable.",
-                "Failed");
+                DescribeDictionaryProvider(provider),
+                UiStrings.Get("mac.dictionary.unavailable"),
+                UiStrings.Get("result.source.failed"));
             return MacSourceTerminal.Failed(
                 provider.Registration.ProviderId,
                 QueryErrorCode.Internal,
@@ -948,14 +950,14 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         PublishCurrentSourceResult(
             generation,
             provider.Registration.ProviderId,
-            provider.Registration.DisplayName,
+            DescribeDictionaryProvider(provider),
             string.Empty,
-            "Looking up");
+            UiStrings.Get("mac.source.looking_up"));
         var result = await provider.LookupAsync(text, dataFilePath, cancellationToken);
         PublishCurrentSourceResult(
             generation,
             provider.Registration.ProviderId,
-            provider.Registration.DisplayName,
+            DescribeDictionaryProvider(provider),
             result.Entry?.ToDisplayText() ?? DescribeDictionaryStatus(result.Status),
             DescribeDictionarySourceStatus(result.Status),
             result.Entry?.Term);
@@ -989,7 +991,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     {
         if (providerDocument is null)
         {
-            return TranslationSettingsResult.Failed("Open Settings and configure this translation provider.");
+            return TranslationSettingsResult.Failed(UiStrings.Get("mac.provider.configure"));
         }
 
         var profile = providerDocument.Profiles.FirstOrDefault(candidate => string.Equals(
@@ -998,13 +1000,13 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             StringComparison.Ordinal));
         if (profile is null)
         {
-            return TranslationSettingsResult.Failed("The selected provider profile is unavailable.");
+            return TranslationSettingsResult.Failed(UiStrings.Get("mac.provider.profile_unavailable"));
         }
 
         var definition = FindProviderDefinition(profile.Provider.ProviderId);
         if (definition is null)
         {
-            return TranslationSettingsResult.Failed("The selected provider is unsupported.");
+            return TranslationSettingsResult.Failed(UiStrings.Get("mac.provider.unsupported"));
         }
 
         if (definition.CredentialKind == ProviderCredentialKind.None)
@@ -1023,7 +1025,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         return definition.CredentialKind == ProviderCredentialKind.Optional &&
             credentialRead.Status == PersistenceStatus.NotFound
             ? TranslationSettingsResult.Success(profile, configuration, null)
-            : TranslationSettingsResult.Failed("The selected provider credential is unavailable.");
+            : TranslationSettingsResult.Failed(UiStrings.Get("mac.credential.unavailable"));
     }
 
     private async Task<MacSettingsSaveResult?> SaveCredentialAsync(
@@ -1037,7 +1039,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             var remove = await _credentialStore.RemoveAsync(key, cancellationToken);
             return remove.Status is PersistenceStatus.Succeeded or PersistenceStatus.NotFound
                 ? null
-                : new MacSettingsSaveResult(false, "The provider credential could not be cleared.");
+                : new MacSettingsSaveResult(false, UiStrings.Get("mac.credential.clear_failed"));
         }
 
         string? value = null;
@@ -1047,7 +1049,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             var hasSecondary = !string.IsNullOrWhiteSpace(input.SecondaryCredential);
             if (hasPrimary != hasSecondary)
             {
-                return new MacSettingsSaveResult(false, "Both Volcengine AK and SK are required together.");
+                return new MacSettingsSaveResult(false, UiStrings.Get("mac.credential.pair_required"));
             }
 
             if (hasPrimary)
@@ -1069,7 +1071,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         var set = await _credentialStore.SetAsync(key, secret, cancellationToken);
         return set.Succeeded
             ? null
-            : new MacSettingsSaveResult(false, "The provider credential could not be saved to Keychain.");
+            : new MacSettingsSaveResult(false, UiStrings.Get("mac.credential.save_failed"));
     }
 
     private static bool TryValidateSettingsInput(
@@ -1081,13 +1083,13 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         error = null;
         if (input is null || FindProviderDefinition(input.ProviderId) is null)
         {
-            error = "Choose a supported provider.";
+            error = UiStrings.Get("mac.settings.choose_provider");
             return false;
         }
 
         if (!Uri.TryCreate(input.Endpoint, UriKind.Absolute, out var endpoint))
         {
-            error = "Enter an absolute HTTP(S) provider endpoint.";
+            error = UiStrings.Get("mac.settings.endpoint_invalid");
             return false;
         }
 
@@ -1107,7 +1109,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             input.HistoryRetention.Validate();
             if (FindProviderDefinition(input.ProviderId)!.ModelRequired && profile.Model is null)
             {
-                error = "The selected provider requires a model.";
+                error = UiStrings.Get("mac.settings.model_required");
                 profile = null;
                 return false;
             }
@@ -1117,7 +1119,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
         {
             profile = null;
-            error = "One or more settings values are invalid.";
+            error = UiStrings.Get("mac.settings.invalid_values");
             return false;
         }
     }
@@ -1352,7 +1354,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
             var results = _state.Results.ToList();
             var index = results.FindIndex(candidate => string.Equals(candidate.Key, key, StringComparison.Ordinal));
-            var result = new TranslationResultViewModel(key, displayName, text, status, pronunciationTerm);
+            var result = new TranslationResultViewModel(key, displayName, text, status, pronunciationTerm,
+                index >= 0 ? results[index].TargetLanguage : null);
             if (index >= 0)
             {
                 results[index] = result;
@@ -1418,15 +1421,15 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         lock (_stateGate)
         {
             var results = _state.Results
-                .Select(static result => result.Status is "Waiting" or "Receiving" or "Looking up"
-                    ? result.WithStatus("Cancelled")
+                .Select(static result => new[] { UiStrings.Get("result.source.waiting"), UiStrings.Get("result.source.receiving"), UiStrings.Get("mac.source.looking_up") }.Contains(result.Status, StringComparer.Ordinal)
+                    ? result.WithStatus(UiStrings.Get("result.source.cancelled"))
                     : result)
                 .ToArray();
             _retry = null;
             _state = _state with
             {
                 Results = results,
-                Status = "Operation cancelled.",
+                Status = UiStrings.Get("mac.status.cancelled"),
                 IsBusy = false,
                 CanRetry = false,
                 Revision = _state.Revision + 1,
@@ -1545,32 +1548,32 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     private static string DescribeSelectionFailure(MacSelectionStatus status) => status switch
     {
         MacSelectionStatus.PermissionRequired =>
-            "Accessibility permission is required. Grant it in System Settings and try again.",
-        MacSelectionStatus.NoFocusedElement => "No focused application exposed selected text.",
-        MacSelectionStatus.NoSelection => "No selected text was found.",
-        MacSelectionStatus.Unsupported => "The focused application does not expose its selected text.",
-        _ => "Selected text could not be read.",
+            UiStrings.Get("mac.selection.permission"),
+        MacSelectionStatus.NoFocusedElement => UiStrings.Get("mac.selection.no_focused"),
+        MacSelectionStatus.NoSelection => UiStrings.Get("mac.selection.no_selection"),
+        MacSelectionStatus.Unsupported => UiStrings.Get("mac.selection.unsupported"),
+        _ => UiStrings.Get("mac.selection.failed"),
     };
 
     private static string DescribeOcrFailure(MacOcrStatus status) => status switch
     {
-        MacOcrStatus.NoText => "No text was recognized in the selected region.",
-        MacOcrStatus.LanguageUnavailable => "The selected OCR language is unavailable.",
-        MacOcrStatus.Cancelled => "OCR cancelled.",
-        MacOcrStatus.Unsupported => "macOS Vision OCR is unavailable on this system.",
-        _ => "OCR failed.",
+        MacOcrStatus.NoText => UiStrings.Get("mac.ocr.no_text"),
+        MacOcrStatus.LanguageUnavailable => UiStrings.Get("mac.ocr.language_unavailable"),
+        MacOcrStatus.Cancelled => UiStrings.Get("mac.ocr.cancelled"),
+        MacOcrStatus.Unsupported => UiStrings.Get("mac.ocr.unavailable"),
+        _ => UiStrings.Get("mac.ocr.failed"),
     };
 
     private static string DescribeQueryError(QueryErrorCode errorCode) => errorCode switch
     {
-        QueryErrorCode.InvalidRequest => "The translation request is invalid.",
-        QueryErrorCode.ProviderUnavailable => "The translation provider is unavailable.",
-        QueryErrorCode.Timeout => "The translation request timed out.",
-        QueryErrorCode.Network => "The translation provider could not be reached.",
-        QueryErrorCode.Authentication => "The translation credential was rejected.",
-        QueryErrorCode.RateLimited => "The translation provider rate limit was reached.",
-        QueryErrorCode.UnsupportedLanguage => "The requested language is unsupported.",
-        _ => "The translation failed.",
+        QueryErrorCode.InvalidRequest => UiStrings.Get("mac.translation.invalid"),
+        QueryErrorCode.ProviderUnavailable => UiStrings.Get("mac.translation.unavailable"),
+        QueryErrorCode.Timeout => UiStrings.Get("mac.translation.timeout"),
+        QueryErrorCode.Network => UiStrings.Get("mac.translation.network"),
+        QueryErrorCode.Authentication => UiStrings.Get("mac.translation.auth"),
+        QueryErrorCode.RateLimited => UiStrings.Get("mac.translation.rate_limited"),
+        QueryErrorCode.UnsupportedLanguage => UiStrings.Get("mac.translation.language"),
+        _ => UiStrings.Get("mac.translation.failed"),
     };
 
     private static DiagnosticErrorCode? ToDiagnosticError(QueryErrorCode? errorCode) => errorCode switch
@@ -1597,38 +1600,43 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             TranslationProviderIds.OpenAiCompatible => "OpenAI-compatible",
             TranslationProviderIds.DeepL => "DeepL",
             TranslationProviderIds.Ollama => "Ollama",
-            TranslationProviderIds.Bing => "Bing (unofficial web)",
-            TranslationProviderIds.Google => "Google (unofficial web)",
-            TranslationProviderIds.Volcengine => "Volcengine Translate",
+            TranslationProviderIds.Bing => UiStrings.Get("provider.name.bing"),
+            TranslationProviderIds.Google => UiStrings.Get("provider.name.google"),
+            TranslationProviderIds.Volcengine => UiStrings.Get("provider.name.volcengine"),
             _ => provider.ProviderId,
         };
         return provider.InstanceId is null ? name : name + " (" + provider.InstanceId + ")";
     }
 
+    private static string DescribeDictionaryProvider(IDictionaryProvider provider) =>
+        provider.Registration.ProviderId == LocalDictionaryIds.MacSystem
+            ? UiStrings.Get("result.source.mac_system_dictionary")
+            : UiStrings.Get("result.source.local_dictionary");
+
     private static string DescribeSourceTerminal(TranslationStreamEventKind kind) => kind switch
     {
         TranslationStreamEventKind.Completed => string.Empty,
-        TranslationStreamEventKind.Cancelled => "Cancelled",
-        _ => "Failed",
+        TranslationStreamEventKind.Cancelled => UiStrings.Get("result.source.cancelled"),
+        _ => UiStrings.Get("result.source.failed"),
     };
 
     private static string DescribeDictionarySourceStatus(DictionaryLookupStatus status) => status switch
     {
         DictionaryLookupStatus.Found => string.Empty,
-        DictionaryLookupStatus.NotFound => "No entry",
-        DictionaryLookupStatus.Cancelled => "Cancelled",
-        _ => "Failed",
+        DictionaryLookupStatus.NotFound => UiStrings.Get("mac.source.no_entry"),
+        DictionaryLookupStatus.Cancelled => UiStrings.Get("result.source.cancelled"),
+        _ => UiStrings.Get("result.source.failed"),
     };
 
     private static string DescribeDictionaryStatus(DictionaryLookupStatus status) => status switch
     {
-        DictionaryLookupStatus.NotFound => "No matching dictionary entry was found.",
-        DictionaryLookupStatus.InvalidRequest => "The selected text cannot be used for a dictionary lookup.",
-        DictionaryLookupStatus.Unavailable => "The dictionary source is unavailable.",
+        DictionaryLookupStatus.NotFound => UiStrings.Get("dictionary.status.not_found"),
+        DictionaryLookupStatus.InvalidRequest => UiStrings.Get("dictionary.status.invalid_request"),
+        DictionaryLookupStatus.Unavailable => UiStrings.Get("mac.dictionary.unavailable"),
         DictionaryLookupStatus.InvalidData =>
-            "The selected file is not a supported local dictionary CSV or SQLite database.",
-        DictionaryLookupStatus.Cancelled => "Dictionary lookup cancelled.",
-        _ => "The dictionary source is unavailable.",
+            UiStrings.Get("dictionary.status.invalid_data"),
+        DictionaryLookupStatus.Cancelled => UiStrings.Get("dictionary.status.cancelled"),
+        _ => UiStrings.Get("mac.dictionary.unavailable"),
     };
 
     private static bool IsRetryableError(QueryErrorCode errorCode) => errorCode is

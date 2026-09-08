@@ -13,6 +13,7 @@ public partial class TranslationWindowBase : Window
     {
         InitializeComponent();
         HeaderPanelElement.PointerPressed += HandleHeaderPointerPressed;
+        InputTextBoxElement.AddHandler(KeyDownEvent, HandleInputKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
     }
 
     public event EventHandler<string>? TranslationRequested;
@@ -51,7 +52,7 @@ public partial class TranslationWindowBase : Window
         Width = 560;
         Height = 560;
         MinWidth = 420;
-        MinHeight = 360;
+        MinHeight = 480;
         WindowDecorations = Avalonia.Controls.WindowDecorations.None;
         WindowStartupLocation = WindowStartupLocation.Manual;
         CanResize = true;
@@ -70,6 +71,8 @@ public partial class TranslationWindowBase : Window
 
     protected void ConfigureForMacDesktopWindow()
     {
+        _translateModifier = KeyModifiers.Meta;
+        TranslateShortcutTextBlockElement.Text = "⌘ Return";
         Width = 760;
         Height = 650;
         MinWidth = 560;
@@ -92,8 +95,34 @@ public partial class TranslationWindowBase : Window
             .Where(static result => !string.IsNullOrWhiteSpace(result.Text))
             .Select(static result => result.DisplayName + Environment.NewLine + result.Text));
 
-    private void HandleTranslateClick(object? sender, RoutedEventArgs eventArgs) =>
-        TranslationRequested?.Invoke(this, InputTextBoxElement.Text ?? string.Empty);
+    private void HandleTranslateClick(object? sender, RoutedEventArgs eventArgs) => RequestTranslation();
+
+    private KeyModifiers _translateModifier = KeyModifiers.Control;
+
+    private void RequestTranslation()
+    {
+        if (TranslateButton.IsEnabled)
+        {
+            TranslationRequested?.Invoke(this, InputTextBoxElement.Text ?? string.Empty);
+        }
+    }
+
+    private void HandleInputKeyDown(object? sender, KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key == Key.Enter && eventArgs.KeyModifiers == _translateModifier)
+        {
+            eventArgs.Handled = true;
+            RequestTranslation();
+        }
+    }
+
+    private void HandleCopySourceClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (sender is Button { Tag: string text } && !string.IsNullOrWhiteSpace(text))
+        {
+            ResultCopyRequested?.Invoke(this, text);
+        }
+    }
 
     private void HandleSelectedTextClick(object? sender, RoutedEventArgs eventArgs) =>
         SelectedTextRequested?.Invoke(this, EventArgs.Empty);
