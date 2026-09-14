@@ -43,6 +43,7 @@ public partial class App : Application
             }
 
             _runtime.PresentationRequested += HandlePresentationRequested;
+            _runtime.InputPresentationRequested += HandleInputPresentationRequested;
             _ = InitializeRuntimeAsync(_runtime);
         }
 
@@ -169,6 +170,14 @@ public partial class App : Application
     private void HandlePresentationRequested(object? sender, EventArgs eventArgs) =>
         Dispatcher.UIThread.Post(ShowMainWindow);
 
+    private void HandleInputPresentationRequested(object? sender, EventArgs eventArgs) =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_mainWindow is null || Volatile.Read(ref _stopping) != 0) return;
+            Present(_mainWindow);
+            _mainWindow.FocusForManualInput();
+        });
+
     private void ShowMainWindow()
     {
         if (_mainWindow is not null)
@@ -204,6 +213,7 @@ public partial class App : Application
         if (_runtime is { } runtime)
         {
             runtime.PresentationRequested -= HandlePresentationRequested;
+            runtime.InputPresentationRequested -= HandleInputPresentationRequested;
             _mainWindow?.PrepareForShutdown();
             _settingsWindow?.PrepareForShutdown();
             _historyWindow?.PrepareForShutdown();
@@ -233,6 +243,7 @@ public partial class App : Application
         if (_runtime is { } runtime)
         {
             runtime.PresentationRequested -= HandlePresentationRequested;
+            runtime.InputPresentationRequested -= HandleInputPresentationRequested;
             _mainWindow?.PrepareForShutdown();
             _settingsWindow?.PrepareForShutdown();
             _historyWindow?.PrepareForShutdown();

@@ -29,6 +29,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     private readonly JsonQuerySourceSettingsStore _querySourceSettingsStore;
     private readonly JsonProxySettingsStore _proxySettingsStore;
     private readonly JsonMacHotkeySettingsStore _hotkeySettingsStore;
+    private readonly JsonMacHotkeySettingsStore _inputHotkeySettingsStore;
     private readonly MacKeychainCredentialStore _credentialStore = new();
     private readonly JsonLinesHistoryStore _historyStore;
     private readonly JsonLinesDiagnosticSink _diagnosticSink;
@@ -73,6 +74,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         _querySourceSettingsStore = new JsonQuerySourceSettingsStore(_dataPaths);
         _proxySettingsStore = new JsonProxySettingsStore(_dataPaths);
         _hotkeySettingsStore = new JsonMacHotkeySettingsStore(_dataPaths);
+        _inputHotkeySettingsStore = new JsonMacHotkeySettingsStore(_dataPaths.InputHotkeySettingsFilePath);
         _historyStore = new JsonLinesHistoryStore(_dataPaths);
         _diagnosticSink = new JsonLinesDiagnosticSink(_dataPaths);
         _localDictionaryProvider = new LocalDictionaryProvider(
@@ -85,6 +87,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         _providers.Register(new GoogleWebProvider(leaseSource));
         _providers.Register(new VolcengineProvider(leaseSource));
         _hotkeyService.Pressed += HandleHotkeyPressed;
+        _hotkeyService.InputRequested += HandleInputHotkeyPressed;
     }
 
     public static IReadOnlyList<ProviderDefinition> ProviderDefinitions { get; } =
@@ -130,6 +133,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
     public event EventHandler<MacRuntimeState>? StateChanged;
 
     public event EventHandler? PresentationRequested;
+    public event EventHandler? InputPresentationRequested;
 
     public MacRuntimeState State
     {
@@ -172,6 +176,13 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
         var hotkeyRead = await _hotkeySettingsStore.ReadAsync(cancellationToken);
         var hotkey = hotkeyRead.Succeeded ? hotkeyRead.Value! : MacHotkeySettings.Default;
+        _hotkeyService.TrySetSettings(hotkey);
+        var inputRead = await _inputHotkeySettingsStore.ReadAsync(cancellationToken);
+        var inputHotkey = inputRead.Succeeded ? inputRead.Value! : MacHotkeySettings.InputDefault;
+        if (!_hotkeyService.TrySetInputSettings(inputHotkey))
+        {
+            status.Add(UiStrings.Get("hotkey.input.conflict"));
+        }
         if (_selectionService.EnsurePermission(prompt: false))
         {
             var hotkeyStatus = await _hotkeyService.StartAsync(hotkey, cancellationToken);
@@ -328,6 +339,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         var configurationRead = await _configurationStore.ReadAsync(cancellationToken);
         var querySourceRead = await _querySourceSettingsStore.ReadAsync(cancellationToken);
         var proxyRead = await _proxySettingsStore.ReadAsync(cancellationToken);
+        var inputRead = await _inputHotkeySettingsStore.ReadAsync(cancellationToken);
         var hotkeyRead = await _hotkeySettingsStore.ReadAsync(cancellationToken);
         var configuration = configurationRead.Succeeded
             ? configurationRead.Value!
@@ -346,7 +358,8 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             configurationRead.Status,
             querySourceRead.Status,
             proxyRead.Status,
-            hotkeyRead.Status);
+            hotkeyRead.Status,
+            inputRead.Succeeded ? inputRead.Value! : _hotkeyService.InputSettings ?? MacHotkeySettings.InputDefault);
     }
 
     public Task<PersistenceStatus> GetCredentialStatusAsync(
@@ -395,6 +408,24 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             : new MacSettingsSaveResult(false, UiStrings.Get("mac.settings.sources_save_failed"));
     }
 
+    public Task<MacSettingsSaveResult> SaveInputHotkeyAsync(
+        MacHotkeySettings settings, CancellationToken cancellationToken) =>
+        TrackOperation(async () =>
+        {
+            try { settings.Validate(); }
+            catch (ContractValidationException)
+            {
+                return new MacSettingsSaveResult(false, UiStrings.Get("hotkey.ui.invalid"));
+            }
+            if (settings.UsesSameChord(_hotkeyService.Settings))
+                return new MacSettingsSaveResult(false, UiStrings.Get("hotkey.input.conflict"));
+            var write = await _inputHotkeySettingsStore.WriteAsync(settings, cancellationToken);
+            if (!write.Succeeded || !_hotkeyService.TrySetInputSettings(settings))
+                return new MacSettingsSaveResult(false, UiStrings.Get("hotkey.input.save_failed"));
+            return new MacSettingsSaveResult(true, UiStrings.Get(_hotkeyStarted
+                ? "hotkey.input.saved" : "hotkey.input.saved_inactive"));
+        });
+
     public Task<MacSettingsSaveResult> SaveSettingsAsync(
         MacSettingsInput input,
         CancellationToken cancellationToken) =>
@@ -409,6 +440,10 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             return new MacSettingsSaveResult(false, error!);
         }
 
+        if (_hotkeyService.InputSettings is { } inputHotkey && input.HotkeySettings.UsesSameChord(inputHotkey))
+        {
+            return new MacSettingsSaveResult(false, UiStrings.Get("hotkey.input.conflict"));
+        }
         var providerRead = await _providerSettingsStore.ReadAsync(cancellationToken);
         if (providerRead.Status is not (PersistenceStatus.Succeeded or PersistenceStatus.NotFound))
         {
@@ -472,6 +507,12 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         if (!hotkeyWrite.Succeeded || !_hotkeyService.TrySetSettings(input.HotkeySettings))
         {
             return new MacSettingsSaveResult(false, UiStrings.Get("mac.settings.hotkey_save_failed"));
+        }
+
+        if (_hotkeyService.InputSettings is null)
+        {
+            var inputRead = await _inputHotkeySettingsStore.ReadAsync(cancellationToken);
+            _hotkeyService.TrySetInputSettings(inputRead.Succeeded ? inputRead.Value! : MacHotkeySettings.InputDefault);
         }
 
         var startup = input.StartAtLogin
@@ -543,6 +584,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         CancelCurrentOperation();
         await WaitForTrackedOperationsAsync();
         _hotkeyService.Pressed -= HandleHotkeyPressed;
+        _hotkeyService.InputRequested -= HandleInputHotkeyPressed;
         try
         {
             await _hotkeyService.DisposeAsync();
@@ -553,6 +595,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
         }
 
         DisposeNonFatal(_hotkeySettingsStore);
+        DisposeNonFatal(_inputHotkeySettingsStore);
         DisposeNonFatal(_proxySettingsStore);
         DisposeNonFatal(_providerSettingsStore);
         DisposeNonFatal(_querySourceSettingsStore);
@@ -1318,6 +1361,7 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             _state = _state with
             {
                 Input = input ?? _state.Input,
+                InputRevision = input is null ? _state.InputRevision : _state.InputRevision + 1,
                 Output = output ?? _state.Output,
                 Status = status ?? _state.Status,
                 IsBusy = isBusy ?? _state.IsBusy,
@@ -1439,6 +1483,9 @@ internal sealed class MacAppRuntime : IAsyncDisposable
 
         StateChanged?.Invoke(this, state);
     }
+
+    private void HandleInputHotkeyPressed(object? sender, EventArgs eventArgs) =>
+        InputPresentationRequested?.Invoke(this, EventArgs.Empty);
 
     private void HandleHotkeyPressed(object? sender, EventArgs eventArgs) => _ = Task.Run(
         () => TranslateSelectedTextAsync(promptForPermission: false),

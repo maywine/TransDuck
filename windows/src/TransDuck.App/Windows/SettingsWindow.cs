@@ -27,6 +27,7 @@ public sealed class SettingsWindow : SettingsWindowBase
     private readonly QuerySourceSettingsController _querySourceController;
     private readonly ProxySettingsController _proxyController;
     private readonly HotkeySettingsController _hotkeyController;
+    private readonly HotkeySettingsController _inputHotkeyController;
     private readonly StartupSettingsController _startupController;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private IReadOnlyList<ProviderProfileSettings> _profiles = [];
@@ -48,12 +49,14 @@ public sealed class SettingsWindow : SettingsWindowBase
         QuerySourceSettingsController querySourceController,
         ProxySettingsController proxyController,
         HotkeySettingsController hotkeyController,
+        HotkeySettingsController inputHotkeyController,
         StartupSettingsController startupController)
     {
         _controller = controller;
         _querySourceController = querySourceController;
         _proxyController = proxyController;
         _hotkeyController = hotkeyController;
+        _inputHotkeyController = inputHotkeyController;
         _startupController = startupController;
         ConfigureForWindowsSettingsWindow();
         ProviderSelectionRequested += ProviderSelectionChanged;
@@ -63,6 +66,7 @@ public sealed class SettingsWindow : SettingsWindowBase
         ClearCredentialRequested += ClearCredentialButtonClick;
         CloseRequested += CloseButtonClick;
         SaveHotkeyRequested += SaveHotkeyButtonClick;
+        SaveInputHotkeyRequested += SaveInputHotkeyButtonClick;
         ProxyModeSelectionRequested += ProxyModeSelectionChanged;
         SaveProxyRequested += SaveProxySettingsButtonClick;
         SaveStartupRequested += SaveStartupButtonClick;
@@ -70,6 +74,7 @@ public sealed class SettingsWindow : SettingsWindowBase
         Loaded += HandleLoaded;
         Closed += HandleClosed;
         _hotkeyController.StateChanged += HandleHotkeyStateChanged;
+        _inputHotkeyController.StateChanged += HandleInputHotkeyStateChanged;
         _proxyController.StateChanged += HandleProxyStateChanged;
         _startupController.StateChanged += HandleStartupStateChanged;
         ApplyHotkeyControllerState();
@@ -334,6 +339,64 @@ public sealed class SettingsWindow : SettingsWindowBase
             }
         }
     }
+
+    private async void SaveInputHotkeyButtonClick(object? sender, EventArgs eventArgs)
+    {
+        if (_isLoading || _isBusy || _isHotkeySaving || _isProxySaving || _isClosed ||
+            !_inputHotkeyController.IsInitialized) return;
+        if (!HotkeySettingsController.TryCreateSettings(
+                InputControlCheckBox.IsChecked == true, InputAltCheckBox.IsChecked == true,
+                InputShiftCheckBox.IsChecked == true, InputWindowsCheckBox.IsChecked == true,
+                InputHotkeyKeyTextBox.Text, out var settings))
+        {
+            InputHotkeyStatusTextBlock.Text = AppStrings.Get("hotkey.ui.invalid");
+            return;
+        }
+        if (settings.ToGlobalHotkey() == _hotkeyController.CurrentSettings.ToGlobalHotkey())
+        {
+            InputHotkeyStatusTextBlock.Text = AppStrings.Get("hotkey.input.conflict");
+            return;
+        }
+        string? operationError = null;
+        _isHotkeySaving = true;
+        SetHotkeyControlsEnabled(false);
+        try
+        {
+            await _inputHotkeyController.SaveAsync(settings, _lifetimeCancellation.Token);
+            if (CanUpdateUi()) ApplyInputHotkeySettings();
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested) { }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            operationError = AppStrings.Get("hotkey.input.save_failed");
+        }
+        finally
+        {
+            _isHotkeySaving = false;
+            if (CanUpdateUi())
+            {
+                ApplyHotkeyControllerState();
+                if (operationError is not null) InputHotkeyStatusTextBlock.Text = operationError;
+            }
+        }
+    }
+
+    private void ApplyInputHotkeySettings()
+    {
+        var settings = _inputHotkeyController.CurrentSettings;
+        InputControlCheckBox.IsChecked = settings.Control;
+        InputAltCheckBox.IsChecked = settings.Alt;
+        InputShiftCheckBox.IsChecked = settings.Shift;
+        InputWindowsCheckBox.IsChecked = settings.Windows;
+        InputHotkeyKeyTextBox.Text = HotkeySettingsController.DescribeVirtualKey(settings.VirtualKey);
+        InputHotkeyStatusTextBlock.Text = _inputHotkeyController.StatusMessage;
+    }
+
+    private void HandleInputHotkeyStateChanged(object? sender, EventArgs eventArgs) =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (CanUpdateUi()) ApplyInputHotkeySettings();
+        });
 
     private void ProxyModeSelectionChanged(object? sender, SelectionChangedEventArgs eventArgs)
     {
@@ -866,6 +929,7 @@ public sealed class SettingsWindow : SettingsWindowBase
         ++_startupStateGeneration;
         _lifetimeCancellation.Cancel();
         _hotkeyController.StateChanged -= HandleHotkeyStateChanged;
+        _inputHotkeyController.StateChanged -= HandleInputHotkeyStateChanged;
         _proxyController.StateChanged -= HandleProxyStateChanged;
         _startupController.StateChanged -= HandleStartupStateChanged;
     }
@@ -968,6 +1032,7 @@ public sealed class SettingsWindow : SettingsWindowBase
         }
 
         ApplyHotkeySettings(_hotkeyController.CurrentSettings);
+        ApplyInputHotkeySettings();
         HotkeyStatusTextBlock.Text = _hotkeyController.StatusMessage;
         SetHotkeyControlsEnabled(
             _hotkeyController.IsInitialized && !_isHotkeySaving && !_isLoading && !_isBusy && CanUpdateUi());
@@ -1041,6 +1106,11 @@ public sealed class SettingsWindow : SettingsWindowBase
         WindowsHotkeyModifierCheckBox.IsEnabled = isEnabled;
         HotkeyKeyTextBox.IsEnabled = isEnabled;
         SaveHotkeyButton.IsEnabled = isEnabled;
+        foreach (var control in new Control[] { InputControlCheckBox, InputAltCheckBox,
+                     InputShiftCheckBox, InputWindowsCheckBox, InputHotkeyKeyTextBox, SaveInputHotkeyButton })
+        {
+            control.IsEnabled = isEnabled && _inputHotkeyController.IsInitialized;
+        }
     }
 
     private void SetStartupControlsEnabled(bool isEnabled)

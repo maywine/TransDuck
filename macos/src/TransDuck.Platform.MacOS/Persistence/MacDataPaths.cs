@@ -35,6 +35,8 @@ public sealed class MacDataPaths : IApplicationDataPaths
 
     public string HotkeySettingsFilePath => Path.Combine(RootDirectory, "hotkey-settings.v1.json");
 
+    public string InputHotkeySettingsFilePath => Path.Combine(RootDirectory, "input-hotkey-settings.v1.json");
+
     public string HistoryFilePath => Path.Combine(RootDirectory, "history.v1.jsonl");
 
     public string DiagnosticFilePath => Path.Combine(RootDirectory, "diagnostics.v1.jsonl");

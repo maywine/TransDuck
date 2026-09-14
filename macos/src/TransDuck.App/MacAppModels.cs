@@ -31,7 +31,8 @@ internal sealed record MacRuntimeState(
     bool IsBusy,
     bool CanRetry,
     IReadOnlyList<TranslationResultViewModel> Results,
-    long Revision);
+    long Revision,
+    long InputRevision = 0);
 
 internal sealed record MacSettingsSnapshot(
     Configuration Configuration,
@@ -44,7 +45,8 @@ internal sealed record MacSettingsSnapshot(
     PersistenceStatus ConfigurationStatus,
     PersistenceStatus QuerySourceSettingsStatus,
     PersistenceStatus ProxyStatus,
-    PersistenceStatus HotkeyStatus);
+    PersistenceStatus HotkeyStatus,
+    MacHotkeySettings InputHotkeySettings);
 
 internal sealed record MacSettingsInput(
     string ProviderId,

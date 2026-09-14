@@ -51,11 +51,7 @@ internal sealed class MainWindow : TranslationWindowBase
         }
 
         _lastAppliedRevision = state.Revision;
-        if (!string.Equals(InputTextBox.Text, state.Input, StringComparison.Ordinal) &&
-            !string.IsNullOrEmpty(state.Input))
-        {
-            InputTextBox.Text = state.Input;
-        }
+        ApplySourceInput(state.Input, state.InputRevision);
 
         ResultsItemsControl.ItemsSource = state.Results;
         StatusTextBlock.Text = state.Status;

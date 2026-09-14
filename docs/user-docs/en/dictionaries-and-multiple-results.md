@@ -27,6 +27,15 @@ Saved credentials are never filled back into the form.
 
 ## Translate and copy results
 
+Open the manual translation window from another app with **Ctrl+Alt+T** on
+Windows or **Command+Option+T** on macOS. The window focuses and selects its input
+so typing replaces the previous text. This shortcut does not read the clipboard
+or selection and does not start a query. Change it under **Global shortcuts →
+Open translation window** in Settings, then choose **Save window shortcut**.
+It is saved separately from the selected-text shortcut; the two combinations
+must differ. macOS global shortcuts require Accessibility permission. Without
+that permission, the menu-bar action still opens the manual input window.
+
 Type or paste text, then choose **Translate**. The input also supports
 **Ctrl+Enter** on Windows and **Command+Return** on macOS; Enter alone inserts a
 line break. **Cancel** appears while an operation is running, and **Retry failed

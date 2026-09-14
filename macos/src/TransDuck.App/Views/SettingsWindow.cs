@@ -32,10 +32,12 @@ internal sealed class SettingsWindow : SettingsWindowBase
         BrowseLocalDictionaryRequested += HandleBrowseLocalDictionaryRequested;
         SaveQuerySourcesRequested += HandleSaveQuerySourcesRequested;
         SaveAllRequested += HandleSaveRequested;
+        SaveInputHotkeyRequested += HandleSaveInputHotkeyRequested;
         VersionTextBlock.Text = ProductVersionDisplay.FromAssembly(typeof(App).Assembly);
         foreach (var key in Enum.GetValues<MacVirtualKey>())
         {
             HotkeyKeyComboBox.Items.Add(new ComboBoxItem { Content = DescribeKey(key), Tag = key });
+            InputHotkeyKeyComboBox.Items.Add(new ComboBoxItem { Content = DescribeKey(key), Tag = key });
         }
 
         Opened += HandleOpened;
@@ -75,6 +77,9 @@ internal sealed class SettingsWindow : SettingsWindowBase
             ProxyUriTextBox.Text = snapshot.ProxySettings.CustomHttpProxyUri?.OriginalString ?? string.Empty;
             ApplyProxyInputState();
             ApplyHotkey(snapshot.HotkeySettings);
+            ApplyInputHotkey(snapshot.InputHotkeySettings);
+            InputHotkeyStatusTextBlock.Text = snapshot.InputHotkeySettings.UsesSameChord(snapshot.HotkeySettings)
+                ? UiStrings.Get("hotkey.input.conflict") : string.Empty;
             MaxEntriesNumericUpDown.Value = snapshot.Configuration.HistoryRetention.MaxEntries;
             MaxAgeNumericUpDown.Value = snapshot.Configuration.HistoryRetention.MaxAgeDays;
             StartAtLoginCheckBox.IsChecked = snapshot.StartupResult.IsEnabled;
@@ -264,6 +269,43 @@ internal sealed class SettingsWindow : SettingsWindowBase
             ProviderComboBox.IsEnabled = true;
             SetFormBusy(false);
         }
+    }
+
+    private async void HandleSaveInputHotkeyRequested(object? sender, EventArgs eventArgs)
+    {
+        var modifiers = MacHotkeyModifiers.None;
+        if (InputCommandCheckBox.IsChecked == true) modifiers |= MacHotkeyModifiers.Command;
+        if (InputOptionCheckBox.IsChecked == true) modifiers |= MacHotkeyModifiers.Option;
+        if (InputControlCheckBox.IsChecked == true) modifiers |= MacHotkeyModifiers.Control;
+        if (InputShiftCheckBox.IsChecked == true) modifiers |= MacHotkeyModifiers.Shift;
+        if ((InputHotkeyKeyComboBox.SelectedItem as ComboBoxItem)?.Tag is not MacVirtualKey key)
+        {
+            InputHotkeyStatusTextBlock.Text = UiStrings.Get("mac.settings.hotkey_choose");
+            return;
+        }
+
+        SetFormBusy(true);
+        try
+        {
+            var result = await _runtime.SaveInputHotkeyAsync(
+                new MacHotkeySettings(MacHotkeySettingsMigration.CurrentVersion, modifiers, key),
+                CancellationToken.None);
+            InputHotkeyStatusTextBlock.Text = result.Message;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            InputHotkeyStatusTextBlock.Text = UiStrings.Get("hotkey.input.save_failed");
+        }
+        finally { SetFormBusy(false); }
+    }
+
+    private void ApplyInputHotkey(MacHotkeySettings settings)
+    {
+        InputCommandCheckBox.IsChecked = settings.Modifiers.HasFlag(MacHotkeyModifiers.Command);
+        InputOptionCheckBox.IsChecked = settings.Modifiers.HasFlag(MacHotkeyModifiers.Option);
+        InputControlCheckBox.IsChecked = settings.Modifiers.HasFlag(MacHotkeyModifiers.Control);
+        InputShiftCheckBox.IsChecked = settings.Modifiers.HasFlag(MacHotkeyModifiers.Shift);
+        SelectByTag(InputHotkeyKeyComboBox, settings.Key, fallbackIndex: 19);
     }
 
     private bool TryCreateInput(out MacSettingsInput? input, out string error)

@@ -18,6 +18,7 @@ public partial class SettingsWindowBase : Window
     public event EventHandler<SelectionChangedEventArgs>? ProxyModeSelectionRequested;
     public event EventHandler? SaveProxyRequested;
     public event EventHandler? SaveHotkeyRequested;
+    public event EventHandler? SaveInputHotkeyRequested;
     public event EventHandler? AccessibilityRequested;
     public event EventHandler? SaveStartupRequested;
     public event EventHandler? ReloadRequested;
@@ -91,6 +92,19 @@ public partial class SettingsWindowBase : Window
     protected Button CloseSettingsButton => CloseSettingsButtonElement;
     protected Button SaveButton => SaveAllButtonElement;
 
+    protected CheckBox InputCommandCheckBox => InputCommandCheckBoxElement;
+    protected CheckBox InputOptionCheckBox => InputOptionCheckBoxElement;
+    protected CheckBox InputControlCheckBox => InputControlCheckBoxElement;
+    protected CheckBox InputAltCheckBox => InputAltCheckBoxElement;
+    protected CheckBox InputShiftCheckBox => InputShiftCheckBoxElement;
+    protected CheckBox InputWindowsCheckBox => InputWindowsCheckBoxElement;
+    protected TextBox InputHotkeyKeyTextBox => InputHotkeyKeyTextBoxElement;
+    protected ComboBox InputHotkeyKeyComboBox => InputHotkeyKeyComboBoxElement;
+    protected TextBlock InputHotkeyStatusTextBlock => InputHotkeyStatusTextBlockElement;
+    protected Button SaveInputHotkeyButton => SaveInputHotkeyButtonElement;
+
+
+
     protected void ConfigureForWindowsSettingsWindow()
     {
         Width = 560;
@@ -124,6 +138,14 @@ public partial class SettingsWindowBase : Window
 
     protected void ConfigureForMacSettingsWindow()
     {
+        InputCommandCheckBoxElement.IsVisible = true;
+        InputOptionCheckBoxElement.IsVisible = true;
+        InputAltCheckBoxElement.IsVisible = false;
+        InputWindowsCheckBoxElement.IsVisible = false;
+        InputHotkeyKeyTextBoxElement.IsVisible = false;
+        InputHotkeyKeyComboBoxElement.IsVisible = true;
+        InputControlCheckBoxElement.Content = UiStrings.Get("settings.hotkey.control_mac");
+        AutomationProperties.SetName(InputControlCheckBoxElement, UiStrings.Get("settings.hotkey.control_mac"));
         SaveAllButtonElement.Content = UiStrings.Get("settings.button.save_current_and_general");
         CredentialDescriptionElement.Text = UiStrings.Get("settings.description.credential_mac");
         ProxyDescriptionElement.Text = UiStrings.Get("settings.description.proxy_mac");
@@ -179,6 +201,9 @@ public partial class SettingsWindowBase : Window
 
     private void HandleSaveHotkeyClick(object? sender, RoutedEventArgs eventArgs) =>
         SaveHotkeyRequested?.Invoke(this, EventArgs.Empty);
+
+    private void HandleSaveInputHotkeyClick(object? sender, RoutedEventArgs eventArgs) =>
+        SaveInputHotkeyRequested?.Invoke(this, EventArgs.Empty);
 
     private void HandleAccessibilityClick(object? sender, RoutedEventArgs eventArgs) =>
         AccessibilityRequested?.Invoke(this, EventArgs.Empty);

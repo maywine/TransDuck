@@ -43,6 +43,8 @@ public sealed class WindowsDataPaths : IApplicationDataPaths
     /// <summary>Gets the non-secret global hotkey settings file path.</summary>
     public string HotkeySettingsFilePath => Path.Combine(RootDirectory, "hotkey-settings.v1.json");
 
+    public string InputHotkeySettingsFilePath => Path.Combine(RootDirectory, "input-hotkey-settings.v1.json");
+
     /// <summary>Gets the non-secret proxy settings file path.</summary>
     public string ProxySettingsFilePath => Path.Combine(RootDirectory, "proxy-settings.v1.json");
 

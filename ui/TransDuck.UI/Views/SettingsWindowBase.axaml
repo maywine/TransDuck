@@ -204,6 +204,7 @@
       <Separator Margin="0,6" />
       <TextBlock FontSize="16" FontWeight="SemiBold" Text="{DynamicResource settings.heading.hotkey}" />
       <TextBlock TextWrapping="Wrap" Text="{DynamicResource settings.description.hotkey}" />
+      <TextBlock FontWeight="SemiBold" Text="{DynamicResource settings.hotkey.selection}" />
       <WrapPanel>
         <CheckBox x:Name="CommandCheckBoxElement" IsVisible="False" Margin="0,0,12,0"
                   Content="{DynamicResource settings.hotkey.command}"
@@ -256,6 +257,51 @@
               Content="{DynamicResource settings.button.save_hotkey}"
               Click="HandleSaveHotkeyClick"
               AutomationProperties.AutomationId="SaveHotkeyButton" />
+
+      <TextBlock Margin="0,12,0,0" FontWeight="SemiBold" Text="{DynamicResource settings.hotkey.open_input}" />
+      <TextBlock TextWrapping="Wrap" Text="{DynamicResource settings.hotkey.open_input.help}" />
+      <WrapPanel>
+        <CheckBox x:Name="InputCommandCheckBoxElement" IsVisible="False" Margin="0,0,12,0"
+                  Content="{DynamicResource settings.hotkey.command}"
+                  AutomationProperties.AutomationId="InputCommandHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.command}" />
+        <CheckBox x:Name="InputOptionCheckBoxElement" IsVisible="False" Margin="0,0,12,0"
+                  Content="{DynamicResource settings.hotkey.option}"
+                  AutomationProperties.AutomationId="InputOptionHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.option}" />
+        <CheckBox x:Name="InputControlCheckBoxElement" Margin="0,0,12,0"
+                  Content="{DynamicResource settings.hotkey.control}"
+                  AutomationProperties.AutomationId="InputControlHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.control}" />
+        <CheckBox x:Name="InputAltCheckBoxElement" Margin="0,0,12,0"
+                  Content="{DynamicResource settings.hotkey.alt}"
+                  AutomationProperties.AutomationId="InputAltHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.alt}" />
+        <CheckBox x:Name="InputShiftCheckBoxElement" Margin="0,0,12,0"
+                  Content="{DynamicResource settings.hotkey.shift}"
+                  AutomationProperties.AutomationId="InputShiftHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.shift}" />
+        <CheckBox x:Name="InputWindowsCheckBoxElement" Margin="0,0,12,0"
+                  Content="{DynamicResource settings.hotkey.windows}"
+                  AutomationProperties.AutomationId="InputWindowsHotkeyModifierCheckBox"
+                  AutomationProperties.Name="{DynamicResource settings.hotkey.windows}" />
+        <TextBox x:Name="InputHotkeyKeyTextBoxElement"
+                 Width="52"
+                 MaxLength="3"
+                 Text="T"
+                 AutomationProperties.AutomationId="InputHotkeyKeyTextBox"
+                 AutomationProperties.Name="{DynamicResource settings.automation.input_hotkey_key.name}"
+                 AutomationProperties.HelpText="{DynamicResource settings.automation.hotkey_key.help}" />
+        <ComboBox x:Name="InputHotkeyKeyComboBoxElement" IsVisible="False" Width="100"
+                  AutomationProperties.AutomationId="InputHotkeyKeyComboBox"
+                  AutomationProperties.Name="{DynamicResource settings.automation.input_hotkey_key.name}" />
+      </WrapPanel>
+      <TextBlock x:Name="InputHotkeyStatusTextBlockElement" TextWrapping="Wrap" Opacity="0.8"
+                 AutomationProperties.AutomationId="InputHotkeyStatusTextBlock"
+                 AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}}" />
+      <Button x:Name="SaveInputHotkeyButtonElement" HorizontalAlignment="Left"
+              Content="{DynamicResource settings.button.save_input_hotkey}" Click="HandleSaveInputHotkeyClick"
+              AutomationProperties.AutomationId="SaveInputHotkeyButton" />
 
       <Separator Margin="0,6" />
       <TextBlock FontSize="16" FontWeight="SemiBold" Text="{DynamicResource settings.heading.startup}" />

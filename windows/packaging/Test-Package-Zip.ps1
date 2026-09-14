@@ -87,7 +87,7 @@ function Test-ForbiddenEntry([string]$Name) {
     return $Name -match '(?i)(^|/)(x86|assets|tests?|credentials)(/|$)' -or
         $Name -match '(?i)paddle' -or
         $leaf -match '(?i)^(appxmanifest\.xml|.*\.(pdb|cs|csproj|sln|xaml|axaml|ps1|psm1|msix|appx|appxbundle|pfx|p12|pem|key|cer|crt|der|p7b|pvk|ppk|jks))$' -or
-        $leaf -match '(?i)^(configuration|provider-settings|query-sources|hotkey-settings|proxy-settings|history|diagnostics)(\.|$)' -or
+        $leaf -match '(?i)^(configuration|provider-settings|query-sources|hotkey-settings|input-hotkey-settings|proxy-settings|history|diagnostics)(\.|$)' -or
         $leaf -match '(?i)(private.?key|certificate|\.credential$)'
 }
 

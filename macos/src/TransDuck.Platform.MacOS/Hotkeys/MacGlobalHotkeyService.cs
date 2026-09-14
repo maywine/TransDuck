@@ -35,6 +35,8 @@ public sealed class MacGlobalHotkeyService : IAsyncDisposable
     private readonly SemaphoreSlim _startGate = new(1, 1);
     private MacHotkeySettings _settings = MacHotkeySettings.Default;
     private bool _latched;
+    private bool _inputLatched;
+    private MacHotkeySettings? _inputSettings;
     private bool _started;
     private int _disposeRequested;
 
@@ -46,6 +48,13 @@ public sealed class MacGlobalHotkeyService : IAsyncDisposable
     }
 
     public event EventHandler? Pressed;
+
+    public event EventHandler? InputRequested;
+
+    public MacHotkeySettings? InputSettings
+    {
+        get { lock (_gate) return _inputSettings; }
+    }
 
     public MacHotkeySettings Settings
     {
@@ -147,11 +156,30 @@ public sealed class MacGlobalHotkeyService : IAsyncDisposable
 
         lock (_gate)
         {
+            if (_inputSettings is { } input && settings.UsesSameChord(input)) return false;
             _settings = settings;
             _latched = false;
         }
 
         return true;
+    }
+
+    public bool TrySetInputSettings(MacHotkeySettings settings)
+    {
+        if (settings is null) return false;
+        try { settings.Validate(); }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            return false;
+        }
+
+        lock (_gate)
+        {
+            if (settings.UsesSameChord(_settings)) return false;
+            _inputSettings = settings;
+            _inputLatched = false;
+            return true;
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -191,6 +219,7 @@ public sealed class MacGlobalHotkeyService : IAsyncDisposable
         }
 
         var shouldRaise = false;
+        var shouldOpenInput = false;
         lock (_gate)
         {
             if (_started && keyboardEvent.Key == _settings.Key &&
@@ -203,8 +232,19 @@ public sealed class MacGlobalHotkeyService : IAsyncDisposable
                     shouldRaise = true;
                 }
             }
+            else if (_started && _inputSettings is { } input &&
+                     keyboardEvent.Key == input.Key && keyboardEvent.Modifiers == input.Modifiers)
+            {
+                keyboardEvent.SuppressEvent = true;
+                if (!_inputLatched)
+                {
+                    _inputLatched = true;
+                    shouldOpenInput = true;
+                }
+            }
         }
 
+        if (shouldOpenInput) InputRequested?.Invoke(this, EventArgs.Empty);
         if (shouldRaise)
         {
             Pressed?.Invoke(this, EventArgs.Empty);
@@ -224,6 +264,11 @@ public sealed class MacGlobalHotkeyService : IAsyncDisposable
             {
                 keyboardEvent.SuppressEvent = _started && _latched;
                 _latched = false;
+            }
+            if (_inputSettings is { } input && keyboardEvent.Key == input.Key)
+            {
+                keyboardEvent.SuppressEvent |= _started && _inputLatched;
+                _inputLatched = false;
             }
         }
     }

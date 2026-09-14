@@ -14,6 +14,23 @@ namespace TransDuck.Platform.Windows.Tests.Persistence;
 public sealed class JsonHotkeySettingsStoreTests
 {
     [Fact]
+    public async Task InputShortcutStore_LeavesCustomizedSelectionShortcutUnchanged()
+    {
+        using var temporary = new PersistenceTestDirectory();
+        var paths = new WindowsDataPaths(temporary.DirectoryPath("shortcuts"));
+        using var selection = new JsonHotkeySettingsStore(paths);
+        using var input = new JsonHotkeySettingsStore(paths.InputHotkeySettingsFilePath);
+        var selectedTextShortcut = Settings(alt: true, shift: true, virtualKey: 0x44);
+        Assert.True((await selection.WriteAsync(selectedTextShortcut, CancellationToken.None)).Succeeded);
+        var original = await File.ReadAllBytesAsync(paths.HotkeySettingsFilePath);
+        var inputShortcut = Settings(control: true, alt: true, virtualKey: 0x54);
+        Assert.Equal(PersistenceStatus.NotFound, (await input.ReadAsync(CancellationToken.None)).Status);
+        Assert.True((await input.WriteAsync(inputShortcut, CancellationToken.None)).Succeeded);
+        Assert.Equal(original, await File.ReadAllBytesAsync(paths.HotkeySettingsFilePath));
+        Assert.Equal(inputShortcut, (await input.ReadAsync(CancellationToken.None)).Value);
+    }
+
+    [Fact]
     public async Task ConstructorAndReadAsync_DoNotWriteToTheRealApplicationPath()
     {
         using var temporary = new PersistenceTestDirectory();

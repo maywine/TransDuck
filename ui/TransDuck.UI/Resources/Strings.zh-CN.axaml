@@ -84,7 +84,7 @@
   <x:String x:Key="settings.hotkey.command">Command</x:String>
   <x:String x:Key="settings.hotkey.option">Option</x:String>
   <x:String x:Key="settings.hotkey.key">按键</x:String>
-  <x:String x:Key="settings.button.save_hotkey">保存快捷键</x:String>
+  <x:String x:Key="settings.button.save_hotkey">保存取词快捷键</x:String>
   <x:String x:Key="settings.button.request_accessibility">请求或刷新辅助功能权限</x:String>
   <x:String x:Key="settings.button.reload">重新加载并放弃草稿</x:String>
   <x:String x:Key="settings.button.save_startup">保存启动设置</x:String>
@@ -446,4 +446,14 @@
   <x:String x:Key="mac.settings.enable_source">请至少启用一个已配置的翻译或词典来源。</x:String>
   <x:String x:Key="result.source.mac_system_dictionary">macOS 系统词典</x:String>
   <x:String x:Key="settings.button.save_current_and_general">保存提供商及通用设置</x:String>
+  <x:String x:Key="settings.hotkey.selection">翻译选中文本</x:String>
+  <x:String x:Key="settings.hotkey.open_input">打开翻译窗口</x:String>
+  <x:String x:Key="settings.hotkey.open_input.help">打开窗口并聚焦输入框，输入后点击翻译或使用窗口内的翻译快捷键。此快捷键单独保存。</x:String>
+  <x:String x:Key="settings.automation.input_hotkey_key.name">打开翻译窗口的快捷键按键</x:String>
+  <x:String x:Key="settings.button.save_input_hotkey">保存打开窗口快捷键</x:String>
+  <x:String x:Key="hotkey.input.conflict">打开窗口与翻译选中文本不能使用相同的组合键。</x:String>
+  <x:String x:Key="hotkey.input.saved">打开窗口快捷键已保存。</x:String>
+  <x:String x:Key="hotkey.input.saved_inactive">打开窗口快捷键已保存。全局快捷键尚未就绪，请刷新辅助功能权限以启用。</x:String>
+  <x:String x:Key="hotkey.input.save_failed">无法保存打开窗口快捷键。</x:String>
+  <x:String x:Key="hotkey.input.status">打开窗口快捷键：{0}</x:String>
 </ResourceDictionary>

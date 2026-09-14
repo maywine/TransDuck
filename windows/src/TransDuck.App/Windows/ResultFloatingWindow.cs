@@ -40,6 +40,7 @@ public sealed class ResultFloatingWindow : TranslationWindowBase
             Show();
         }
 
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Activate();
         InputTextBox.Focus();
     }

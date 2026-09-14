@@ -34,11 +34,13 @@ namespace TransDuck.App;
 internal sealed class AppRuntime : IDisposable
 {
     private readonly Dispatcher _dispatcher = Dispatcher.UIThread;
+    private readonly NativeMessageWindow _inputHotkeyWindow = new(NativeWindowKind.MessageOnly);
     private readonly NativeMessageWindow _hotkeyWindow = new(NativeWindowKind.MessageOnly);
     private readonly NativeMessageWindow _trayWindow = new(NativeWindowKind.HiddenTopLevel);
     private readonly ResultFloatingWindow _resultWindow = new();
     private readonly ShellNotifyIconTrayService _trayService;
     private readonly RegisterHotKeyService _hotkeyService;
+    private readonly RegisterHotKeyService _inputHotkeyService;
     private readonly UiAutomationSelectionService _selectionService = new(new ClipboardCopyFallback());
     private readonly ScreenSelectionOverlay _selectionOverlay = new();
     private readonly IOcrService _ocrService = new TesseractOcrService();
@@ -47,6 +49,7 @@ internal sealed class AppRuntime : IDisposable
     private readonly JsonProviderSettingsStore _providerSettingsStore;
     private readonly JsonQuerySourceSettingsStore _querySourceSettingsStore;
     private readonly JsonHotkeySettingsStore _hotkeySettingsStore;
+    private readonly JsonHotkeySettingsStore _inputHotkeySettingsStore;
     private readonly JsonProxySettingsStore _proxySettingsStore;
     private readonly DpapiCredentialStore _credentialStore;
     private readonly JsonLinesHistoryStore _historyStore;
@@ -58,6 +61,7 @@ internal sealed class AppRuntime : IDisposable
     private readonly QuerySourceSettingsController _querySourceSettingsController;
     private readonly ProxySettingsController _proxySettingsController;
     private readonly HotkeySettingsController _hotkeySettingsController;
+    private readonly HotkeySettingsController _inputHotkeySettingsController;
     private readonly StartupSettingsController _startupSettingsController;
     private readonly HistoryController _historyController;
     private readonly LocalDictionaryProvider _localDictionaryProvider;
@@ -83,11 +87,13 @@ internal sealed class AppRuntime : IDisposable
     {
         _trayService = new ShellNotifyIconTrayService(_trayWindow, "TransDuck");
         _hotkeyService = new RegisterHotKeyService(_hotkeyWindow);
+        _inputHotkeyService = new RegisterHotKeyService(_inputHotkeyWindow);
         var dataPaths = new WindowsDataPaths();
         _configurationStore = new JsonConfigurationStore(dataPaths);
         _providerSettingsStore = new JsonProviderSettingsStore(dataPaths);
         _querySourceSettingsStore = new JsonQuerySourceSettingsStore(dataPaths);
         _hotkeySettingsStore = new JsonHotkeySettingsStore(dataPaths);
+        _inputHotkeySettingsStore = new JsonHotkeySettingsStore(dataPaths.InputHotkeySettingsFilePath);
         _proxySettingsStore = new JsonProxySettingsStore(dataPaths);
         _credentialStore = new DpapiCredentialStore(dataPaths);
         _historyStore = new JsonLinesHistoryStore(dataPaths);
@@ -112,6 +118,10 @@ internal sealed class AppRuntime : IDisposable
             _hotkeySettingsStore,
             _hotkeyService,
             _diagnosticSink);
+        _inputHotkeySettingsController = new HotkeySettingsController(
+            _inputHotkeySettingsStore, _inputHotkeyService, _diagnosticSink,
+            new HotkeySettings(HotkeySettingsMigration.CurrentVersion,
+                Control: true, Alt: true, Shift: false, Windows: false, VirtualKey: 0x54));
         _startupSettingsController = new StartupSettingsController(
             new RegistryRunStartupRegistrationService(),
             _diagnosticSink);
@@ -131,6 +141,7 @@ internal sealed class AppRuntime : IDisposable
         _trayService.ContextMenuRequested += HandleTrayContextMenuRequested;
         _trayService.ExplorerRestarted += HandleExplorerRestarted;
         _hotkeyService.Pressed += HandleHotkeyPressed;
+        _inputHotkeyService.Pressed += HandleInputHotkeyPressed;
         _resultWindow.TranslationRequested += HandleTranslationRequested;
         _resultWindow.CaptureOcrRequested += HandleCaptureOcrRequested;
         _resultWindow.CancellationRequested += HandleCancellationRequested;
@@ -159,6 +170,7 @@ internal sealed class AppRuntime : IDisposable
 
         var trayResult = _trayService.Start();
         var hotkey = await _hotkeySettingsController.InitializeAsync(_lifetimeCancellation.Token);
+        var inputHotkey = await _inputHotkeySettingsController.InitializeAsync(_lifetimeCancellation.Token);
         if (IsDisposed || IsStopping || _lifetimeCancellation.IsCancellationRequested)
         {
             return;
@@ -168,7 +180,7 @@ internal sealed class AppRuntime : IDisposable
         _resultWindow.SetStatus(AppStrings.Format(
             "runtime.start.status",
             AppStatusText.DescribeTrayStartResult(trayResult),
-            hotkey.StatusMessage,
+            hotkey.StatusMessage + " " + AppStrings.Format("hotkey.input.status", inputHotkey.StatusMessage),
             proxy.StatusMessage));
     }
 
@@ -243,6 +255,7 @@ internal sealed class AppRuntime : IDisposable
         _trayService.ContextMenuRequested -= HandleTrayContextMenuRequested;
         _trayService.ExplorerRestarted -= HandleExplorerRestarted;
         _hotkeyService.Pressed -= HandleHotkeyPressed;
+        _inputHotkeyService.Pressed -= HandleInputHotkeyPressed;
         _resultWindow.TranslationRequested -= HandleTranslationRequested;
         _resultWindow.CaptureOcrRequested -= HandleCaptureOcrRequested;
         _resultWindow.CancellationRequested -= HandleCancellationRequested;
@@ -334,6 +347,7 @@ internal sealed class AppRuntime : IDisposable
         DisposeNonFatal(_captureService);
         DisposeNonFatal(_ocrService);
         DisposeNonFatal(_hotkeySettingsStore);
+        DisposeNonFatal(_inputHotkeySettingsStore);
         DisposeNonFatal(_providerSettingsStore);
         DisposeNonFatal(_querySourceSettingsStore);
         DisposeNonFatal(_configurationStore);
@@ -346,9 +360,11 @@ internal sealed class AppRuntime : IDisposable
         DisposeNonFatal(_startupSettingsController);
         DisposeNonFatal(_diagnosticSink);
         DisposeNonFatal(_hotkeyService);
+        DisposeNonFatal(_inputHotkeyService);
         DisposeNonFatal(_trayMenu);
         DisposeNonFatal(_trayService);
         DisposeNonFatal(_hotkeyWindow);
+        DisposeNonFatal(_inputHotkeyWindow);
         DisposeNonFatal(_trayWindow);
         DisposeNonFatal(_lifetimeCancellation);
     }
@@ -390,6 +406,13 @@ internal sealed class AppRuntime : IDisposable
 
     private void HandleExplorerRestarted(object? sender, TrayOperationResult result) =>
         PostToUi(() => _resultWindow.SetStatus(AppStatusText.DescribeExplorerRestartResult(result)));
+
+    private void HandleInputHotkeyPressed(object? sender, EventArgs eventArgs) =>
+        PostToUi(() =>
+        {
+            PresentInput();
+            _resultWindow.FocusForManualInput();
+        });
 
     private void HandleHotkeyPressed(object? sender, EventArgs eventArgs) =>
         PostToUi(() => _ = StartTrackedOperation(ReadSelectionAsync));
@@ -1161,8 +1184,10 @@ internal sealed class AppRuntime : IDisposable
         {
             try
             {
+                var inputResult = _inputHotkeyService.RestoreAfterPowerResume();
                 var result = _hotkeyService.RestoreAfterPowerResume();
-                _resultWindow.SetStatus(AppStatusText.DescribeHotkeyResult(result));
+                _resultWindow.SetStatus(AppStatusText.DescribeHotkeyResult(result) + " " +
+                    AppStrings.Format("hotkey.input.status", AppStatusText.DescribeHotkeyResult(inputResult)));
             }
             catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
             {
@@ -1259,6 +1284,7 @@ internal sealed class AppRuntime : IDisposable
                 _querySourceSettingsController,
                 _proxySettingsController,
                 _hotkeySettingsController,
+                _inputHotkeySettingsController,
                 _startupSettingsController);
             settingsWindow.Closed += (_, _) =>
             {

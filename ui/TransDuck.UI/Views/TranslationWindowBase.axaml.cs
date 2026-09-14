@@ -88,6 +88,21 @@ public partial class TranslationWindowBase : Window
         SelectionHintTextBlockElement.IsVisible = false;
     }
 
+    private long _lastInputRevision = -1;
+
+    protected void ApplySourceInput(string text, long revision)
+    {
+        if (revision <= _lastInputRevision) return;
+        _lastInputRevision = revision;
+        InputTextBoxElement.Text = text;
+    }
+
+    public void FocusForManualInput()
+    {
+        InputTextBoxElement.Focus();
+        InputTextBoxElement.SelectAll();
+    }
+
     protected string CombinedResult() => string.Join(
         Environment.NewLine + Environment.NewLine,
         (ResultsItemsControlElement.ItemsSource ?? Enumerable.Empty<object>())

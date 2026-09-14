@@ -71,7 +71,7 @@
   <x:String x:Key="settings.proxy.mode.system_default">Use Windows system proxy</x:String>
   <x:String x:Key="settings.proxy.mode.custom_http">Custom HTTP proxy</x:String>
   <x:String x:Key="settings.proxy.mode.disabled">Direct connection</x:String>
-  <x:String x:Key="settings.heading.hotkey">Global shortcut</x:String>
+  <x:String x:Key="settings.heading.hotkey">Global shortcuts</x:String>
   <x:String x:Key="settings.description.hotkey">The shortcut is checked for registration before it is saved. Letters, digits, and F1–F24 are supported.</x:String>
   <x:String x:Key="settings.heading.startup">Start at sign-in</x:String>
   <x:String x:Key="settings.description.startup">For a ZIP installation, this starts the current TransDuck executable when you sign in.</x:String>
@@ -84,7 +84,7 @@
   <x:String x:Key="settings.hotkey.command">Command</x:String>
   <x:String x:Key="settings.hotkey.option">Option</x:String>
   <x:String x:Key="settings.hotkey.key">Key</x:String>
-  <x:String x:Key="settings.button.save_hotkey">Save shortcut</x:String>
+  <x:String x:Key="settings.button.save_hotkey">Save selected-text shortcut</x:String>
   <x:String x:Key="settings.button.request_accessibility">Request / refresh Accessibility permission</x:String>
   <x:String x:Key="settings.button.reload">Reload and discard drafts</x:String>
   <x:String x:Key="settings.button.save_startup">Save startup setting</x:String>
@@ -446,4 +446,14 @@
   <x:String x:Key="mac.settings.enable_source">Enable at least one configured translation or dictionary source.</x:String>
   <x:String x:Key="result.source.mac_system_dictionary">macOS system Dictionary</x:String>
   <x:String x:Key="settings.button.save_current_and_general">Save provider and general settings</x:String>
+  <x:String x:Key="settings.hotkey.selection">Translate selected text</x:String>
+  <x:String x:Key="settings.hotkey.open_input">Open translation window</x:String>
+  <x:String x:Key="settings.hotkey.open_input.help">Open the window and focus the text field. Type your text, then use the Translate button or its keyboard shortcut. Save this shortcut separately.</x:String>
+  <x:String x:Key="settings.automation.input_hotkey_key.name">Open translation window shortcut key</x:String>
+  <x:String x:Key="settings.button.save_input_hotkey">Save window shortcut</x:String>
+  <x:String x:Key="hotkey.input.conflict">The window shortcut and selected-text shortcut must use different key combinations.</x:String>
+  <x:String x:Key="hotkey.input.saved">Window shortcut saved.</x:String>
+  <x:String x:Key="hotkey.input.saved_inactive">Window shortcut saved. Global shortcuts are not ready; refresh Accessibility permission to activate them.</x:String>
+  <x:String x:Key="hotkey.input.save_failed">The window shortcut could not be saved.</x:String>
+  <x:String x:Key="hotkey.input.status">Window shortcut: {0}</x:String>
 </ResourceDictionary>

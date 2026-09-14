@@ -9,6 +9,23 @@ namespace TransDuck.Platform.MacOS.Tests.Hotkeys;
 public sealed class JsonMacHotkeySettingsStoreTests
 {
     [Fact]
+    public async Task InputShortcutStore_DoesNotModifyTheExistingSelectionShortcut()
+    {
+        using var temporary = new TemporaryDirectory();
+        var paths = new TransDuck.Platform.MacOS.Persistence.MacDataPaths(temporary.Root);
+        using var selection = new JsonMacHotkeySettingsStore(paths);
+        using var input = new JsonMacHotkeySettingsStore(paths.InputHotkeySettingsFilePath);
+        var custom = MacHotkeySettings.Default with { Modifiers = MacHotkeyModifiers.Option };
+        await selection.WriteAsync(custom, CancellationToken.None);
+        var original = await File.ReadAllBytesAsync(paths.HotkeySettingsFilePath);
+        Assert.Equal(PersistenceStatus.NotFound, (await input.ReadAsync(CancellationToken.None)).Status);
+        Assert.True((await input.WriteAsync(MacHotkeySettings.InputDefault, CancellationToken.None)).Succeeded);
+        Assert.Equal(original, await File.ReadAllBytesAsync(paths.HotkeySettingsFilePath));
+        Assert.Equal(custom, (await selection.ReadAsync(CancellationToken.None)).Value);
+        Assert.Equal(MacHotkeySettings.InputDefault, (await input.ReadAsync(CancellationToken.None)).Value);
+    }
+
+    [Fact]
     public async Task WriteAndRead_RoundTripWithoutCreatingSecretFields()
     {
         using var temporary = new TemporaryDirectory();

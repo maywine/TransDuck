@@ -5,6 +5,65 @@ namespace TransDuck.Platform.MacOS.Tests.Hotkeys;
 public sealed class MacGlobalHotkeyServiceTests
 {
     [Fact]
+    public async Task InputShortcut_OpensWithoutRequestingSelectionAndLatchesIndependently()
+    {
+        var backend = new FakeKeyboardHookBackend();
+        await using var service = new MacGlobalHotkeyService(backend);
+        var selections = 0;
+        var inputs = 0;
+        service.Pressed += (_, _) => selections++;
+        service.InputRequested += (_, _) => inputs++;
+        Assert.True(service.TrySetInputSettings(MacHotkeySettings.InputDefault));
+        await service.StartAsync(MacHotkeySettings.Default, CancellationToken.None);
+        var input = MacHotkeySettings.InputDefault;
+        var press = new MacKeyboardEvent(input.Key, input.Modifiers);
+        backend.RaisePressed(press);
+        backend.RaisePressed(new MacKeyboardEvent(input.Key, input.Modifiers));
+        Assert.True(press.SuppressEvent);
+        Assert.Equal(1, inputs);
+        Assert.Equal(0, selections);
+        backend.RaisePressed(new MacKeyboardEvent(MacVirtualKey.D, MacHotkeySettings.Default.Modifiers));
+        backend.RaiseReleased(new MacKeyboardEvent(MacVirtualKey.D, MacHotkeyModifiers.None));
+        backend.RaisePressed(new MacKeyboardEvent(input.Key, input.Modifiers));
+        Assert.Equal(1, inputs);
+        Assert.Equal(1, selections);
+        var release = new MacKeyboardEvent(input.Key, MacHotkeyModifiers.None);
+        backend.RaiseReleased(release);
+        Assert.True(release.SuppressEvent);
+        backend.RaisePressed(new MacKeyboardEvent(input.Key, input.Modifiers));
+        Assert.Equal(2, inputs);
+        Assert.Equal(1, backend.StartCount);
+    }
+
+    [Fact]
+    public async Task InputShortcut_IgnoresSimulatedAndExtraModifiersAndRejectsConflictingChanges()
+    {
+        var backend = new FakeKeyboardHookBackend();
+        await using var service = new MacGlobalHotkeyService(backend);
+        var inputs = 0;
+        service.InputRequested += (_, _) => inputs++;
+        Assert.True(service.TrySetInputSettings(MacHotkeySettings.InputDefault));
+        await service.StartAsync(MacHotkeySettings.Default, CancellationToken.None);
+        Assert.False(service.TrySetInputSettings(MacHotkeySettings.Default));
+        Assert.False(service.TrySetSettings(MacHotkeySettings.InputDefault));
+        Assert.Equal(MacHotkeySettings.Default, service.Settings);
+        Assert.Equal(MacHotkeySettings.InputDefault, service.InputSettings);
+        var input = MacHotkeySettings.InputDefault;
+        var simulated = new MacKeyboardEvent(input.Key, input.Modifiers, IsSimulated: true);
+        var extra = new MacKeyboardEvent(input.Key, input.Modifiers | MacHotkeyModifiers.Shift);
+        backend.RaisePressed(simulated);
+        backend.RaisePressed(extra);
+        Assert.Equal(0, inputs);
+        Assert.False(simulated.SuppressEvent);
+        Assert.False(extra.SuppressEvent);
+        var custom = input with { Modifiers = MacHotkeyModifiers.Option, Key = MacVirtualKey.F8 };
+        Assert.True(service.TrySetInputSettings(custom));
+        backend.RaisePressed(new MacKeyboardEvent(input.Key, input.Modifiers));
+        backend.RaisePressed(new MacKeyboardEvent(custom.Key, custom.Modifiers));
+        Assert.Equal(1, inputs);
+    }
+
+    [Fact]
     public async Task MatchingPhysicalChord_RaisesOnceUntilKeyRelease()
     {
         var backend = new FakeKeyboardHookBackend();

@@ -59,6 +59,10 @@ the complete app signature after native macOS extraction.
   in the shared UI so Windows and macOS stay consistent. Distinguish OCR recognition
   language from translation targets, and show configured targets on source cards.
   Use Command+Return on macOS and Control+Enter on Windows for manual translation.
+- Provide separate configurable global shortcuts for selected-text translation and
+  opening the manual translation window. The latter focuses and selects the input
+  without reading the selection/clipboard or starting a query. Preserve existing
+  selection-shortcut settings and reject duplicate combinations within the app.
 - Preserve unsaved provider edits when switching providers within a settings window.
   Drafts, including newly typed credentials, stay in memory only and are discarded
   when the settings window closes or the user explicitly reloads. Saving one provider

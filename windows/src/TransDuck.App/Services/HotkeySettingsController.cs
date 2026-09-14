@@ -20,6 +20,7 @@ internal sealed class HotkeySettingsController
         Shift: false,
         Windows: false,
         VirtualKey: 0x44);
+    private readonly HotkeySettings _defaultSettings;
     private readonly JsonHotkeySettingsStore _settingsStore;
     private readonly RegisterHotKeyService _hotkeyService;
     private readonly IDiagnosticSink _diagnosticSink;
@@ -30,8 +31,12 @@ internal sealed class HotkeySettingsController
     public HotkeySettingsController(
         JsonHotkeySettingsStore settingsStore,
         RegisterHotKeyService hotkeyService,
-        IDiagnosticSink diagnosticSink)
+        IDiagnosticSink diagnosticSink,
+        HotkeySettings? defaultSettings = null)
     {
+        _defaultSettings = defaultSettings ?? DefaultSettings;
+        _defaultSettings.Validate();
+        _currentSettings = _defaultSettings;
         _settingsStore = settingsStore;
         _hotkeyService = hotkeyService;
         _diagnosticSink = diagnosticSink;
@@ -61,17 +66,17 @@ internal sealed class HotkeySettingsController
             readStatus = GetReadStatus(read);
             settings = readStatus == PersistenceStatus.Succeeded
                 ? read.Value!
-                : DefaultSettings;
+                : _defaultSettings;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             readStatus = PersistenceStatus.Cancelled;
-            settings = DefaultSettings;
+            settings = _defaultSettings;
         }
         catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
         {
             readStatus = PersistenceStatus.IoFailure;
-            settings = DefaultSettings;
+            settings = _defaultSettings;
         }
 
         await WritePersistenceDiagnosticAsync(DiagnosticEventId.HotkeySettingsRead, readStatus);

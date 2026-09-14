@@ -98,6 +98,14 @@ public sealed record MacHotkeySettings(
         MacHotkeyModifiers.Command | MacHotkeyModifiers.Option,
         MacVirtualKey.D);
 
+    public static MacHotkeySettings InputDefault { get; } = new(
+        MacHotkeySettingsMigration.CurrentVersion,
+        MacHotkeyModifiers.Command | MacHotkeyModifiers.Option,
+        MacVirtualKey.T);
+
+    public bool UsesSameChord(MacHotkeySettings other) =>
+        Modifiers == other.Modifiers && Key == other.Key;
+
     public void Validate()
     {
         if (Version != MacHotkeySettingsMigration.CurrentVersion)

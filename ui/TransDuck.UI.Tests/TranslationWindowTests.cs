@@ -21,6 +21,35 @@ public sealed class TranslationWindowTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public void OpenForInput_FocusesAndSelectsTextWithoutStartingTranslation(bool mac)
+    {
+        var window = new TestTranslationWindow(mac);
+        var input = window.FindControl<TextBox>("InputTextBoxElement")!;
+        var requests = 0;
+        window.TranslationRequested += (_, _) => requests++;
+        window.SelectedTextRequested += (_, _) => requests++;
+        try
+        {
+            window.Show();
+            window.ApplyInput("Previous source", 1);
+            window.FindControl<Button>("TranslateButtonElement")!.Focus();
+            window.FocusForManualInput();
+            Assert.True(input.IsFocused);
+            Assert.Equal("Previous source", input.SelectedText);
+            window.KeyTextInput("New draft");
+            window.ApplyInput("Previous source", 1);
+            Assert.Equal("New draft", input.Text);
+            Assert.Equal(0, requests);
+            // A new explicit query may use identical source text and must still replace the draft.
+            window.ApplyInput("Previous source", 2);
+            Assert.Equal("Previous source", input.Text);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void KeyboardTranslation_UsesPlatformModifierAndRespectsBusyState(bool mac)
     {
         var window = new TestTranslationWindow(mac);
@@ -260,5 +289,7 @@ public sealed class TranslationWindowTests
         }
 
         public ObservableCollection<TranslationResultViewModel> Results { get; } = [];
+
+        public void ApplyInput(string text, long revision) => ApplySourceInput(text, revision);
     }
 }
