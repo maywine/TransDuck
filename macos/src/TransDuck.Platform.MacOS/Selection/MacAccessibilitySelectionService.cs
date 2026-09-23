@@ -38,18 +38,27 @@ public interface IMacAccessibilityBackend
     MacAccessibilityReadResult ReadSelectedText();
 }
 
+public interface IMacSelectionCopyBackend
+{
+    Task<string?> ReadSelectedTextAsync(CancellationToken cancellationToken);
+}
+
 public sealed class MacAccessibilitySelectionService
 {
     private readonly IMacAccessibilityBackend _backend;
+    private readonly IMacSelectionCopyBackend? _copyBackend;
 
     public MacAccessibilitySelectionService()
-        : this(new ApplicationServicesAccessibilityBackend())
+        : this(new ApplicationServicesAccessibilityBackend(), new MacPasteboardSelectionCopyBackend())
     {
     }
 
-    public MacAccessibilitySelectionService(IMacAccessibilityBackend backend)
+    public MacAccessibilitySelectionService(
+        IMacAccessibilityBackend backend,
+        IMacSelectionCopyBackend? copyBackend = null)
     {
         _backend = backend ?? throw new ArgumentNullException(nameof(backend));
+        _copyBackend = copyBackend;
     }
 
     public bool EnsurePermission(bool prompt)
@@ -98,6 +107,30 @@ public sealed class MacAccessibilitySelectionService
             return new MacSelectionResult(MacSelectionStatus.Failed);
         }
     }
+
+    public async Task<MacSelectionResult> ReadSelectedTextAsync(
+        bool promptForPermission = false,
+        CancellationToken cancellationToken = default)
+    {
+        var result = ReadSelectedText(promptForPermission);
+        if (result.Succeeded || result.Status == MacSelectionStatus.PermissionRequired ||
+            _copyBackend is null || cancellationToken.IsCancellationRequested)
+        {
+            return result;
+        }
+
+        try
+        {
+            var copied = await _copyBackend.ReadSelectedTextAsync(cancellationToken).ConfigureAwait(false);
+            return string.IsNullOrWhiteSpace(copied)
+                ? result
+                : new MacSelectionResult(MacSelectionStatus.Succeeded, copied);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException and not StackOverflowException)
+        {
+            return result;
+        }
+    }
 }
 
 internal sealed partial class ApplicationServicesAccessibilityBackend : IMacAccessibilityBackend
@@ -107,6 +140,14 @@ internal sealed partial class ApplicationServicesAccessibilityBackend : IMacAcce
     private const int Success = 0;
     private const int AttributeUnsupported = -25205;
     private const int NoValue = -25212;
+    private const int AxValueCfRangeType = 4;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CfRange
+    {
+        public nint Location;
+        public nint Length;
+    }
 
     [LibraryImport(ApplicationServices)]
     [return: MarshalAs(UnmanagedType.I1)]
@@ -124,6 +165,23 @@ internal sealed partial class ApplicationServicesAccessibilityBackend : IMacAcce
         IntPtr element,
         IntPtr attribute,
         out IntPtr value);
+
+    [LibraryImport(ApplicationServices)]
+    private static partial int AXUIElementCopyParameterizedAttributeValue(
+        IntPtr element,
+        IntPtr attribute,
+        IntPtr parameter,
+        out IntPtr value);
+
+    [LibraryImport(ApplicationServices)]
+    private static partial int AXValueGetType(IntPtr value);
+
+    [LibraryImport(ApplicationServices)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static partial bool AXValueGetValue(
+        IntPtr value,
+        int type,
+        out CfRange range);
 
     public bool IsProcessTrusted(bool prompt)
     {
@@ -151,6 +209,22 @@ internal sealed partial class ApplicationServicesAccessibilityBackend : IMacAcce
             out var focused);
         if (focusedStatus != Success || focused == IntPtr.Zero)
         {
+            var applicationStatus = AXUIElementCopyAttributeValue(
+                systemWide,
+                scope.String("AXFocusedApplication"),
+                out var application);
+            if (applicationStatus == Success && application != IntPtr.Zero)
+            {
+                scope.Own(application);
+                focusedStatus = AXUIElementCopyAttributeValue(
+                    application,
+                    scope.String("AXFocusedUIElement"),
+                    out focused);
+            }
+        }
+
+        if (focusedStatus != Success || focused == IntPtr.Zero)
+        {
             return new MacAccessibilityReadResult(focusedStatus switch
             {
                 AttributeUnsupported => MacAccessibilityReadStatus.Unsupported,
@@ -164,6 +238,45 @@ internal sealed partial class ApplicationServicesAccessibilityBackend : IMacAcce
             focused,
             scope.String("AXSelectedText"),
             out var selectedText);
+        if (selectionStatus == Success && selectedText != IntPtr.Zero)
+        {
+            scope.Own(selectedText);
+            var text = CoreFoundationNative.CopyString(selectedText);
+            if (!string.IsNullOrEmpty(text))
+            {
+                return new MacAccessibilityReadResult(MacAccessibilityReadStatus.Succeeded, text);
+            }
+        }
+
+        // Some text controls expose the selection as a range but not AXSelectedText.
+        var rangeStatus = AXUIElementCopyAttributeValue(
+            focused,
+            scope.String("AXSelectedTextRange"),
+            out var selectedRange);
+        if (rangeStatus == Success && selectedRange != IntPtr.Zero)
+        {
+            scope.Own(selectedRange);
+            if (AXValueGetType(selectedRange) == AxValueCfRangeType &&
+                AXValueGetValue(selectedRange, AxValueCfRangeType, out var range) &&
+                range.Length > 0)
+            {
+                var stringStatus = AXUIElementCopyParameterizedAttributeValue(
+                    focused,
+                    scope.String("AXStringForRange"),
+                    selectedRange,
+                    out var rangeText);
+                if (stringStatus == Success && rangeText != IntPtr.Zero)
+                {
+                    scope.Own(rangeText);
+                    var text = CoreFoundationNative.CopyString(rangeText);
+                    if (text is not null)
+                    {
+                        return new MacAccessibilityReadResult(MacAccessibilityReadStatus.Succeeded, text);
+                    }
+                }
+            }
+        }
+
         if (selectionStatus != Success || selectedText == IntPtr.Zero)
         {
             return new MacAccessibilityReadResult(selectionStatus switch
@@ -174,11 +287,9 @@ internal sealed partial class ApplicationServicesAccessibilityBackend : IMacAcce
             });
         }
 
-        scope.Own(selectedText);
-        var text = CoreFoundationNative.CopyString(selectedText);
-        return text is null
+        return CoreFoundationNative.CopyString(selectedText) is null
             ? new MacAccessibilityReadResult(MacAccessibilityReadStatus.Failed)
-            : new MacAccessibilityReadResult(MacAccessibilityReadStatus.Succeeded, text);
+            : new MacAccessibilityReadResult(MacAccessibilityReadStatus.NoValue);
     }
 
     private static void EnsureMacOS()

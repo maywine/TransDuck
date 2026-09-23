@@ -72,6 +72,9 @@ the complete app signature after native macOS extraction.
 - macOS global selection requires Accessibility permission and screenshot OCR
   requires Screen Recording permission. Permission denial must leave manual
   translation usable.
+- For macOS apps that do not expose selected text through Accessibility, use a
+  local copy fallback before focusing TransDuck. Preserve the existing clipboard
+  contents and never persist or log copied text.
 
 ## Translation and dictionaries
 

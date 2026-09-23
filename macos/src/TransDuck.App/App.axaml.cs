@@ -101,7 +101,6 @@ public partial class App : Application
 
     private void HandleSelectionRequested(object? sender, EventArgs eventArgs)
     {
-        ShowMainWindow();
         if (_runtime is { } runtime)
         {
             _ = runtime.TranslateSelectedTextAsync(promptForPermission: true);

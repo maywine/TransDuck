@@ -70,6 +70,67 @@ public sealed class MacAccessibilitySelectionServiceTests
 
         Assert.Equal(MacSelectionStatus.NoSelection, result.Status);
     }
+
+    [Fact]
+    public async Task UnsupportedAccessibilitySelection_UsesCopyFallback()
+    {
+        var backend = new FakeAccessibilityBackend
+        {
+            Trusted = true,
+            ReadResult = new MacAccessibilityReadResult(MacAccessibilityReadStatus.Unsupported),
+        };
+        var copy = new FakeSelectionCopyBackend { Text = " selected in Feishu " };
+        var service = new MacAccessibilitySelectionService(backend, copy);
+
+        var result = await service.ReadSelectedTextAsync();
+
+        Assert.Equal(MacSelectionStatus.Succeeded, result.Status);
+        Assert.Equal(" selected in Feishu ", result.Text);
+        Assert.Equal(1, copy.ReadCount);
+    }
+
+    [Fact]
+    public async Task PermissionDenial_DoesNotUseCopyFallback()
+    {
+        var copy = new FakeSelectionCopyBackend { Text = "unexpected" };
+        var service = new MacAccessibilitySelectionService(
+            new FakeAccessibilityBackend { Trusted = false }, copy);
+
+        var result = await service.ReadSelectedTextAsync();
+
+        Assert.Equal(MacSelectionStatus.PermissionRequired, result.Status);
+        Assert.Equal(0, copy.ReadCount);
+    }
+
+    [Fact]
+    public async Task CopyFallbackWithoutText_PreservesAccessibilityFailure()
+    {
+        var backend = new FakeAccessibilityBackend
+        {
+            Trusted = true,
+            ReadResult = new MacAccessibilityReadResult(MacAccessibilityReadStatus.NoFocusedElement),
+        };
+        var copy = new FakeSelectionCopyBackend { Text = null };
+        var service = new MacAccessibilitySelectionService(backend, copy);
+
+        var result = await service.ReadSelectedTextAsync();
+
+        Assert.Equal(MacSelectionStatus.NoFocusedElement, result.Status);
+        Assert.Equal(1, copy.ReadCount);
+    }
+}
+
+internal sealed class FakeSelectionCopyBackend : IMacSelectionCopyBackend
+{
+    public string? Text { get; init; }
+
+    public int ReadCount { get; private set; }
+
+    public Task<string?> ReadSelectedTextAsync(CancellationToken cancellationToken)
+    {
+        ReadCount++;
+        return Task.FromResult(Text);
+    }
 }
 
 internal sealed class FakeAccessibilityBackend : IMacAccessibilityBackend

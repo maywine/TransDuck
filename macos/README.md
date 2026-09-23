@@ -68,9 +68,10 @@ systems, `test-package.sh` performs only the static archive audit.
   application reactivation refreshes the permission and enables the hook.
   Matching physical events are suppressed synchronously before selection work
   is dispatched, so configurable chords do not type into the focused app.
-- Selected text is read through the focused element's Accessibility
-  `AXSelectedText` value. Apps that do not expose that value remain usable through
-  manual input.
+- Selected text is read from the focused element's Accessibility text or selected
+  range. If that fails, TransDuck briefly copies the selection and restores the
+  previous pasteboard contents. Apps that do not support copying the selection
+  remain usable through manual input.
 - Interactive capture uses `/usr/sbin/screencapture`; recognized English or
   Simplified Chinese text is produced locally with the macOS Vision framework.
   Task-local PNG files are deleted after recognition or cancellation.

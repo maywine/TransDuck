@@ -50,8 +50,9 @@ test -x "/Applications/TransDuck.app/Contents/MacOS/TransDuck" && echo executabl
    授权；返回 App 后，TransDuck 会自动刷新权限并启用快捷键。Settings 中的权限按钮仍可
    用于手动重试。
 
-TransDuck 只读取当前焦点控件公开的 `AXSelectedText`。部分应用不公开该值；遇到这种
-情况时可打开 TransDuck 窗口手动粘贴并翻译。
+TransDuck 优先读取当前焦点控件通过辅助功能公开的选区。如果读取不到，会临时使用该
+应用的“复制”命令，并恢复原有剪贴板内容。如果应用两种方式都不支持，可将文本粘贴
+到 TransDuck 窗口手动翻译。
 
 ## 截图 OCR 翻译
 

@@ -29,6 +29,13 @@ internal static partial class ObjectiveCNative
     internal static partial IntPtr SendIntPtr(IntPtr receiver, IntPtr selector, nuint value);
 
     [LibraryImport(ObjectiveC, EntryPoint = "objc_msgSend")]
+    internal static partial IntPtr SendIntPtr(
+        IntPtr receiver,
+        IntPtr selector,
+        byte[] bytes,
+        nuint length);
+
+    [LibraryImport(ObjectiveC, EntryPoint = "objc_msgSend")]
     internal static partial nuint SendUIntPtr(IntPtr receiver, IntPtr selector);
 
     [LibraryImport(ObjectiveC, EntryPoint = "objc_msgSend")]
@@ -38,6 +45,10 @@ internal static partial class ObjectiveCNative
         IntPtr selector,
         IntPtr first,
         IntPtr second);
+
+    [LibraryImport(ObjectiveC, EntryPoint = "objc_msgSend")]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SendBool(IntPtr receiver, IntPtr selector, IntPtr value);
 
     [LibraryImport(ObjectiveC, EntryPoint = "objc_msgSend")]
     internal static partial void SendVoid(IntPtr receiver, IntPtr selector);

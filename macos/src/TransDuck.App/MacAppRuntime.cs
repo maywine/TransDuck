@@ -250,7 +250,9 @@ internal sealed class MacAppRuntime : IAsyncDisposable
             await EnsureAccessibilityAndHotkeyAsync(prompt: true);
         }
 
-        var selection = _selectionService.ReadSelectedText(promptForPermission: false);
+        var selection = await _selectionService.ReadSelectedTextAsync(
+            promptForPermission: false,
+            cancellationToken: _lifetimeCancellation.Token);
         PresentationRequested?.Invoke(this, EventArgs.Empty);
         if (!selection.Succeeded)
         {

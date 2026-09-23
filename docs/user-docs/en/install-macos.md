@@ -59,9 +59,10 @@ key into the focused application, preserving terminal selections.
    and enables the hotkey when you return to the app. The permission button in
    Settings remains available for a manual retry.
 
-TransDuck reads only the focused control's exposed `AXSelectedText` value. Some
-applications do not expose that value; use the TransDuck window to paste and
-translate manually in that case.
+TransDuck first reads the focused control's Accessibility selection. When that
+is unavailable, it briefly uses the application's Copy command and restores the
+previous clipboard contents. If an application does not support either method,
+paste the text into the TransDuck window and translate it manually.
 
 ## Screenshot OCR translation
 
